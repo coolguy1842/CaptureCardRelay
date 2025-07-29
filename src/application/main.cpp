@@ -1,3 +1,8 @@
+#include <SDL3/SDL_asyncio.h>
+#include <SDL3/SDL_init.h>
+#include <SDL3/SDL_render.h>
+#include <SDL3/SDL_video.h>
+
 #include <application.hpp>
 #include <chrono>
 #include <cmath>
@@ -54,14 +59,20 @@ Application::Application()
 }
 
 Application::~Application() {
-    closeCamera();
+    setShouldQuit(true);
 
+    closeCamera();
     closeAudioRecordingDevice();
     closeAudioPlaybackDevice();
 
     if(m_font != nullptr) {
         TTF_CloseFont(m_font);
     }
+
+    SDL_DestroyRenderer(m_renderer);
+    SDL_DestroyWindow(m_window);
+
+    SDL_Quit();
 }
 
 bool Application::loop() {
@@ -85,17 +96,13 @@ void Application::update() {
         SDL_DestroyTexture(m_status.texture);
     }
 
-    int dataAvailable, dataLength;
-    if(
-        m_audioPlayback.stream == nullptr ||
-        m_audioRecording.stream == nullptr ||
-        (dataAvailable = SDL_GetAudioStreamAvailable(m_audioRecording.stream)) <= 0
-    ) {
-        return;
-    }
+    if(m_audioPlayback.stream != nullptr && m_audioRecording.stream != nullptr) {
+        int length = SDL_GetAudioStreamData(m_audioRecording.stream, m_audioRecording.buffer, m_audioRecording.bufferSize);
 
-    if((dataLength = SDL_GetAudioStreamData(m_audioRecording.stream, m_audioPlayback.buffer, std::min(m_audioPlayback.bufferSize, dataAvailable))) != -1) {
-        SDL_PutAudioStreamData(m_audioPlayback.stream, m_audioPlayback.buffer, dataLength);
+        if(length != -1) {
+            SDL_PutAudioStreamData(m_audioPlayback.stream, m_audioRecording.buffer, length);
+            SDL_FlushAudioStream(m_audioPlayback.stream);
+        }
     }
 }
 

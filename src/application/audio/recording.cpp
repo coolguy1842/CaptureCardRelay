@@ -38,10 +38,12 @@ void Application::openAudioRecordingDevice() {
     }
 
     SDL_Log("Opened recording device: %s", SDL_GetAudioDeviceName(m_audioRecording.device));
-    SDL_GetAudioDeviceFormat(m_audioRecording.device, &m_audioRecording.spec, nullptr);
+    SDL_GetAudioDeviceFormat(m_audioRecording.device, &m_audioRecording.spec, &m_audioRecording.bufferSize);
 
     m_audioRecording.stream = SDL_CreateAudioStream(&m_audioRecording.spec, &m_audioPlayback.spec);
     SDL_BindAudioStream(m_audioRecording.device, m_audioRecording.stream);
+
+    m_audioRecording.buffer = (Uint8*)malloc(m_audioRecording.bufferSize);
 }
 
 void Application::closeAudioRecordingDevice() {
@@ -52,4 +54,10 @@ void Application::closeAudioRecordingDevice() {
     if(m_audioRecording.stream != nullptr) {
         SDL_DestroyAudioStream(m_audioRecording.stream);
     }
+
+    if(m_audioRecording.buffer != nullptr) {
+        free(m_audioRecording.buffer);
+    }
+
+    m_audioRecording.bufferSize = 0;
 }

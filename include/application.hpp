@@ -10,8 +10,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "SDL3/SDL_render.h"
-
 class Application {
 public:
     // if true, keep event handler, else remove from handlers
@@ -94,6 +92,9 @@ private:
         SDL_AudioSpec spec;
 
         SDL_AudioStream* stream = nullptr;
+
+        int bufferSize;
+        Uint8* buffer;
     } m_audioRecording;
 
     std::vector<SDL_CameraID> m_cameras;
