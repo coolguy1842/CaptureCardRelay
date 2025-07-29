@@ -1,0 +1,7 @@
+.cache
+.direnv
+.vscode
+build
+debug.sh
+run.sh
+result
