@@ -1,10 +1,6 @@
 #include <application.hpp>
 #include <settings.hpp>
 
-#include "SDL3/SDL_camera.h"
-#include "SDL3/SDL_render.h"
-#include "SDL3/SDL_video.h"
-
 void Application::initCameras() {
     int cameraCount       = 0;
     SDL_CameraID* cameras = SDL_GetCameras(&cameraCount);

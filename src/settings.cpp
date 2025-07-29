@@ -8,9 +8,6 @@
 #include <settings.hpp>
 #include <string>
 
-#include "SDL3/SDL_audio.h"
-#include "SDL3/SDL_camera.h"
-
 // TODO: add windows paths
 std::string Settings::getSettingsPath() {
     std::string configPath;

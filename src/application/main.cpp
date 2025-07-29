@@ -1,9 +1,9 @@
 #include <application.hpp>
 #include <chrono>
+#include <cmath>
 #include <cstdlib>
 #include <damase_ttf.hpp>
-
-#include "SDL3/SDL_render.h"
+#include <settings.hpp>
 
 Application::Application()
     : m_shouldQuit(false)
@@ -148,6 +148,14 @@ void Application::changeStatus(std::string text, std::chrono::milliseconds timeT
 
         SDL_DestroySurface(surface);
     }
+}
+
+void Application::updateVolume() {
+    // exponential volume function
+    float volume         = Settings::get()->getVolume() / 100.0f;
+    float adjustedVolume = std::powf(volume, 3.0f);
+
+    SDL_SetAudioStreamGain(m_audioPlayback.stream, adjustedVolume);
 }
 
 bool Application::getShouldQuit() const { return m_shouldQuit; }

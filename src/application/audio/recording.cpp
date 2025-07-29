@@ -1,7 +1,5 @@
 #include <application.hpp>
-
-#include "SDL3/SDL_audio.h"
-#include "settings.hpp"
+#include <settings.hpp>
 
 void Application::initAudioRecordingDevices() {
     int recordingDeviceCount            = 0;

@@ -96,16 +96,16 @@ void Application::handleEvent(SDL_Event* event) {
         }
         case SDLK_UP:
             Settings::get()->setVolume(std::min(Settings::get()->getVolume() + 5, 150));
-            SDL_SetAudioStreamGain(m_audioPlayback.stream, Settings::get()->getVolume() / 100.0f);
-
             changeStatus(std::string("Volume: ") + std::to_string(Settings::get()->getVolume()) + "%", std::chrono::milliseconds(1500));
+
+            updateVolume();
 
             break;
         case SDLK_DOWN:
             Settings::get()->setVolume(std::max(Settings::get()->getVolume() - 5, 0));
-            SDL_SetAudioStreamGain(m_audioPlayback.stream, Settings::get()->getVolume() / 100.0f);
 
             changeStatus(std::string("Volume: ") + std::to_string(Settings::get()->getVolume()) + "%", std::chrono::milliseconds(1500));
+            updateVolume();
 
             break;
         default: break;

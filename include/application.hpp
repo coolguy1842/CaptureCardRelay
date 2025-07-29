@@ -49,6 +49,7 @@ private:
     void closeAudioRecordingDevice();
 
     void changeStatus(std::string text, std::chrono::milliseconds timeToExpire);
+    void updateVolume();
 
 private:
     bool m_shouldQuit;

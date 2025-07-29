@@ -1,9 +1,4 @@
 #include <application.hpp>
-#include <cstdlib>
-
-#include "SDL3/SDL_audio.h"
-#include "SDL3/SDL_stdinc.h"
-#include "settings.hpp"
 
 void Application::initAudioPlaybackDevices() {
     int playbackDeviceCount            = 0;
@@ -41,7 +36,7 @@ void Application::openAudioPlaybackDevice() {
 
     m_audioPlayback.stream = SDL_CreateAudioStream(&m_audioPlayback.spec, &m_audioPlayback.spec);
     SDL_BindAudioStream(m_audioPlayback.device, m_audioPlayback.stream);
-    SDL_SetAudioStreamGain(m_audioPlayback.stream, Settings::get()->getVolume() / 100.0f);
+    updateVolume();
 
     m_audioPlayback.buffer = (Uint8*)malloc(m_audioPlayback.bufferSize);
 }
