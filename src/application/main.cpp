@@ -110,21 +110,32 @@ void Application::render() {
             SDL_ReleaseCameraFrame(m_camera.device, frame);
         }
 
-        if(m_camera.texture != nullptr) {
-            int widthBorder  = std::abs(m_width - m_camera.spec.width) / 2;
-            int heightBorder = std::abs(m_height - m_camera.spec.height) / 2;
-            SDL_FRect rect{ (float)widthBorder, (float)heightBorder, (float)m_camera.texture->w, (float)m_camera.texture->h };
+        float windowWidth = m_width, windowHeight = m_height;
+        float cameraWidth = m_camera.spec.width, cameraHeight = m_camera.spec.height;
 
-            SDL_RenderTexture(m_renderer, m_camera.texture, nullptr, &rect);
+        float windowAspect = windowWidth / windowHeight;
+        float cameraAspect = cameraWidth / cameraHeight;
+
+        SDL_FRect destRect = { 0, 0, windowWidth, windowHeight };
+        if(cameraAspect > windowAspect) {
+            destRect.h = windowWidth / cameraAspect;
+            destRect.y = (windowHeight - destRect.h) / 2.0f;
         }
-    }
+        else {
+            destRect.w = windowHeight * cameraAspect;
+            destRect.x = (windowWidth - destRect.w) / 2.0f;
+        }
 
-    if(m_camera.device != nullptr && m_camera.approved && m_status.texture != nullptr) {
-        int widthBorder  = std::abs(m_width - m_camera.spec.width) / 2;
-        int heightBorder = std::abs(m_height - m_camera.spec.height) / 2;
+        if(m_camera.texture != nullptr) {
+            SDL_RenderTexture(m_renderer, m_camera.texture, nullptr, &destRect);
+        }
 
-        SDL_FRect rect{ (float)m_width - (widthBorder + m_status.texture->w), (float)m_height - (heightBorder + m_status.texture->h), (float)m_status.texture->w, (float)m_status.texture->h };
-        SDL_RenderTexture(m_renderer, m_status.texture, nullptr, &rect);
+        if(m_status.texture != nullptr) {
+            float textWidth = m_status.texture->w, textHeight = m_status.texture->h;
+
+            SDL_FRect rect = { (destRect.x + destRect.w) - textWidth, (destRect.y + destRect.h) - textHeight, textWidth, textHeight };
+            SDL_RenderTexture(m_renderer, m_status.texture, nullptr, &rect);
+        }
     }
 
     SDL_RenderPresent(m_renderer);
