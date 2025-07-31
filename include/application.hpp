@@ -4,8 +4,11 @@
 #include <SDL3/SDL.h>
 #include <SDL3_ttf/SDL_ttf.h>
 
+#include <array>
 #include <chrono>
 #include <functional>
+#include <mutex>
+#include <queue>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -49,6 +52,13 @@ private:
     void changeStatus(std::string text, std::chrono::milliseconds timeToExpire);
     void updateVolume();
 
+    void playbackCallbackHandler(SDL_AudioStream* stream, int additional_amount, int total_amount);
+    void recordingCallbackHandler(SDL_AudioStream* stream, int additional_amount, int total_amount);
+
+private:
+    static void onPlaybackCallback(void* userdata, SDL_AudioStream* stream, int additional_amount, int total_amount);
+    static void onRecordingCallback(void* userdata, SDL_AudioStream* stream, int additional_amount, int total_amount);
+
 private:
     bool m_shouldQuit;
 
@@ -56,6 +66,14 @@ private:
     SDL_Renderer* m_renderer = nullptr;
 
     TTF_Font* m_font = nullptr;
+
+    std::mutex m_audioMutex;
+
+    static constexpr SDL_AudioSpec m_audioSpec = { SDL_AUDIO_S16, 2, 48000 };
+    static constexpr size_t audioBufferSize    = 128;
+    static constexpr size_t maxAudioBuffers    = 32;
+
+    std::queue<std::array<Uint16, audioBufferSize>> m_audioBuffers;
 
     struct {
         std::string text;

@@ -1,5 +1,43 @@
 #include <application.hpp>
 
+// https://stackoverflow.com/a/57796299
+template <typename T, size_t N>
+constexpr auto make_array(T value) -> std::array<T, N> {
+    std::array<T, N> a;
+
+    for(auto& x : a) {
+        x = value;
+    }
+
+    return a;
+}
+
+void Application::onPlaybackCallback(void* userdata, SDL_AudioStream* stream, int additional_amount, int total_amount) { ((Application*)userdata)->playbackCallbackHandler(stream, additional_amount, total_amount); }
+void Application::playbackCallbackHandler(SDL_AudioStream* stream, int additional_amount, int total_amount) {
+    int totalBuffers = additional_amount / (audioBufferSize * sizeof(Uint16));
+    if(m_audioBuffers.size() > maxAudioBuffers) {
+        totalBuffers += (m_audioBuffers.size() - maxAudioBuffers) + 5;
+    }
+
+    const static auto emptyBuffer = make_array<Uint16, audioBufferSize>(0);
+
+    for(int i = 0; i <= totalBuffers; i++) {
+        if(m_audioBuffers.empty()) {
+            SDL_PutAudioStreamData(stream, emptyBuffer.data(), audioBufferSize * sizeof(Uint16));
+            continue;
+        }
+
+        m_audioMutex.lock();
+
+        std::array<Uint16, audioBufferSize> buffer = m_audioBuffers.front();
+        m_audioBuffers.pop();
+
+        m_audioMutex.unlock();
+
+        SDL_PutAudioStreamData(stream, buffer.data(), audioBufferSize * sizeof(Uint16));
+    }
+}
+
 void Application::initAudioPlaybackDevices() {
     int playbackDeviceCount            = 0;
     SDL_AudioDeviceID* playbackDevices = SDL_GetAudioPlaybackDevices(&playbackDeviceCount);
@@ -23,7 +61,7 @@ void Application::openAudioPlaybackDevice() {
         closeAudioPlaybackDevice();
     }
 
-    m_audioPlayback.device = SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, nullptr);
+    m_audioPlayback.device = SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &m_audioSpec);
     if(m_audioPlayback.device == 0) {
         SDL_Log("Couldn't open playback device: %s", SDL_GetError());
 
@@ -34,11 +72,13 @@ void Application::openAudioPlaybackDevice() {
     SDL_Log("Opened playback device: %s", SDL_GetAudioDeviceName(m_audioPlayback.device));
     SDL_GetAudioDeviceFormat(m_audioPlayback.device, &m_audioPlayback.spec, &m_audioPlayback.bufferSize);
 
-    m_audioPlayback.stream = SDL_CreateAudioStream(&m_audioPlayback.spec, &m_audioPlayback.spec);
+    m_audioPlayback.stream = SDL_CreateAudioStream(&m_audioSpec, &m_audioPlayback.spec);
     SDL_BindAudioStream(m_audioPlayback.device, m_audioPlayback.stream);
     updateVolume();
 
     m_audioPlayback.buffer = (Uint8*)malloc(m_audioPlayback.bufferSize);
+
+    SDL_SetAudioStreamGetCallback(m_audioPlayback.stream, &Application::onPlaybackCallback, this);
 }
 
 void Application::closeAudioPlaybackDevice() {

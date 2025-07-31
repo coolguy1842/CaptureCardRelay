@@ -1,12 +1,5 @@
-#include <SDL3/SDL_asyncio.h>
-#include <SDL3/SDL_init.h>
-#include <SDL3/SDL_render.h>
-#include <SDL3/SDL_video.h>
-
 #include <application.hpp>
-#include <chrono>
 #include <cmath>
-#include <cstdlib>
 #include <damase_ttf.hpp>
 #include <settings.hpp>
 
@@ -94,15 +87,6 @@ bool Application::loop() {
 void Application::update() {
     if(m_status.expire <= std::chrono::system_clock::now() && m_status.texture != nullptr) {
         SDL_DestroyTexture(m_status.texture);
-    }
-
-    if(m_audioPlayback.stream != nullptr && m_audioRecording.stream != nullptr) {
-        int length = SDL_GetAudioStreamData(m_audioRecording.stream, m_audioRecording.buffer, m_audioRecording.bufferSize);
-
-        if(length != -1) {
-            SDL_PutAudioStreamData(m_audioPlayback.stream, m_audioRecording.buffer, length);
-            SDL_FlushAudioStream(m_audioPlayback.stream);
-        }
     }
 }
 

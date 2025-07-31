@@ -37,6 +37,10 @@ void Application::handleEvent(SDL_Event* event) {
         m_height = event->window.data2;
 
         break;
+    case SDL_EVENT_CAMERA_DEVICE_REMOVED:
+        openCamera();
+
+        break;
     case SDL_EVENT_AUDIO_DEVICE_REMOVED:
         openAudioPlaybackDevice();
         openAudioRecordingDevice();
@@ -44,7 +48,7 @@ void Application::handleEvent(SDL_Event* event) {
     case SDL_EVENT_AUDIO_DEVICE_FORMAT_CHANGED:
     case SDL_EVENT_AUDIO_DEVICE_ADDED:
         if(m_audioRecording.stream != nullptr) {
-            SDL_SetAudioStreamFormat(m_audioRecording.stream, &m_audioRecording.spec, &m_audioPlayback.spec);
+            SDL_SetAudioStreamFormat(m_audioRecording.stream, &m_audioRecording.spec, &m_audioSpec);
         }
 
         break;
