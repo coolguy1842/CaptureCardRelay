@@ -42,10 +42,13 @@
                     ninja
                     cmake
                     meson
+                    qt6.wrapQtAppsHook
                 ];
 
                 buildInputs = with pkgs; [
                     qt6.full
+                    qt6.qtbase
+                    makeWrapper
                 ];
 
                 configurePhase = ''
@@ -57,8 +60,7 @@
                 '';
 
                 installPhase = ''
-                    mkdir -p $out/bin
-                    cp build/CaptureCardRelay $out/bin/
+                    meson install -C build
                 '';
 
                 meta = with pkgs.lib; {

@@ -114,7 +114,10 @@ void MainWindow::keyPressEvent(QKeyEvent* event) {
         auto devices = QMediaDevices::videoInputs();
         auto it      = std::find_if(devices.begin(), devices.end(), [device](QCameraDevice input) { return device.id() == input.id(); });
         if(it == devices.end()) {
-            Config::get()->setPreferredCamera(devices[0]);
+            if(devices.size() > 0) {
+                Config::get()->setPreferredCamera(devices[0]);
+            }
+
             return;
         }
 
@@ -131,7 +134,10 @@ void MainWindow::keyPressEvent(QKeyEvent* event) {
         auto devices = QMediaDevices::audioInputs();
         auto it      = std::find_if(devices.begin(), devices.end(), [device](QAudioDevice input) { return device.id() == input.id(); });
         if(it == devices.end()) {
-            Config::get()->setPreferredInput(devices[0]);
+            if(devices.size() > 0) {
+                Config::get()->setPreferredInput(devices[0]);
+            }
+
             return;
         }
 

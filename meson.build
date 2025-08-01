@@ -27,5 +27,6 @@ executable(
     include_directories: include_directories('include'),
     dependencies: [
         dependency('qt6', modules: [ 'Core', 'Gui', 'Widgets', 'Multimedia', 'MultimediaWidgets' ])
-    ]
+    ],
+    install: true
 )
