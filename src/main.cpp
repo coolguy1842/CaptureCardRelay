@@ -8,6 +8,8 @@ int main(int argc, char** argv) {
     MainWindow window;
     window.show();
 
+    int code = app.exec();
     Config::close();
-    return app.exec();
+
+    return code;
 }
