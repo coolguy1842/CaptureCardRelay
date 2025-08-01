@@ -1,7 +1,7 @@
 .cache
 .direnv
 .vscode
+result
 build
 debug.sh
 run.sh
-result

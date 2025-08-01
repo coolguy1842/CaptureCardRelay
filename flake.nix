@@ -21,9 +21,9 @@
                 ];
 
                 buildInputs = with pkgs; [
-                    sdl3
-                    sdl3-ttf
-                    imgui
+                    pipewire
+                    ffmpeg
+                    qt6.full
                 ];
             };
         });
@@ -45,9 +45,7 @@
                 ];
 
                 buildInputs = with pkgs; [
-                    sdl3
-                    sdl3-ttf
-                    imgui
+                    qt6.full
                 ];
 
                 configurePhase = ''
