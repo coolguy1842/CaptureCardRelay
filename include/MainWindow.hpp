@@ -18,6 +18,19 @@
 #include <QVideoWidget>
 #include <QWidget>
 
+class CustomGraphicsView : public QGraphicsView {
+    Q_OBJECT;
+
+public:
+    using QGraphicsView::QGraphicsView;
+
+protected:
+    virtual void mouseMoveEvent(QMouseEvent* event);
+
+signals:
+    void onMouseMove(QPoint point);
+};
+
 class MainWindow : public QWidget {
     Q_OBJECT;
 
@@ -43,12 +56,14 @@ private slots:
 
     void updatePositions();
 
+    void handleMouseMove(QPoint pos);
+
 private:
     QMediaCaptureSession m_captureSession;
 
     QGraphicsScene m_graphicsScene;
     QGraphicsVideoItem m_cameraVideo;
-    QGraphicsView m_graphicsView;
+    CustomGraphicsView m_graphicsView;
 
     QCamera m_camera;
     QAudioInput m_input;
@@ -58,6 +73,8 @@ private:
     QPropertyAnimation m_statusAnimation;
     QTimer m_statusTimer;
     QLabel m_status;
+
+    QTimer m_cursorHideTimer;
 
     bool m_firstCamera        = true;
     bool m_firstInput         = true;

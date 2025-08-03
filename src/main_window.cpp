@@ -2,17 +2,17 @@
 #include <MainWindow.hpp>
 #include <QMediaDevices>
 
+void CustomGraphicsView::mouseMoveEvent(QMouseEvent* event) { emit CustomGraphicsView::onMouseMove(event->pos()); }
 MainWindow::MainWindow()
     : m_graphicsScene(this)
     , m_graphicsView(&m_graphicsScene, this) {
     setStyleSheet("background-color: black;");
-    setMouseTracking(true);
+    setCursor(Qt::CursorShape::BlankCursor);
 
     m_graphicsView.setFocusPolicy(Qt::FocusPolicy::NoFocus);
     m_graphicsView.setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     m_graphicsView.setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     m_graphicsView.setFrameStyle(QFrame::NoFrame);
-    m_graphicsView.setMouseTracking(true);
 
     m_captureSession.setVideoOutput(&m_cameraVideo);
     m_captureSession.setAudioOutput(&m_output);
@@ -31,6 +31,9 @@ MainWindow::MainWindow()
 
     m_statusTimer.setInterval(1500);
     m_statusTimer.setSingleShot(true);
+
+    m_cursorHideTimer.setInterval(800);
+    m_cursorHideTimer.setSingleShot(true);
 
     m_status.setAttribute(Qt::WA_StyledBackground);
     m_status.setContentsMargins(5, 5, 5, 5);
@@ -52,6 +55,16 @@ MainWindow::MainWindow()
 
     connect(&m_statusTimer, &QTimer::timeout, this, &MainWindow::hideStatus);
     connect(&m_statusAnimation, &QPropertyAnimation::finished, [this]() { m_status.setVisible(m_statusAnimation.direction() != QPropertyAnimation::Backward); });
+
+    connect(&m_graphicsView, &CustomGraphicsView::onMouseMove, this, &MainWindow::handleMouseMove);
+    connect(&m_cursorHideTimer, &QTimer::timeout, [this]() { setCursor(Qt::CursorShape::BlankCursor); });
+}
+
+void MainWindow::handleMouseMove(QPoint pos) {
+    unsetCursor();
+
+    m_cursorHideTimer.stop();
+    m_cursorHideTimer.start();
 }
 
 void MainWindow::updateStatusPositions() {
