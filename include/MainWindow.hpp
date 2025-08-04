@@ -51,6 +51,8 @@ protected:
     void showStatus();
     void hideStatus();
 
+    float getVolume();
+
 private slots:
     void updateCamera();
     void updateInput();

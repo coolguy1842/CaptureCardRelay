@@ -3,6 +3,7 @@
 #include <QMediaDevices>
 #include <QMetaObject>
 #include <algorithm>
+#include <cmath>
 
 void CustomGraphicsView::mouseMoveEvent(QMouseEvent* event) { emit CustomGraphicsView::onMouseMove(event->pos()); }
 MainWindow::MainWindow()
@@ -43,9 +44,9 @@ MainWindow::MainWindow()
 
     updateCamera();
     updateInput();
-    updateVolume();
     updatePositions();
     updateSink();
+    updateVolume();
 
     connect(Config::get(), &Config::preferredCameraChanged, this, &MainWindow::updateCamera);
     connect(Config::get(), &Config::preferredInputChanged, this, &MainWindow::updateInput);
@@ -59,6 +60,10 @@ MainWindow::MainWindow()
 
     connect(&m_graphicsView, &CustomGraphicsView::onMouseMove, this, &MainWindow::handleMouseMove);
     connect(&m_cursorHideTimer, &QTimer::timeout, [this]() { setCursor(Qt::CursorShape::BlankCursor); });
+}
+
+float MainWindow::getVolume() {
+    return std::pow(Config::get()->volume(), 3);
 }
 
 void MainWindow::updateSink() {
@@ -77,6 +82,7 @@ void MainWindow::updateSink() {
 
     m_sink.reset(new QAudioSink(m_output.device(), format));
     m_sink->setBufferSize(audioBufferSize);
+    m_sink->setVolume(getVolume());
 
     m_sinkDevice = m_sink->start();
 
@@ -277,7 +283,7 @@ void MainWindow::updateInput() {
 
 void MainWindow::updateVolume() {
     // exponential volume curve as linear feels bad
-    float volume = std::pow(Config::get()->volume(), 3);
+    float volume = getVolume();
 
     m_output.setVolume(volume);
     if(!m_sink->isNull()) {
