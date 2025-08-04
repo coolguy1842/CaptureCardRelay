@@ -73,7 +73,7 @@ void Config::setPreferredInput(QAudioDevice input) {
 }
 
 double clampedVolume(double volume) {
-    return std::clamp(volume, 0.0, 1.5);
+    return std::clamp(volume, 0.0, 1.0);
 }
 
 double Config::volume() const {

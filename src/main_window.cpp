@@ -1,9 +1,6 @@
 #include <Config.hpp>
 #include <MainWindow.hpp>
 #include <QMediaDevices>
-#include <QMetaObject>
-#include <algorithm>
-#include <cmath>
 
 void CustomGraphicsView::mouseMoveEvent(QMouseEvent* event) { emit CustomGraphicsView::onMouseMove(event->pos()); }
 MainWindow::MainWindow()
@@ -63,7 +60,7 @@ MainWindow::MainWindow()
 }
 
 float MainWindow::getVolume() {
-    return std::pow(Config::get()->volume(), 3);
+    return QtAudio::convertVolume(Config::get()->volume(), QtAudio::LogarithmicVolumeScale, QtAudio::LinearVolumeScale);
 }
 
 void MainWindow::updateSink() {
