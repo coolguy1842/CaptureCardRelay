@@ -1,6 +1,8 @@
 #include <Config.hpp>
 #include <MainWindow.hpp>
 #include <QMediaDevices>
+#include <QMetaObject>
+#include <algorithm>
 
 void CustomGraphicsView::mouseMoveEvent(QMouseEvent* event) { emit CustomGraphicsView::onMouseMove(event->pos()); }
 MainWindow::MainWindow()
@@ -15,8 +17,6 @@ MainWindow::MainWindow()
     m_graphicsView.setFrameStyle(QFrame::NoFrame);
 
     m_captureSession.setVideoOutput(&m_cameraVideo);
-    m_captureSession.setAudioOutput(&m_output);
-    m_captureSession.setAudioInput(&m_input);
     m_captureSession.setCamera(&m_camera);
 
     m_graphicsScene.addItem(&m_cameraVideo);
@@ -45,6 +45,7 @@ MainWindow::MainWindow()
     updateInput();
     updateVolume();
     updatePositions();
+    updateSink();
 
     connect(Config::get(), &Config::preferredCameraChanged, this, &MainWindow::updateCamera);
     connect(Config::get(), &Config::preferredInputChanged, this, &MainWindow::updateInput);
@@ -60,11 +61,57 @@ MainWindow::MainWindow()
     connect(&m_cursorHideTimer, &QTimer::timeout, [this]() { setCursor(Qt::CursorShape::BlankCursor); });
 }
 
-void MainWindow::handleMouseMove(QPoint pos) {
-    unsetCursor();
+void MainWindow::updateSink() {
+    QAudioFormat format = m_output.device().preferredFormat();
 
-    m_cursorHideTimer.stop();
-    m_cursorHideTimer.start();
+    if(m_sink != nullptr) {
+        if(m_audioPipeConnection != nullptr) {
+            disconnect(m_audioPipeConnection);
+        }
+
+        m_sink->stop();
+        m_sink->deleteLater();
+
+        m_sinkDevice = nullptr;
+    }
+
+    m_sink.reset(new QAudioSink(m_output.device(), format));
+    m_sink->setBufferSize(audioBufferSize);
+
+    m_sinkDevice = m_sink->start();
+
+    updateSource();
+}
+
+void MainWindow::updateSource() {
+    QAudioFormat format = m_input.device().preferredFormat();
+    if(m_sink != nullptr && m_input.device().isFormatSupported(m_sink->format())) {
+        format = m_sink->format();
+    }
+
+    if(m_source != nullptr) {
+        m_source->stop();
+        m_source->deleteLater();
+
+        m_sourceDevice = nullptr;
+    }
+
+    m_source.reset(new QAudioSource(m_input.device(), format));
+    m_source->setBufferSize(audioBufferSize);
+
+    m_sourceDevice = m_source->start();
+    if(m_sinkDevice != nullptr) {
+        m_audioPipeConnection = connect(m_sourceDevice, &QIODevice::readyRead, this, &MainWindow::pipeSourceData);
+    }
+}
+
+void MainWindow::pipeSourceData() {
+    m_sinkDevice->write(m_sourceDevice->read(audioBufferSize));
+
+    // skip any inaccessible extra data in the buffer
+    if(m_sourceDevice->bytesAvailable() > audioBufferSize) {
+        m_sourceDevice->skip(m_sourceDevice->bytesAvailable() - audioBufferSize);
+    }
 }
 
 void MainWindow::updateStatusPositions() {
@@ -104,17 +151,6 @@ void MainWindow::setStatus(QString status) {
     }
 
     updatePositions();
-}
-
-void MainWindow::updatePositions() {
-    auto size = this->size();
-
-    QRect rect(0, 0, size.width(), size.height());
-    m_graphicsView.setSceneRect(rect);
-    m_graphicsView.setGeometry(rect);
-
-    m_cameraVideo.setSize(rect.size());
-    updateStatusPositions();
 }
 
 void MainWindow::keyPressEvent(QKeyEvent* event) {
@@ -176,7 +212,6 @@ void MainWindow::keyPressEvent(QKeyEvent* event) {
 
 void MainWindow::resizeEvent(QResizeEvent* event) {
     QWidget::resizeEvent(event);
-
     updatePositions();
 }
 
@@ -197,7 +232,15 @@ void MainWindow::updateCamera() {
         m_camera.stop();
     }
 
+    QCameraFormat format = camera.videoFormats().first();
+    for(auto& f : camera.videoFormats()) {
+        if(f.resolution().width() > format.resolution().width() && f.resolution().height() > format.resolution().height()) {
+            format = f;
+        }
+    }
+
     m_camera.setCameraDevice(camera);
+    m_camera.setCameraFormat(format);
     m_camera.start();
 
     if(!m_firstCamera) {
@@ -222,6 +265,7 @@ void MainWindow::updateInput() {
     }
 
     m_input.setDevice(input);
+    updateSink();
 
     if(!m_firstInput) {
         setStatus(QString("Input device: %1").arg(input.description()));
@@ -233,7 +277,12 @@ void MainWindow::updateInput() {
 
 void MainWindow::updateVolume() {
     // exponential volume curve as linear feels bad
-    m_output.setVolume(std::pow(Config::get()->volume(), 3));
+    float volume = std::pow(Config::get()->volume(), 3);
+
+    m_output.setVolume(volume);
+    if(!m_sink->isNull()) {
+        m_sink->setVolume(volume);
+    }
 
     if(!m_firstVolume) {
         setStatus(QString("Volume: %1%").arg((int)(Config::get()->volume() * 100)));
@@ -241,4 +290,22 @@ void MainWindow::updateVolume() {
     else {
         m_firstVolume = false;
     }
+}
+
+void MainWindow::updatePositions() {
+    auto size = this->size();
+
+    QRect rect(0, 0, size.width(), size.height());
+    m_graphicsView.setSceneRect(rect);
+    m_graphicsView.setGeometry(rect);
+
+    m_cameraVideo.setSize(rect.size());
+    updateStatusPositions();
+}
+
+void MainWindow::handleMouseMove(QPoint pos) {
+    unsetCursor();
+
+    m_cursorHideTimer.stop();
+    m_cursorHideTimer.start();
 }

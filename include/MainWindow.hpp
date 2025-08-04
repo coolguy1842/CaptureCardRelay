@@ -4,6 +4,8 @@
 #include <QAudioDevice>
 #include <QAudioInput>
 #include <QAudioOutput>
+#include <QAudioSink>
+#include <QAudioSource>
 #include <QCamera>
 #include <QGraphicsProxyWidget>
 #include <QGraphicsScene>
@@ -54,9 +56,14 @@ private slots:
     void updateInput();
     void updateVolume();
 
+    void updateSink();
+    void updateSource();
+
     void updatePositions();
 
     void handleMouseMove(QPoint pos);
+
+    void pipeSourceData();
 
 private:
     QMediaCaptureSession m_captureSession;
@@ -69,17 +76,25 @@ private:
     QAudioInput m_input;
     QAudioOutput m_output;
 
+    QScopedPointer<QAudioSource> m_source;
+    QScopedPointer<QAudioSink> m_sink;
+
+    QIODevice* m_sourceDevice = nullptr;
+    QIODevice* m_sinkDevice   = nullptr;
+
     QGraphicsProxyWidget* m_statusProxy;
     QPropertyAnimation m_statusAnimation;
     QTimer m_statusTimer;
     QLabel m_status;
 
     QTimer m_cursorHideTimer;
+    QMetaObject::Connection m_audioPipeConnection;
 
-    bool m_firstCamera        = true;
-    bool m_firstInput         = true;
-    bool m_firstVolume        = true;
-    bool m_overlayBrushActive = false;
+    const static qint64 audioBufferSize = 2048;
+
+    bool m_firstCamera = true;
+    bool m_firstInput  = true;
+    bool m_firstVolume = true;
 };
 
 #endif
