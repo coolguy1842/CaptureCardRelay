@@ -92,7 +92,7 @@ private:
     QTimer m_cursorHideTimer;
     QMetaObject::Connection m_audioPipeConnection;
 
-    const static qint64 audioBufferSize = 2048;
+    const static qint64 audioBufferSize = 4096;
 
     bool m_firstCamera = true;
     bool m_firstInput  = true;

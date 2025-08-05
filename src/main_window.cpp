@@ -112,8 +112,9 @@ void MainWindow::pipeSourceData() {
     m_sinkDevice->write(m_sourceDevice->read(audioBufferSize));
 
     // skip any inaccessible extra data in the buffer
-    if(m_sourceDevice->bytesAvailable() > audioBufferSize) {
-        m_sourceDevice->skip(m_sourceDevice->bytesAvailable() - audioBufferSize);
+    const qint64 available = m_sourceDevice->bytesAvailable();
+    if(available > audioBufferSize) {
+        m_sourceDevice->skip(available - audioBufferSize);
     }
 }
 
