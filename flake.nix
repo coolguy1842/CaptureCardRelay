@@ -21,9 +21,10 @@
                 ];
 
                 buildInputs = with pkgs; [
-                    pipewire
-                    ffmpeg
-                    qt6.full
+                    sdl3
+                    sdl3-ttf
+                    sdl3-image
+                    imgui
                 ];
             };
         });
@@ -36,19 +37,21 @@
                 version = "1.0";
                 src = ./.;
 
+                # TODO: remove this later, for debugging purposes
+                hardeningDisable = [ "all" ];
                 nativeBuildInputs = with pkgs; [
                     clang
                     pkg-config
                     ninja
                     cmake
                     meson
-                    qt6.wrapQtAppsHook
                 ];
 
                 buildInputs = with pkgs; [
-                    qt6.full
-                    qt6.qtbase
-                    makeWrapper
+                    sdl3
+                    sdl3-ttf
+                    sdl3-image
+                    imgui
                 ];
 
                 configurePhase = ''
@@ -60,7 +63,8 @@
                 '';
 
                 installPhase = ''
-                    meson install -C build
+                    mkdir -p $out/bin
+                    cp build/CaptureCardRelay $out/bin/
                 '';
 
                 meta = with pkgs.lib; {

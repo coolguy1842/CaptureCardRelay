@@ -5,7 +5,6 @@
 #include <QCameraDevice>
 #include <QObject>
 #include <QSettings>
-#include <optional>
 
 class Config : public QObject {
     Q_OBJECT;

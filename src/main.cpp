@@ -1,15 +1,12 @@
-#include <Config.hpp>
-#include <MainWindow.hpp>
-#include <QApplication>
+#include <application.hpp>
+#include <settings.hpp>
 
 int main(int argc, char** argv) {
-    QApplication app(argc, argv);
+    Application* app = new Application();
+    while(app->loop());
 
-    MainWindow window;
-    window.show();
+    delete app;
+    Settings::close();
 
-    int code = app.exec();
-    Config::close();
-
-    return code;
+    return 0;
 }
