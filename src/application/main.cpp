@@ -90,6 +90,10 @@ Application::Application()
 
     Clay_Initialize(clayMemory, Clay_Dimensions(m_width, m_height), Clay_ErrorHandler(HandleClayErrors));
     Clay_SetMeasureTextFunction(SDL_MeasureText, &m_renderData.fonts);
+
+    if(Settings::get()->isFullscreen()) {
+        SDL_SetWindowFullscreen(m_window, true);
+    }
 }
 
 Application::~Application() {
@@ -129,7 +133,11 @@ bool Application::loop() {
     return !getShouldQuit();
 }
 
-void Application::update() {}
+void Application::update() {
+    if(SDL_CursorVisible() && std::chrono::system_clock::now() >= m_showCursorExpire) {
+        SDL_HideCursor();
+    }
+}
 
 Uint32 Application::statusStep() {
     if(!m_status.animationReverse) {
@@ -162,13 +170,6 @@ Uint32 Application::onStatusStepCallback(void* userdata, SDL_TimerID timerID, Ui
     }
 
     return 1;
-}
-
-Uint32 Application::onCursorHideCallback(void* userdata, SDL_TimerID timerID, Uint32 interval) {
-    reinterpret_cast<Application*>(userdata)->m_cursorHideTimer = 0;
-    SDL_HideCursor();
-
-    return 0;
 }
 
 void Application::changeStatus(std::string text, std::chrono::milliseconds timeToExpire) {

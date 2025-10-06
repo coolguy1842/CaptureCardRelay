@@ -19,6 +19,9 @@ public:
     int getVolume();
     void setVolume(int volume);
 
+    bool isFullscreen();
+    void setFullscreen(bool fullscreen = true);
+
     static Settings* get();
     static void close();
 

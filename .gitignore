@@ -3,5 +3,7 @@
 .vscode
 result
 build
+builddir
 debug.sh
 run.sh
+compile_commands.json

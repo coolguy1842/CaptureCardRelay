@@ -54,14 +54,9 @@ void Application::handleEvent(SDL_Event* event) {
             event->motion.state & SDL_BUTTON_LMASK
         );
 
+        m_showCursorExpire = std::chrono::system_clock::now() + std::chrono::milliseconds(1000);
         SDL_ShowCursor();
 
-        if(m_cursorHideTimer != 0) {
-            SDL_RemoveTimer(m_cursorHideTimer);
-            m_cursorHideTimer = 0;
-        }
-
-        m_cursorHideTimer = SDL_AddTimer(1000, &Application::onCursorHideCallback, this);
         break;
     case SDL_EVENT_MOUSE_BUTTON_DOWN:
         Clay_SetPointerState(
@@ -152,6 +147,14 @@ void Application::handleEvent(SDL_Event* event) {
             updateVolume();
 
             break;
+        case SDLK_F11: {
+            bool fullscreen = !Settings::get()->isFullscreen();
+
+            SDL_SetWindowFullscreen(m_window, fullscreen);
+            Settings::get()->setFullscreen(fullscreen);
+
+            break;
+        }
         case SDLK_F12:
             Clay_SetDebugModeEnabled(!Clay_IsDebugModeEnabled());
 

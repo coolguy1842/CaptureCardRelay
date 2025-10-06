@@ -1,5 +1,6 @@
 #ifndef __APPLICATION_HPP__
 #define __APPLICATION_HPP__
+#define SDL_MAIN_NOIMPL
 
 #include <clay.h>
 
@@ -63,7 +64,6 @@ private:
     static void onRecordingCallback(void* userdata, SDL_AudioStream* stream, int additional_amount, int total_amount);
 
     static Uint32 onStatusStepCallback(void* userdata, SDL_TimerID timerID, Uint32 interval);
-    static Uint32 onCursorHideCallback(void* userdata, SDL_TimerID timerID, Uint32 interval);
 
 private:
     bool m_shouldQuit;
@@ -110,8 +110,8 @@ private:
         Uint8* buffer;
     } m_audioRecording;
 
-    SDL_TimerID m_statusStepTimer;
-    SDL_TimerID m_cursorHideTimer;
+    SDL_TimerID m_statusStepTimer = 0;
+    std::chrono::time_point<std::chrono::system_clock> m_showCursorExpire;
 
     std::vector<SDL_CameraID> m_cameras;
 

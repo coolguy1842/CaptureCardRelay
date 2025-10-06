@@ -8,10 +8,18 @@
 #include <settings.hpp>
 #include <string>
 
-// TODO: add windows paths
 std::string Settings::getSettingsPath() {
     std::string configPath;
 
+#ifdef _WIN32
+    if(std::getenv("XDG_CONFIG_HOME") == nullptr) {
+        configPath = std::getenv("AppData");
+    }
+    else {
+        SDL_Log("Couldn't get appdata directory.");
+        exit(1);
+    }
+#else
     if(std::getenv("XDG_CONFIG_HOME") != nullptr) {
         configPath = std::getenv("XDG_CONFIG_HOME");
     }
@@ -23,6 +31,7 @@ std::string Settings::getSettingsPath() {
 
         exit(1);
     }
+#endif
 
     configPath += "/CaptureCardRelay";
     if(!std::filesystem::exists(configPath)) {
@@ -141,22 +150,12 @@ void Settings::setSelectedRecordingDevice(SDL_AudioDeviceID device) {
     setValue("recordingDevice", name);
 }
 
-int clampVolume(int volume) {
-    return std::max(0, std::min(150, volume));
-}
+int clampVolume(int volume) { return std::max(0, std::min(150, volume)); }
+int Settings::getVolume() { return clampVolume(std::atoi(getValue("volume").value_or("100").c_str())); }
+void Settings::setVolume(int volume) { setValue("volume", std::to_string(clampVolume(volume))); }
 
-int Settings::getVolume() {
-    std::optional<std::string> volume = getValue("volume");
-    if(!volume.has_value()) {
-        volume = "100";
-    }
-
-    return clampVolume(std::atoi(volume->c_str()));
-}
-
-void Settings::setVolume(int volume) {
-    setValue("volume", std::to_string(clampVolume(volume)));
-}
+bool Settings::isFullscreen() { return getValue("fullscreen").value_or("false") == "true"; }
+void Settings::setFullscreen(bool fullscreen) { setValue("fullscreen", fullscreen ? "true" : "false"); }
 
 std::optional<std::string> Settings::getValue(std::string key) {
     if(m_cache.find(key) == m_cache.end()) {
