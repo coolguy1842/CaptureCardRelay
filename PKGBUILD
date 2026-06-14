@@ -6,19 +6,20 @@ pkgdesc="Displays capture card output"
 depends=('meson' 'ninja' 'sdl3-git' 'sdl3_ttf-git' 'sdl3_image-git')
 license=('GPL')
 url="https://github.com/coolguy1842/CaptureCardRelay"
-source=("src")
+source=("https://github.com/coolguy1842/CaptureCardRelay/archive/refs/heads/master.zip")
 sha256sums=('SKIP')
 
 build() {
+  cd $srcdir/CaptureCardRelay-master
   meson setup build
   cd build
   meson compile
 }
 
 package() {
-  install -d "${pkgdir}"/usr/bin
-  
-  install -m 755 "${srcdir}/build/CaptureCardRelay" "$pkgdir"/usr/bin/$pkgname
-  install -m 755 "${srcdir}/assets/capture-card-relay.desktop" "$pkgdir"/share/applications/${pkgname}.desktop
-  install -m 755 "${srcdir}/assets/capture-card-relay.png" "$pkgdir"/usr/share/icons/hicolor/64x64/apps/${pkgname}.png
+  install -Dm 755 "${srcdir}/CaptureCardRelay-master/build/CaptureCardRelay" "$pkgdir"/usr/bin/$pkgname
+  install -Dm 755 "${srcdir}/CaptureCardRelay-master/assets/capture-card-relay.desktop" "$pkgdir"/usr/share/applications/${pkgname}.desktop
+  install -Dm 755 "${srcdir}/CaptureCardRelay-master/assets/capture-card-relay.png" "$pkgdir"/usr/share/icons/hicolor/64x64/apps/${pkgname}.png
+
+  sed -i 's/Exec=CaptureCardRelay/Exec=capture-card-relay/g' "$pkgdir"/usr/share/applications/${pkgname}.desktop
 }
