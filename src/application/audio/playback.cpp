@@ -21,7 +21,7 @@ void Application::playbackCallbackHandler(SDL_AudioStream* stream, int additiona
 
     const static auto emptyBuffer = make_array<Uint16, audioBufferSize>(0);
 
-    m_audioMutex.lock();
+    auto lock = std::unique_lock(m_audioMutex);
     for(int i = 0; i <= totalBuffers; i++) {
         if(m_audioBuffers.empty()) {
             SDL_PutAudioStreamData(stream, emptyBuffer.data(), audioBufferSize * sizeof(Uint16));
@@ -33,8 +33,6 @@ void Application::playbackCallbackHandler(SDL_AudioStream* stream, int additiona
 
         SDL_PutAudioStreamData(stream, buffer.data(), audioBufferSize * sizeof(Uint16));
     }
-
-    m_audioMutex.unlock();
 }
 
 void Application::initAudioPlaybackDevices() {
@@ -43,8 +41,8 @@ void Application::initAudioPlaybackDevices() {
     int playbackDeviceCount            = 0;
     SDL_AudioDeviceID* playbackDevices = SDL_GetAudioPlaybackDevices(&playbackDeviceCount);
 
-    if(playbackDevices == nullptr || playbackDeviceCount <= 0) {
-        SDL_Log("Couldn't enumerate playback devices or none plugged in: %s", SDL_GetError());
+    if(playbackDevices == nullptr) {
+        SDL_Log("Couldn't enumerate playback devices: %s", SDL_GetError());
 
         setShouldQuit(true);
         return;
@@ -63,17 +61,17 @@ void Application::openAudioPlaybackDevice() {
     }
 
     initAudioPlaybackDevices();
-    
+
     m_audioPlayback.device = SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &m_audioSpec);
     if(m_audioPlayback.device == 0) {
         SDL_Log("Couldn't open playback device: %s", SDL_GetError());
-
-        setShouldQuit(true);
         return;
     }
 
     SDL_Log("Opened playback device: %s", SDL_GetAudioDeviceName(m_audioPlayback.device));
     SDL_GetAudioDeviceFormat(m_audioPlayback.device, &m_audioPlayback.spec, &m_audioPlayback.bufferSize);
+
+    auto lock = std::unique_lock(m_streamMutex);
 
     m_audioPlayback.stream = SDL_CreateAudioStream(&m_audioSpec, &m_audioPlayback.spec);
     SDL_BindAudioStream(m_audioPlayback.device, m_audioPlayback.stream);
@@ -84,16 +82,21 @@ void Application::openAudioPlaybackDevice() {
 }
 
 void Application::closeAudioPlaybackDevice() {
-    if(m_audioPlayback.device != 0) {
-        SDL_CloseAudioDevice(m_audioPlayback.device);
-    }
+    auto lock = std::unique_lock(m_streamMutex);
 
     if(m_audioPlayback.stream != nullptr) {
         SDL_DestroyAudioStream(m_audioPlayback.stream);
+        m_audioPlayback.stream = nullptr;
+    }
+
+    if(m_audioPlayback.device != 0) {
+        SDL_CloseAudioDevice(m_audioPlayback.device);
+        m_audioPlayback.device = 0;
     }
 
     if(m_audioPlayback.buffer != nullptr) {
         free(m_audioPlayback.buffer);
+        m_audioPlayback.buffer = nullptr;
     }
 
     m_audioPlayback.bufferSize = 0;

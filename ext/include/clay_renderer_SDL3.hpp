@@ -9,6 +9,7 @@
 #include <SDL3_ttf/SDL_ttf.h>
 #include <clay.h>
 
+#include <mutex>
 #include <vector>
 
 struct Clay_Color;
@@ -27,6 +28,7 @@ typedef enum {
 struct CameraData {
     SDL_Camera* device;
     SDL_Texture* texture;
+    std::mutex* mutex;
 };
 
 typedef struct {

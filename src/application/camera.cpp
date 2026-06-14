@@ -2,9 +2,9 @@
 #include <SDL3/SDL_pixels.h>
 
 #include <application.hpp>
+#include <mutex>
 #include <set>
 #include <settings.hpp>
-#include <unordered_map>
 
 const char* formatName(SDL_PixelFormat format) {
     switch(format) {
@@ -83,10 +83,10 @@ void Application::initCameras() {
     int cameraCount       = 0;
     SDL_CameraID* cameras = SDL_GetCameras(&cameraCount);
 
-    if(cameras == nullptr || cameraCount <= 0) {
-        SDL_Log("Couldn't enumerate camera devices or none plugged in: %s", SDL_GetError());
-
+    if(cameras == nullptr) {
+        SDL_Log("Couldn't enumerate camera devices: %s", SDL_GetError());
         setShouldQuit(true);
+
         return;
     }
 
@@ -97,72 +97,75 @@ void Application::initCameras() {
     SDL_free(cameras);
 }
 
-static std::unordered_map<SDL_PixelFormat, uint16_t> formatScores = {
-    { SDL_PIXELFORMAT_UNKNOWN,       0  },
-    { SDL_PIXELFORMAT_MJPG,          1  },
-    { SDL_PIXELFORMAT_EXTERNAL_OES,  2  },
-    { SDL_PIXELFORMAT_INDEX1LSB,     3  },
-    { SDL_PIXELFORMAT_INDEX1MSB,     4  },
-    { SDL_PIXELFORMAT_INDEX2LSB,     5  },
-    { SDL_PIXELFORMAT_INDEX2MSB,     6  },
-    { SDL_PIXELFORMAT_INDEX4LSB,     7  },
-    { SDL_PIXELFORMAT_INDEX4MSB,     8  },
-    { SDL_PIXELFORMAT_INDEX8,        9  },
-    { SDL_PIXELFORMAT_RGB332,        10 },
-    { SDL_PIXELFORMAT_XRGB4444,      11 },
-    { SDL_PIXELFORMAT_XBGR4444,      12 },
-    { SDL_PIXELFORMAT_XRGB1555,      13 },
-    { SDL_PIXELFORMAT_XBGR1555,      14 },
-    { SDL_PIXELFORMAT_ARGB4444,      15 },
-    { SDL_PIXELFORMAT_RGBA4444,      16 },
-    { SDL_PIXELFORMAT_ABGR4444,      17 },
-    { SDL_PIXELFORMAT_BGRA4444,      18 },
-    { SDL_PIXELFORMAT_ARGB1555,      19 },
-    { SDL_PIXELFORMAT_RGBA5551,      20 },
-    { SDL_PIXELFORMAT_ABGR1555,      21 },
-    { SDL_PIXELFORMAT_BGRA5551,      22 },
-    { SDL_PIXELFORMAT_RGB565,        23 },
-    { SDL_PIXELFORMAT_BGR565,        24 },
-    { SDL_PIXELFORMAT_RGB24,         25 },
-    { SDL_PIXELFORMAT_BGR24,         26 },
-    { SDL_PIXELFORMAT_XRGB8888,      27 },
-    { SDL_PIXELFORMAT_RGBX8888,      28 },
-    { SDL_PIXELFORMAT_XBGR8888,      29 },
-    { SDL_PIXELFORMAT_BGRX8888,      30 },
-    { SDL_PIXELFORMAT_ARGB8888,      31 },
-    { SDL_PIXELFORMAT_RGBA8888,      32 },
-    { SDL_PIXELFORMAT_ABGR8888,      33 },
-    { SDL_PIXELFORMAT_BGRA8888,      34 },
-    { SDL_PIXELFORMAT_XRGB2101010,   35 },
-    { SDL_PIXELFORMAT_XBGR2101010,   36 },
-    { SDL_PIXELFORMAT_ARGB2101010,   37 },
-    { SDL_PIXELFORMAT_ABGR2101010,   38 },
-    { SDL_PIXELFORMAT_RGB48,         39 },
-    { SDL_PIXELFORMAT_BGR48,         40 },
-    { SDL_PIXELFORMAT_RGBA64,        41 },
-    { SDL_PIXELFORMAT_ARGB64,        42 },
-    { SDL_PIXELFORMAT_BGRA64,        43 },
-    { SDL_PIXELFORMAT_ABGR64,        44 },
-    { SDL_PIXELFORMAT_RGB48_FLOAT,   45 },
-    { SDL_PIXELFORMAT_BGR48_FLOAT,   46 },
-    { SDL_PIXELFORMAT_RGBA64_FLOAT,  47 },
-    { SDL_PIXELFORMAT_ARGB64_FLOAT,  48 },
-    { SDL_PIXELFORMAT_BGRA64_FLOAT,  49 },
-    { SDL_PIXELFORMAT_ABGR64_FLOAT,  50 },
-    { SDL_PIXELFORMAT_RGB96_FLOAT,   51 },
-    { SDL_PIXELFORMAT_BGR96_FLOAT,   52 },
-    { SDL_PIXELFORMAT_RGBA128_FLOAT, 53 },
-    { SDL_PIXELFORMAT_ARGB128_FLOAT, 54 },
-    { SDL_PIXELFORMAT_BGRA128_FLOAT, 55 },
-    { SDL_PIXELFORMAT_ABGR128_FLOAT, 56 },
-    { SDL_PIXELFORMAT_YV12,          57 },
-    { SDL_PIXELFORMAT_IYUV,          58 },
-    { SDL_PIXELFORMAT_YUY2,          59 },
-    { SDL_PIXELFORMAT_UYVY,          60 },
-    { SDL_PIXELFORMAT_YVYU,          61 },
-    { SDL_PIXELFORMAT_NV12,          62 },
-    { SDL_PIXELFORMAT_NV21,          63 },
-    { SDL_PIXELFORMAT_P010,          64 },
+uint16_t getFormatScore(const SDL_PixelFormat& format) {
+    switch(format) {
+    case SDL_PIXELFORMAT_MJPG:          return 1;
+    case SDL_PIXELFORMAT_EXTERNAL_OES:  return 2;
+    case SDL_PIXELFORMAT_INDEX1LSB:     return 3;
+    case SDL_PIXELFORMAT_INDEX1MSB:     return 4;
+    case SDL_PIXELFORMAT_INDEX2LSB:     return 5;
+    case SDL_PIXELFORMAT_INDEX2MSB:     return 6;
+    case SDL_PIXELFORMAT_INDEX4LSB:     return 7;
+    case SDL_PIXELFORMAT_INDEX4MSB:     return 8;
+    case SDL_PIXELFORMAT_INDEX8:        return 9;
+    case SDL_PIXELFORMAT_RGB332:        return 1;
+    case SDL_PIXELFORMAT_XRGB4444:      return 1;
+    case SDL_PIXELFORMAT_XBGR4444:      return 1;
+    case SDL_PIXELFORMAT_XRGB1555:      return 1;
+    case SDL_PIXELFORMAT_XBGR1555:      return 1;
+    case SDL_PIXELFORMAT_ARGB4444:      return 1;
+    case SDL_PIXELFORMAT_RGBA4444:      return 1;
+    case SDL_PIXELFORMAT_ABGR4444:      return 1;
+    case SDL_PIXELFORMAT_BGRA4444:      return 1;
+    case SDL_PIXELFORMAT_ARGB1555:      return 1;
+    case SDL_PIXELFORMAT_RGBA5551:      return 2;
+    case SDL_PIXELFORMAT_ABGR1555:      return 2;
+    case SDL_PIXELFORMAT_BGRA5551:      return 2;
+    case SDL_PIXELFORMAT_RGB565:        return 2;
+    case SDL_PIXELFORMAT_BGR565:        return 2;
+    case SDL_PIXELFORMAT_RGB24:         return 2;
+    case SDL_PIXELFORMAT_BGR24:         return 2;
+    case SDL_PIXELFORMAT_XRGB8888:      return 2;
+    case SDL_PIXELFORMAT_RGBX8888:      return 2;
+    case SDL_PIXELFORMAT_XBGR8888:      return 2;
+    case SDL_PIXELFORMAT_BGRX8888:      return 3;
+    case SDL_PIXELFORMAT_ARGB8888:      return 3;
+    case SDL_PIXELFORMAT_RGBA8888:      return 3;
+    case SDL_PIXELFORMAT_ABGR8888:      return 3;
+    case SDL_PIXELFORMAT_BGRA8888:      return 3;
+    case SDL_PIXELFORMAT_XRGB2101010:   return 3;
+    case SDL_PIXELFORMAT_XBGR2101010:   return 3;
+    case SDL_PIXELFORMAT_ARGB2101010:   return 3;
+    case SDL_PIXELFORMAT_ABGR2101010:   return 3;
+    case SDL_PIXELFORMAT_RGB48:         return 3;
+    case SDL_PIXELFORMAT_BGR48:         return 4;
+    case SDL_PIXELFORMAT_RGBA64:        return 4;
+    case SDL_PIXELFORMAT_ARGB64:        return 4;
+    case SDL_PIXELFORMAT_BGRA64:        return 4;
+    case SDL_PIXELFORMAT_ABGR64:        return 4;
+    case SDL_PIXELFORMAT_RGB48_FLOAT:   return 4;
+    case SDL_PIXELFORMAT_BGR48_FLOAT:   return 4;
+    case SDL_PIXELFORMAT_RGBA64_FLOAT:  return 4;
+    case SDL_PIXELFORMAT_ARGB64_FLOAT:  return 4;
+    case SDL_PIXELFORMAT_BGRA64_FLOAT:  return 4;
+    case SDL_PIXELFORMAT_ABGR64_FLOAT:  return 5;
+    case SDL_PIXELFORMAT_RGB96_FLOAT:   return 5;
+    case SDL_PIXELFORMAT_BGR96_FLOAT:   return 5;
+    case SDL_PIXELFORMAT_RGBA128_FLOAT: return 5;
+    case SDL_PIXELFORMAT_ARGB128_FLOAT: return 5;
+    case SDL_PIXELFORMAT_BGRA128_FLOAT: return 5;
+    case SDL_PIXELFORMAT_ABGR128_FLOAT: return 5;
+    case SDL_PIXELFORMAT_YV12:          return 5;
+    case SDL_PIXELFORMAT_IYUV:          return 5;
+    case SDL_PIXELFORMAT_YUY2:          return 5;
+    case SDL_PIXELFORMAT_UYVY:          return 6;
+    case SDL_PIXELFORMAT_YVYU:          return 6;
+    case SDL_PIXELFORMAT_NV12:          return 6;
+    case SDL_PIXELFORMAT_NV21:          return 6;
+    case SDL_PIXELFORMAT_P010:          return 6;
+    case SDL_PIXELFORMAT_UNKNOWN:
+    default:                            return 0;
+    };
 };
 
 void Application::openCamera() {
@@ -171,7 +174,10 @@ void Application::openCamera() {
     }
 
     initCameras();
-    
+    if(m_cameras.empty()) {
+        return;
+    }
+
     SDL_CameraID camID = Settings::get()->getSelectedCamera();
     if(camID == 0) {
         camID = m_cameras[0];
@@ -184,8 +190,8 @@ void Application::openCamera() {
     }
 
     auto cmp = [](SDL_CameraSpec* a, SDL_CameraSpec* b) {
-        if(formatScores[a->format] != formatScores[b->format]) {
-            return formatScores[a->format] > formatScores[b->format];
+        if(getFormatScore(a->format) != getFormatScore(b->format)) {
+            return getFormatScore(a->format) > getFormatScore(b->format);
         }
 
         if(a->width != b->width) {
@@ -208,16 +214,21 @@ void Application::openCamera() {
         specs.emplace(formats[i]);
     }
 
-    SDL_CameraSpec* spec        = *specs.begin();
+    SDL_CameraSpec* spec = *specs.begin();
+
+    auto lock                   = std::unique_lock(m_cameraMutex);
     m_cameraData->camera.device = SDL_OpenCamera(camID, spec);
 }
 
 void Application::closeCamera() {
+    auto lock = std::unique_lock(m_cameraMutex);
     if(m_cameraData->camera.device != nullptr) {
         SDL_CloseCamera(m_cameraData->camera.device);
+        m_cameraData->camera.device = nullptr;
     }
 
     if(m_cameraData->camera.texture != nullptr) {
         SDL_DestroyTexture(m_cameraData->camera.texture);
+        m_cameraData->camera.texture = nullptr;
     }
 }

@@ -23,7 +23,7 @@ Application::Application()
     , m_height(600)
     , m_cameraData(new CustomElementData{
           .type   = CUSTOM_ELEMENT_TYPE_CAMERA,
-          .camera = { nullptr, nullptr }
+          .camera = { nullptr, nullptr, &m_cameraMutex }
 }) {
     if(!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_CAMERA)) {
         SDL_Log("Couldn't initialize SDL: %s", SDL_GetError());
@@ -67,7 +67,7 @@ Application::Application()
 
         return;
     }
-    
+
     SDL_PumpEvents();
     SDL_FlushEvents(SDL_EVENT_AUDIO_DEVICE_ADDED, SDL_EVENT_AUDIO_DEVICE_ADDED);
     SDL_FlushEvents(SDL_EVENT_CAMERA_DEVICE_ADDED, SDL_EVENT_CAMERA_DEVICE_ADDED);

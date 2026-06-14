@@ -388,6 +388,11 @@ void SDL_Clay_RenderClayCommands(Clay_SDL3RendererData* rendererData, Clay_Rende
                 SDL_Texture*& tex = data->camera.texture;
                 SDL_CameraSpec spec;
 
+                if(data->camera.mutex == nullptr) {
+                    break;
+                }
+
+                auto lock = std::unique_lock(*data->camera.mutex);
                 if(data->camera.device == nullptr || SDL_GetCameraPermissionState(data->camera.device) != 1 || !SDL_GetCameraFormat(data->camera.device, &spec)) {
                     SDL_DestroyTexture(tex);
                     tex = nullptr;
@@ -405,6 +410,8 @@ void SDL_Clay_RenderClayCommands(Clay_SDL3RendererData* rendererData, Clay_Rende
                     SDL_UpdateTexture(tex, NULL, surface->pixels, surface->pitch);
                     SDL_ReleaseCameraFrame(data->camera.device, surface);
                 }
+
+                lock.unlock();
 
                 if(tex != nullptr) {
                     float camAspect  = (float)tex->w / tex->h;

@@ -70,6 +70,8 @@ private:
 
     SDL_Window* m_window = nullptr;
 
+    std::mutex m_streamMutex;
+    std::mutex m_cameraMutex;
     std::mutex m_audioMutex;
     Clay_SDL3RendererData m_renderData;
 

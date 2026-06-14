@@ -13,7 +13,13 @@
                 hardeningDisable = [ "all" ];
 
                 nativeBuildInputs = with pkgs; [
-                    clang
+                    clang-tools
+                    
+                    llvmPackages_latest.lldb
+                    llvmPackages_latest.libllvm
+                    llvmPackages_latest.libcxx
+                    llvmPackages_latest.clang
+
                     pkg-config
                     ninja
                     cmake
@@ -33,7 +39,7 @@
         in {
             default = pkgs.stdenv.mkDerivation {
                 name = "CaptureCardRelay";
-                version = "1.2";
+                version = "1.3";
                 src = ./.;
 
                 # TODO: remove this later, for debugging purposes
