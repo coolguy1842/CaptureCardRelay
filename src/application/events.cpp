@@ -72,16 +72,17 @@ void Application::handleEvent(SDL_Event* event) {
         Clay_UpdateScrollContainers(true, Clay_Vector2{ event->wheel.x, event->wheel.y }, 0.01f);
 
         break;
+    case SDL_EVENT_CAMERA_DEVICE_ADDED:
     case SDL_EVENT_CAMERA_DEVICE_REMOVED:
         openCamera();
 
         break;
+    case SDL_EVENT_AUDIO_DEVICE_ADDED:
     case SDL_EVENT_AUDIO_DEVICE_REMOVED:
         openAudioPlaybackDevice();
         openAudioRecordingDevice();
 
     case SDL_EVENT_AUDIO_DEVICE_FORMAT_CHANGED:
-    case SDL_EVENT_AUDIO_DEVICE_ADDED:
         if(m_audioRecording.stream != nullptr) {
             SDL_SetAudioStreamFormat(m_audioRecording.stream, &m_audioRecording.spec, &m_audioSpec);
         }
@@ -105,15 +106,21 @@ void Application::handleEvent(SDL_Event* event) {
             Settings::get()->setSelectedCamera(m_cameras[idx]);
             openCamera();
 
-            changeStatus(std::string("Camera: ") + SDL_GetCameraName(m_cameras[idx]), std::chrono::milliseconds(1500));
+            const char* cameraName = SDL_GetCameraName(m_cameras[idx]);
+            if(cameraName == nullptr) {
+                cameraName = "(null)";
+            }
+
+            changeStatus(std::format("Camera: {}", cameraName), std::chrono::milliseconds(1500));
 
             break;
         }
         case SDLK_RIGHT: {
             size_t idx = 0;
             if(m_audioRecording.device != 0) {
-                std::string name = SDL_GetAudioDeviceName(m_audioRecording.device);
-                auto it          = std::find_if(m_recordingDevices.begin(), m_recordingDevices.end(), [name](SDL_AudioDeviceID id) {
+                const char* name = SDL_GetAudioDeviceName(m_audioRecording.device);
+
+                auto it = std::find_if(m_recordingDevices.begin(), m_recordingDevices.end(), [name](SDL_AudioDeviceID id) {
                     return name == SDL_GetAudioDeviceName(id);
                 });
 
@@ -129,21 +136,19 @@ void Application::handleEvent(SDL_Event* event) {
             Settings::get()->setSelectedRecordingDevice(m_recordingDevices[idx]);
             openAudioRecordingDevice();
 
-            changeStatus(std::string("Recording Device: ") + SDL_GetAudioDeviceName(m_recordingDevices[idx]), std::chrono::milliseconds(1500));
+            const char* deviceName = SDL_GetAudioDeviceName(m_recordingDevices[idx]);
+            if(deviceName == nullptr) {
+                deviceName = "(null)";
+            }
+
+            changeStatus(std::format("Recording Device: {}", deviceName), std::chrono::milliseconds(1500));
 
             break;
         }
-        case SDLK_UP:
-            Settings::get()->setVolume(std::min(Settings::get()->getVolume() + 5, 150));
-            changeStatus(std::string("Volume: ") + std::to_string(Settings::get()->getVolume()) + "%", std::chrono::milliseconds(1500));
-
-            updateVolume();
-
-            break;
-        case SDLK_DOWN:
-            Settings::get()->setVolume(std::max(Settings::get()->getVolume() - 5, 0));
-
-            changeStatus(std::string("Volume: ") + std::to_string(Settings::get()->getVolume()) + "%", std::chrono::milliseconds(1500));
+        case SDLK_UP: Settings::get()->setVolume(std::min(Settings::get()->getVolume() + 5, 150)); goto volumeStatus;
+        case SDLK_DOWN: Settings::get()->setVolume(std::max(Settings::get()->getVolume() - 5, 0)); goto volumeStatus;
+        volumeStatus:
+            changeStatus(std::format("Volume: {}%", Settings::get()->getVolume()), std::chrono::milliseconds(1500));
             updateVolume();
 
             break;

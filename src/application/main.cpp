@@ -67,13 +67,10 @@ Application::Application()
 
         return;
     }
-
-    initCameras();
-    initAudioPlaybackDevices();
-    initAudioRecordingDevices();
-    if(getShouldQuit()) {
-        return;
-    }
+    
+    SDL_PumpEvents();
+    SDL_FlushEvents(SDL_EVENT_AUDIO_DEVICE_ADDED, SDL_EVENT_AUDIO_DEVICE_ADDED);
+    SDL_FlushEvents(SDL_EVENT_CAMERA_DEVICE_ADDED, SDL_EVENT_CAMERA_DEVICE_ADDED);
 
     openCamera();
     openAudioPlaybackDevice();

@@ -19,6 +19,8 @@ void Application::recordingCallbackHandler(SDL_AudioStream* stream, int addition
 }
 
 void Application::initAudioRecordingDevices() {
+    m_recordingDevices.clear();
+
     int recordingDeviceCount            = 0;
     SDL_AudioDeviceID* recordingDevices = SDL_GetAudioRecordingDevices(&recordingDeviceCount);
 
@@ -41,6 +43,8 @@ void Application::openAudioRecordingDevice() {
         closeAudioRecordingDevice();
     }
 
+    initAudioRecordingDevices();
+    
     SDL_AudioDeviceID deviceID = Settings::get()->getSelectedRecordingDevice();
     if(deviceID == 0) {
         deviceID = SDL_AUDIO_DEVICE_DEFAULT_RECORDING;

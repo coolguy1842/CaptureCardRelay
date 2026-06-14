@@ -78,6 +78,8 @@ const char* formatName(SDL_PixelFormat format) {
 }
 
 void Application::initCameras() {
+    m_cameras.clear();
+
     int cameraCount       = 0;
     SDL_CameraID* cameras = SDL_GetCameras(&cameraCount);
 
@@ -168,6 +170,8 @@ void Application::openCamera() {
         closeCamera();
     }
 
+    initCameras();
+    
     SDL_CameraID camID = Settings::get()->getSelectedCamera();
     if(camID == 0) {
         camID = m_cameras[0];

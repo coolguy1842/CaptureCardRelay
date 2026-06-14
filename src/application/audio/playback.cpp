@@ -38,6 +38,8 @@ void Application::playbackCallbackHandler(SDL_AudioStream* stream, int additiona
 }
 
 void Application::initAudioPlaybackDevices() {
+    m_playbackDevices.clear();
+
     int playbackDeviceCount            = 0;
     SDL_AudioDeviceID* playbackDevices = SDL_GetAudioPlaybackDevices(&playbackDeviceCount);
 
@@ -60,6 +62,8 @@ void Application::openAudioPlaybackDevice() {
         closeAudioPlaybackDevice();
     }
 
+    initAudioPlaybackDevices();
+    
     m_audioPlayback.device = SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &m_audioSpec);
     if(m_audioPlayback.device == 0) {
         SDL_Log("Couldn't open playback device: %s", SDL_GetError());

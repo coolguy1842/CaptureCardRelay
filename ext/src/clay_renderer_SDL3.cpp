@@ -388,7 +388,7 @@ void SDL_Clay_RenderClayCommands(Clay_SDL3RendererData* rendererData, Clay_Rende
                 SDL_Texture*& tex = data->camera.texture;
                 SDL_CameraSpec spec;
 
-                if(SDL_GetCameraPermissionState(data->camera.device) != 1 || !SDL_GetCameraFormat(data->camera.device, &spec)) {
+                if(data->camera.device == nullptr || SDL_GetCameraPermissionState(data->camera.device) != 1 || !SDL_GetCameraFormat(data->camera.device, &spec)) {
                     SDL_DestroyTexture(tex);
                     tex = nullptr;
 
