@@ -33,7 +33,7 @@
         in {
             default = pkgs.stdenv.mkDerivation {
                 name = "CaptureCardRelay";
-                version = "1.0";
+                version = "1.2";
                 src = ./.;
 
                 # TODO: remove this later, for debugging purposes
