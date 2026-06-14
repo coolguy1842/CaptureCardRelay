@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=CaptureCardRelay
+Comment=Capture Card Viewer
+Exec=CaptureCardRelay
+Icon=capture-card-relay
+Categories=Game;

@@ -17,5 +17,8 @@ build() {
 
 package() {
   install -d "${pkgdir}"/usr/bin
+  
   install -m 755 "${srcdir}/build/CaptureCardRelay" "$pkgdir"/usr/bin/$pkgname
+  install -m 755 "${srcdir}/assets/capture-card-relay.desktop" "$pkgdir"/share/applications/${pkgname}.desktop
+  install -m 755 "${srcdir}/assets/capture-card-relay.png" "$pkgdir"/usr/share/icons/hicolor/64x64/apps/${pkgname}.png
 }
