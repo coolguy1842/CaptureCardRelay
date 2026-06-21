@@ -1,20 +1,6 @@
-#include <SDL3/SDL_mouse.h>
-#include <SDL3/SDL_timer.h>
-
-#include <algorithm>
 #include <application.hpp>
 #include <chrono>
-#include <cstring>
-#include <iterator>
-#include <mutex>
-#include <utility>
-#include <vector>
-
-#include "SDL3/SDL_audio.h"
-#include "SDL3/SDL_camera.h"
-#include "SDL3/SDL_events.h"
-#include "SDL3/SDL_keycode.h"
-#include "settings.hpp"
+#include <settings.hpp>
 
 void Application::handleEvent(SDL_Event* event) {
     auto it = m_eventHandlers.find((SDL_EventType)event->type);
@@ -46,36 +32,43 @@ void Application::handleEvent(SDL_Event* event) {
         });
 
         break;
-    case SDL_EVENT_MOUSE_MOTION:
-        Clay_SetPointerState(
-            Clay_Vector2{
-                event->motion.x,
-                event->motion.y,
-            },
-            event->motion.state & SDL_BUTTON_LMASK
-        );
+    case SDL_EVENT_WINDOW_ENTER_FULLSCREEN:
+        m_isFullscreen = true;
+        Settings::get()->setFullscreen(true);
 
+        break;
+    case SDL_EVENT_WINDOW_LEAVE_FULLSCREEN:
+        m_isFullscreen = false;
+        Settings::get()->setFullscreen(false);
+
+        break;
+    case SDL_EVENT_MOUSE_MOTION:
+    case SDL_EVENT_MOUSE_BUTTON_DOWN:
+    case SDL_EVENT_MOUSE_BUTTON_UP:
+        m_shouldHideCursor = event->type != SDL_EVENT_MOUSE_BUTTON_DOWN;
         m_showCursorExpire = std::chrono::system_clock::now() + std::chrono::milliseconds(1000);
+
         SDL_ShowCursor();
 
         break;
-    case SDL_EVENT_MOUSE_BUTTON_DOWN:
-        Clay_SetPointerState(
-            Clay_Vector2{
-                event->button.x,
-                event->button.y,
-            },
-            event->button.button == SDL_BUTTON_LEFT
-        );
-
-        break;
     case SDL_EVENT_MOUSE_WHEEL:
-        Clay_UpdateScrollContainers(true, Clay_Vector2{ event->wheel.x, event->wheel.y }, 0.01f);
+        m_mouseWheelX += event->wheel.y * m_shiftHeld;
+        m_mouseWheelY += event->wheel.y * !m_shiftHeld;
 
         break;
     case SDL_EVENT_CAMERA_DEVICE_ADDED:
     case SDL_EVENT_CAMERA_DEVICE_REMOVED:
         openCamera();
+
+        break;
+    case SDL_EVENT_CAMERA_DEVICE_APPROVED:
+        m_cameraApproved = true;
+        SDL_Log("Opened camera: %s", SDL_GetCameraName(SDL_GetCameraID(m_cameraData->camera.device)));
+
+        break;
+    case SDL_EVENT_CAMERA_DEVICE_DENIED:
+        SDL_Log("Camera %s was rejected", SDL_GetCameraName(SDL_GetCameraID(m_cameraData->camera.device)));
+        closeCamera();
 
         break;
     case SDL_EVENT_AUDIO_DEVICE_ADDED:
@@ -98,36 +91,36 @@ void Application::handleEvent(SDL_Event* event) {
                 break;
             }
 
-            size_t idx = 0;
+            {
+                auto lock = std::unique_lock(m_cameraData->camera.mutex);
+                if(!m_cameraApproved && m_cameraData->camera.device != nullptr) {
+                    lock.unlock();
+                    closeCamera();
+                }
+            }
+
+            initCameras();
+
             if(m_cameraData->camera.device != nullptr) {
-                auto it = std::find(m_cameras.begin(), m_cameras.end(), SDL_GetCameraID(m_cameraData->camera.device));
+                SDL_CameraID currentCamera = SDL_GetCameraID(m_cameraData->camera.device);
+
+                auto it = std::find_if(m_cameras.begin(), m_cameras.end(), [currentCamera](const auto& info) { return info.id == currentCamera; });
+                if(it == m_cameras.end()) {
+                    it = m_cameras.begin();
+                }
+
                 if(it != m_cameras.end()) {
-                    idx = std::distance(m_cameras.begin(), it);
+                    it = it + 1;
+                    if(it == m_cameras.end()) {
+                        it = m_cameras.begin();
+                    }
+
+                    setCamera(*it);
                 }
                 else {
-                    idx = -1;
+                    setCamera({ .id = 0, .name = "" });
                 }
             }
-
-            size_t oldIdx = idx;
-            idx           = (idx + 1) % m_cameras.size();
-
-            if(oldIdx == idx) {
-                break;
-            }
-
-            Settings::get()->setSelectedCamera(m_cameras[idx]);
-            openCamera();
-
-            const char* cameraName = "(null)";
-            if(m_cameras.size() > idx) {
-                const char* name = SDL_GetCameraName(m_cameras[idx]);
-                if(name != nullptr) {
-                    cameraName = name;
-                }
-            }
-
-            changeStatus(std::format("Camera: {}", cameraName), std::chrono::milliseconds(1500));
 
             break;
         }
@@ -136,68 +129,64 @@ void Application::handleEvent(SDL_Event* event) {
                 break;
             }
 
-            size_t idx = 0;
             if(m_audioRecording.device != 0) {
-                const char* name = SDL_GetAudioDeviceName(m_audioRecording.device);
+                auto it = std::find_if(m_recordingDevices.begin(), m_recordingDevices.end(), [this](const auto& info) { return m_currentRecordingDevice.id == info.id; });
 
-                auto it = std::find_if(m_recordingDevices.begin(), m_recordingDevices.end(), [name](SDL_AudioDeviceID id) {
-                    return name == SDL_GetAudioDeviceName(id);
-                });
+                if(it == m_recordingDevices.end()) {
+                    it = m_recordingDevices.begin();
+                }
 
                 if(it != m_recordingDevices.end()) {
-                    idx = std::distance(m_recordingDevices.begin(), it);
+                    it = it + 1;
+                    if(it == m_recordingDevices.end()) {
+                        it = m_recordingDevices.begin();
+                    }
+
+                    setRecordingDevice(*it);
                 }
                 else {
-                    idx = -1;
+                    setRecordingDevice({ .id = 0, .name = "" });
                 }
             }
-
-            size_t oldIdx = idx;
-            idx           = (idx + 1) % m_recordingDevices.size();
-
-            if(oldIdx == idx) {
-                break;
-            }
-
-            Settings::get()->setSelectedRecordingDevice(m_recordingDevices[idx]);
-            openAudioRecordingDevice();
-
-            const char* deviceName = "(null)";
-            if(m_recordingDevices.size() > idx) {
-                const char* name = SDL_GetAudioDeviceName(m_recordingDevices[idx]);
-                if(name != nullptr) {
-                    deviceName = name;
-                }
-            }
-
-            changeStatus(std::format("Recording Device: {}", deviceName), std::chrono::milliseconds(1500));
 
             break;
         }
-        case SDLK_UP: Settings::get()->setVolume(std::min(Settings::get()->getVolume() + 5, 150)); goto volumeStatus;
+        case SDLK_UP:
+            setVolume(std::min(Settings::get()->getVolume() + 5, 150));
+            goto volumeStatus;
         case SDLK_DOWN:
-            Settings::get()->setVolume(std::max(Settings::get()->getVolume() - 5, 0));
+            setVolume(std::max(Settings::get()->getVolume() - 5, 0));
             goto volumeStatus;
         volumeStatus:
-            changeStatus(std::format("Volume: {}%", Settings::get()->getVolume()), std::chrono::milliseconds(1500));
             updateVolume();
 
             break;
         case SDLK_F11: {
-            bool fullscreen = !Settings::get()->isFullscreen();
-
-            SDL_SetWindowFullscreen(m_window, fullscreen);
-            Settings::get()->setFullscreen(fullscreen);
-
+            setFullscreen(!m_isFullscreen);
             break;
         }
         case SDLK_F12:
             Clay_SetDebugModeEnabled(!Clay_IsDebugModeEnabled());
 
             break;
+        case SDLK_O:
+            m_settingsActive = !m_settingsActive;
+            m_activeDropdown = m_invalidDropdown;
+
+            break;
+        case SDLK_LSHIFT:
+        case SDLK_RSHIFT:
+            m_shiftHeld = true;
+            break;
         default: break;
         }
         break;
+    case SDL_EVENT_KEY_UP:
+    case SDLK_LSHIFT:
+    case SDLK_RSHIFT:
+        m_shiftHeld = false;
+        break;
+    default: break;
     }
 }
 

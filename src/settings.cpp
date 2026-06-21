@@ -1,12 +1,9 @@
-#include <algorithm>
-#include <cstdlib>
-#include <cstring>
 #include <filesystem>
 #include <fstream>
-#include <ios>
-#include <optional>
 #include <settings.hpp>
 #include <string>
+
+const CameraDisplayMode DEFAULT_MODE = CameraDisplayMode::CONTAIN;
 
 std::string Settings::getSettingsPath() {
     std::string configPath;
@@ -46,13 +43,8 @@ std::string Settings::getSettingsPath() {
     return configPath;
 }
 
-Settings::Settings() {
-    load();
-}
-
-Settings::~Settings() {
-    save();
-}
+Settings::Settings() { load(); }
+Settings::~Settings() { save(); }
 
 SDL_CameraID Settings::getSelectedCamera() {
     int cameraCount       = 0;
@@ -75,8 +67,6 @@ SDL_CameraID Settings::getSelectedCamera() {
         camera = cameras[i];
 
         const char* name = SDL_GetCameraName(camera);
-        printf("name: %s\n", name);
-
         if(name != nullptr && strcmp(name, selectedName.value().c_str()) == 0) {
             SDL_free(cameras);
             return camera;
@@ -92,16 +82,21 @@ SDL_CameraID Settings::getSelectedCamera() {
 void Settings::setSelectedCamera(SDL_CameraID camera) {
     if(camera == 0) {
         clearValue("camera");
+        selectedCameraChanged(camera);
+
         return;
     }
 
     const char* name = SDL_GetCameraName(camera);
     if(name == nullptr) {
         clearValue("camera");
+        selectedCameraChanged(camera);
+
         return;
     }
 
     setValue("camera", name);
+    selectedCameraChanged(camera);
 }
 
 SDL_AudioDeviceID Settings::getSelectedRecordingDevice() {
@@ -138,24 +133,57 @@ SDL_AudioDeviceID Settings::getSelectedRecordingDevice() {
 void Settings::setSelectedRecordingDevice(SDL_AudioDeviceID device) {
     if(device == 0) {
         clearValue("recordingDevice");
+        selectedRecordingDeviceChanged(device);
+
         return;
     }
 
     const char* name = SDL_GetAudioDeviceName(device);
     if(name == nullptr) {
         clearValue("recordingDevice");
+        selectedRecordingDeviceChanged(device);
+
         return;
     }
 
     setValue("recordingDevice", name);
+    selectedRecordingDeviceChanged(device);
 }
 
-int clampVolume(int volume) { return std::max(0, std::min(150, volume)); }
+int clampVolume(int volume) { return std::max(MIN_VOLUME, std::min(MAX_VOLUME, volume)); }
 int Settings::getVolume() { return clampVolume(std::atoi(getValue("volume").value_or("100").c_str())); }
-void Settings::setVolume(int volume) { setValue("volume", std::to_string(clampVolume(volume))); }
+void Settings::setVolume(int volume) {
+    volume = clampVolume(volume);
+
+    setValue("volume", std::to_string(volume));
+    volumeChanged(volume);
+}
 
 bool Settings::isFullscreen() { return getValue("fullscreen").value_or("false") == "true"; }
-void Settings::setFullscreen(bool fullscreen) { setValue("fullscreen", fullscreen ? "true" : "false"); }
+void Settings::setFullscreen(bool fullscreen) {
+    setValue("fullscreen", fullscreen ? "true" : "false");
+    fullscreenChanged(fullscreen);
+}
+
+CameraDisplayMode Settings::getDisplayMode() {
+    int mode = std::atoi(getValue("displayMode").value_or(std::to_string(DEFAULT_MODE)).c_str());
+
+    switch(mode) {
+    case CameraDisplayMode::CONTAIN:
+    case CameraDisplayMode::COVER:
+    case CameraDisplayMode::FILL:
+    case CameraDisplayMode::NONE:
+        return static_cast<CameraDisplayMode>(mode);
+    default:
+        setDisplayMode(DEFAULT_MODE);
+        return DEFAULT_MODE;
+    }
+}
+
+void Settings::setDisplayMode(CameraDisplayMode mode) {
+    setValue("displayMode", std::to_string(mode));
+    displayModeChanged(mode);
+}
 
 std::optional<std::string> Settings::getValue(std::string key) {
     if(m_cache.find(key) == m_cache.end()) {

@@ -1,10 +1,8 @@
-#include <SDL3/SDL_camera.h>
-#include <SDL3/SDL_pixels.h>
-
 #include <application.hpp>
-#include <mutex>
+#include <format>
 #include <set>
 #include <settings.hpp>
+#include <vector>
 
 const char* formatName(SDL_PixelFormat format) {
     switch(format) {
@@ -84,17 +82,23 @@ void Application::initCameras() {
     SDL_CameraID* cameras = SDL_GetCameras(&cameraCount);
 
     if(cameras == nullptr) {
-        SDL_Log("Couldn't enumerate camera devices: %s", SDL_GetError());
+        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't enumerate camera devices: %s", SDL_GetError());
         setShouldQuit(true);
 
         return;
     }
 
     for(int i = 0; i < cameraCount; i++) {
-        m_cameras.push_back(cameras[i]);
-    }
+        SDL_CameraID id = cameras[i];
 
-    SDL_free(cameras);
+        const char* name = SDL_GetCameraName(id);
+        if(name == nullptr) {
+            SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to get name of camera with id: %d: %s", id, SDL_GetError());
+            name = "";
+        }
+
+        m_cameras.push_back({ id, name });
+    }
 }
 
 uint16_t getFormatScore(const SDL_PixelFormat& format) {
@@ -180,7 +184,7 @@ void Application::openCamera() {
 
     SDL_CameraID camID = Settings::get()->getSelectedCamera();
     if(camID == 0) {
-        camID = m_cameras[0];
+        camID = m_cameras[0].id;
     }
 
     int numFormats           = 0;
@@ -216,12 +220,29 @@ void Application::openCamera() {
 
     SDL_CameraSpec* spec = *specs.begin();
 
-    auto lock                   = std::unique_lock(m_cameraMutex);
+    const char* name = SDL_GetCameraName(camID);
+    if(name == nullptr) {
+        name = "(null)";
+    }
+
+    SDL_Log("Opening camera: %s\n", name);
+    auto lock = std::unique_lock(m_cameraData->camera.mutex);
+
+    m_cameraApproved = false;
+    m_currentCamera  = { camID, name };
+
     m_cameraData->camera.device = SDL_OpenCamera(camID, spec);
+
+    if(m_cameraData->camera.device == nullptr) {
+        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Opening camera: %s", SDL_GetError());
+    }
 }
 
 void Application::closeCamera() {
-    auto lock = std::unique_lock(m_cameraMutex);
+    auto lock        = std::unique_lock(m_cameraData->camera.mutex);
+    m_cameraApproved = false;
+    m_currentCamera  = { .id = 0, .name = "(null)" };
+
     if(m_cameraData->camera.device != nullptr) {
         SDL_CloseCamera(m_cameraData->camera.device);
         m_cameraData->camera.device = nullptr;
@@ -231,4 +252,24 @@ void Application::closeCamera() {
         SDL_DestroyTexture(m_cameraData->camera.texture);
         m_cameraData->camera.texture = nullptr;
     }
+}
+
+void Application::setCamera(Application::CameraInfo info) {
+    Settings::get()->setSelectedCamera(info.id);
+
+    const char* cameraName = "(null)";
+    if(info.id != 0) {
+        if(info.name != nullptr) {
+            cameraName = info.name;
+        }
+
+        if(m_currentCamera.id != info.id) {
+            openCamera();
+        }
+    }
+    else {
+        closeCamera();
+    }
+
+    changeStatus(std::format("Camera: {}", cameraName), std::chrono::milliseconds(1500));
 }

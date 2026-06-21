@@ -2,9 +2,6 @@
 #define __CLAY_RENDERER_SDL3_HPP__
 
 #include <SDL3/SDL.h>
-#include <SDL3/SDL_camera.h>
-#include <SDL3/SDL_main.h>
-#include <SDL3/SDL_render.h>
 #include <SDL3_image/SDL_image.h>
 #include <SDL3_ttf/SDL_ttf.h>
 #include <clay.h>
@@ -25,10 +22,19 @@ typedef enum {
     CUSTOM_ELEMENT_TYPE_CAMERA
 } CustomElementType;
 
+enum CameraDisplayMode {
+    CONTAIN, // letterboxing or pillarboxing
+    COVER,   // covers the image to the display while maintaining aspect ratio, will hide content if needed
+    FILL,    // stretches to the display size
+    NONE     // nothing is done to the image
+};
+
 struct CameraData {
     SDL_Camera* device;
     SDL_Texture* texture;
-    std::mutex* mutex;
+    CameraDisplayMode displayMode;
+
+    std::mutex mutex;
 };
 
 typedef struct {

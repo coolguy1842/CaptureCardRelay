@@ -1,32 +1,27 @@
-#include <SDL3/SDL_mouse.h>
-#include <SDL3/SDL_timer.h>
-#include <SDL3_ttf/SDL_ttf.h>
-
 #include <application.hpp>
 #include <cmath>
 #include <damase_ttf.hpp>
+#include <format>
 #include <settings.hpp>
-#include <vector>
-
-#include "clay_renderer_SDL3.hpp"
 
 #define CLAY_IMPLEMENTATION
 #include <clay.h>
 
 void HandleClayErrors(Clay_ErrorData errorData) {
-    printf("%s", errorData.errorText.chars);
+    SDL_LogError(SDL_LOG_CATEGORY_ERROR, "%s\n", errorData.errorText.chars);
 }
 
 Application::Application()
-    : m_shouldQuit(false)
-    , m_width(800)
+    : m_width(800)
     , m_height(600)
     , m_cameraData(new CustomElementData{
           .type   = CUSTOM_ELEMENT_TYPE_CAMERA,
-          .camera = { nullptr, nullptr, &m_cameraMutex }
-}) {
+          .camera = CameraData{
+              .displayMode = Settings::get()->getDisplayMode(),
+          },
+      }) {
     if(!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_CAMERA)) {
-        SDL_Log("Couldn't initialize SDL: %s", SDL_GetError());
+        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't initialize SDL: %s", SDL_GetError());
         setShouldQuit();
 
         return;
@@ -40,14 +35,14 @@ Application::Application()
            &m_window,
            &m_renderData.renderer
        )) {
-        SDL_Log("Couldn't initialize SDL: %s", SDL_GetError());
+        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't initialize SDL: %s", SDL_GetError());
         setShouldQuit();
 
         return;
     }
 
     if(!TTF_Init()) {
-        SDL_Log("Couldn't initialise SDL_ttf: %s\n", SDL_GetError());
+        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't initialise SDL_ttf: %s\n", SDL_GetError());
         setShouldQuit();
 
         return;
@@ -62,11 +57,14 @@ Application::Application()
 
     m_renderData.fonts.push_back(TTF_OpenFontIO(SDL_IOFromConstMem(damase_v2, sizeof(damase_v2)), true, 40.0f));
     if(m_renderData.fonts.back() == nullptr) {
-        SDL_Log("Couldn't open font: %s\n", SDL_GetError());
+        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't open font: %s", SDL_GetError());
         setShouldQuit();
 
         return;
     }
+
+    m_volume     = Settings::get()->getVolume();
+    m_volumeText = std::format("{}%", m_volume);
 
     SDL_PumpEvents();
     SDL_FlushEvents(SDL_EVENT_AUDIO_DEVICE_ADDED, SDL_EVENT_AUDIO_DEVICE_ADDED);
@@ -91,6 +89,17 @@ Application::Application()
     if(Settings::get()->isFullscreen()) {
         SDL_SetWindowFullscreen(m_window, true);
     }
+
+    Settings::get()->displayModeChanged.connect([this](CameraDisplayMode mode) {
+        if(m_cameraData == nullptr) {
+            return;
+        }
+
+        m_cameraData->camera.displayMode = mode;
+    });
+
+    m_pointerCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_POINTER);
+    m_defaultCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_DEFAULT);
 }
 
 Application::~Application() {
@@ -131,58 +140,69 @@ bool Application::loop() {
 }
 
 void Application::update() {
-    if(SDL_CursorVisible() && std::chrono::system_clock::now() >= m_showCursorExpire) {
+    if(m_shouldHideCursor && SDL_CursorVisible() && std::chrono::system_clock::now() >= m_showCursorExpire) {
         SDL_HideCursor();
     }
-}
 
-Uint32 Application::statusStep() {
-    if(!m_status.animationReverse) {
-        if(m_status.animationProgress < 1.0f) {
-            m_status.animationProgress = std::clamp(m_status.animationProgress + 0.01f, 0.0f, 1.0f);
-        }
+    uint32_t buttons = SDL_GetMouseState(&m_cursorX, &m_cursorY);
 
-        if(std::chrono::system_clock::now() >= m_status.expire) {
-            m_status.animationReverse = true;
-        }
+    m_mouseClicked = buttons & SDL_BUTTON_LMASK && !m_mouseHeld;
+    m_mouseHeld    = buttons & SDL_BUTTON_LMASK;
 
-        return 1;
+    if(!m_mouseHeld && m_slidingVolume) {
+        m_slidingVolume = false;
+        Settings::get()->setVolume(m_volume);
     }
 
-    if(m_status.animationProgress > 0.0f) {
-        m_status.animationProgress = std::clamp(m_status.animationProgress - 0.01f, 0.0f, 1.0f);
+    Clay_SetPointerState(
+        Clay_Vector2{ .x = m_cursorX, .y = m_cursorY },
+        m_mouseHeld
+    );
 
-        return 1;
-    }
+    static uint64_t prev = SDL_GetPerformanceCounter();
+    uint64_t now         = SDL_GetPerformanceCounter();
 
-    m_status.text.clear();
-    return 0;
-}
+    float deltaTime = static_cast<double>(((now - prev) * 1000 / static_cast<float>(SDL_GetPerformanceFrequency())));
+    prev            = now;
 
-Uint32 Application::onStatusStepCallback(void* userdata, SDL_TimerID timerID, Uint32 interval) {
-    Application* app = reinterpret_cast<Application*>(userdata);
-    if(app->statusStep() == 0) {
-        app->m_statusStepTimer = 0;
-        return 0;
-    }
+    Clay_UpdateScrollContainers(!m_slidingVolume, Clay_Vector2{ m_mouseWheelX, m_mouseWheelY }, deltaTime);
 
-    return 1;
+    m_mouseWheelX = 0.0f;
+    m_mouseWheelY = 0.0f;
 }
 
 void Application::changeStatus(std::string text, std::chrono::milliseconds timeToExpire) {
     m_status.text   = text;
     m_status.expire = std::chrono::system_clock::now() + timeToExpire;
-
-    m_status.animationReverse = false;
-
-    if(m_statusStepTimer == 0) {
-        m_statusStepTimer = SDL_AddTimer(1000 / 60, &Application::onStatusStepCallback, this);
-    }
 }
 
-void Application::updateVolume() {
+void Application::setFullscreen(bool fullscreen) {
+    m_isFullscreen = fullscreen;
+    SDL_SetWindowFullscreen(m_window, fullscreen);
+}
+
+void Application::setVolume(int volume, bool save) {
+    m_volume     = volume;
+    m_volumeText = std::format("{}%", m_volume);
+
+    if(save) {
+        Settings::get()->setVolume(volume);
+    }
+
+    updateVolume();
+}
+
+void Application::updateVolume(bool showStatus) {
+    if(showStatus) {
+        changeStatus(std::format("Volume: {}%", m_volume), std::chrono::milliseconds(1500));
+    }
+
+    if(m_audioPlayback.stream == nullptr) {
+        return;
+    }
+
     // exponential volume function
-    float volume         = Settings::get()->getVolume() / 100.0f;
+    float volume         = m_volume / 100.0f;
     float adjustedVolume = std::powf(volume, 3.0f);
 
     SDL_SetAudioStreamGain(m_audioPlayback.stream, adjustedVolume);

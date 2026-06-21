@@ -1,5 +1,7 @@
 #include <application.hpp>
+#include <format>
 #include <settings.hpp>
+#include <vector>
 
 void Application::onRecordingCallback(void* userdata, SDL_AudioStream* stream, int additional_amount, int total_amount) { ((Application*)userdata)->recordingCallbackHandler(stream, additional_amount, total_amount); }
 void Application::recordingCallbackHandler(SDL_AudioStream* stream, int additional_amount, int total_amount) {
@@ -24,14 +26,21 @@ void Application::initAudioRecordingDevices() {
     SDL_AudioDeviceID* recordingDevices = SDL_GetAudioRecordingDevices(&recordingDeviceCount);
 
     if(recordingDevices == nullptr) {
-        SDL_Log("Couldn't enumerate recording devices: %s", SDL_GetError());
+        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't enumerate recording devices: %s", SDL_GetError());
 
         setShouldQuit(true);
         return;
     }
 
     for(int i = 0; i < recordingDeviceCount; i++) {
-        m_recordingDevices.push_back(recordingDevices[i]);
+        SDL_AudioDeviceID id = recordingDevices[i];
+        const char* name     = SDL_GetAudioDeviceName(id);
+        if(name == nullptr) {
+            SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to get name of recording device with id: %d: %s", id, SDL_GetError());
+            name = "";
+        }
+
+        m_recordingDevices.push_back({ id, name });
     }
 
     SDL_free(recordingDevices);
@@ -54,14 +63,20 @@ void Application::openAudioRecordingDevice() {
 
     m_audioRecording.device = SDL_OpenAudioDevice(deviceID, &m_audioSpec);
     if(m_audioRecording.device == 0) {
-        SDL_Log("Couldn't open recording device: %s", SDL_GetError());
+        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't open recording device: %s", SDL_GetError());
         return;
     }
 
-    SDL_Log("Opened recording device: %s", SDL_GetAudioDeviceName(m_audioRecording.device));
+    const char* name = SDL_GetAudioDeviceName(m_audioRecording.device);
+    if(name == nullptr) {
+        name = "(null)";
+    }
+
+    SDL_Log("Opened recording device: %s", name);
     SDL_GetAudioDeviceFormat(m_audioRecording.device, &m_audioRecording.spec, &m_audioRecording.bufferSize);
 
-    auto lock = std::unique_lock(m_streamMutex);
+    auto lock                = std::unique_lock(m_streamMutex);
+    m_currentRecordingDevice = { .id = deviceID, .name = name };
 
     m_audioRecording.stream = SDL_CreateAudioStream(&m_audioRecording.spec, &m_audioSpec);
     SDL_BindAudioStream(m_audioRecording.device, m_audioRecording.stream);
@@ -75,7 +90,8 @@ void Application::openAudioRecordingDevice() {
 }
 
 void Application::closeAudioRecordingDevice() {
-    auto lock = std::unique_lock(m_streamMutex);
+    auto lock                = std::unique_lock(m_streamMutex);
+    m_currentRecordingDevice = { .id = 0, .name = "(null)" };
 
     if(m_audioRecording.stream != nullptr) {
         SDL_DestroyAudioStream(m_audioRecording.stream);
@@ -93,4 +109,22 @@ void Application::closeAudioRecordingDevice() {
     }
 
     m_audioRecording.bufferSize = 0;
+}
+
+void Application::setRecordingDevice(Application::RecordingDeviceInfo info) {
+    Settings::get()->setSelectedRecordingDevice(info.id);
+
+    const char* deviceName = "(null)";
+    if(info.id != 0) {
+        if(info.name != nullptr) {
+            deviceName = info.name;
+        }
+
+        openAudioRecordingDevice();
+    }
+    else {
+        closeAudioRecordingDevice();
+    }
+
+    changeStatus(std::format("Recording Device: {}", deviceName), std::chrono::milliseconds(1500));
 }

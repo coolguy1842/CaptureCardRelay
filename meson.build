@@ -17,7 +17,8 @@ executable(
     ],
     include_directories: [
         include_directories('include'),
-        include_directories('ext/include')
+        # ignore warnings from clay
+        include_directories('ext/include', is_system: true)
     ],
     dependencies: [
         dependency('sdl3'),

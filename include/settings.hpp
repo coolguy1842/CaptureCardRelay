@@ -2,13 +2,22 @@
 #define __SETTINGS_HPP__
 
 #include <SDL3/SDL.h>
+#include <clay_renderer_SDL3.hpp>
 
-#include <optional>
+#include <rocket.hpp>
 #include <string>
 #include <unordered_map>
 
+#define MAX_VOLUME 150
+#define MIN_VOLUME 0
+
 class Settings {
 public:
+    ~Settings();
+
+    static Settings* get();
+    static void close();
+
     SDL_CameraID getSelectedCamera();
     void setSelectedCamera(SDL_CameraID camera);
 
@@ -22,10 +31,15 @@ public:
     bool isFullscreen();
     void setFullscreen(bool fullscreen = true);
 
-    static Settings* get();
-    static void close();
+    CameraDisplayMode getDisplayMode();
+    void setDisplayMode(CameraDisplayMode mode);
 
-    ~Settings();
+public:
+    rocket::thread_safe_signal<void(SDL_CameraID)> selectedCameraChanged;
+    rocket::thread_safe_signal<void(SDL_AudioDeviceID)> selectedRecordingDeviceChanged;
+    rocket::thread_safe_signal<void(int)> volumeChanged;
+    rocket::thread_safe_signal<void(bool)> fullscreenChanged;
+    rocket::thread_safe_signal<void(CameraDisplayMode)> displayModeChanged;
 
 protected:
     std::optional<std::string> getValue(std::string key);

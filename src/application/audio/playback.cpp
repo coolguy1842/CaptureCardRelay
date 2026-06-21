@@ -1,7 +1,7 @@
 #include <application.hpp>
 
 // https://stackoverflow.com/a/57796299
-template <typename T, size_t N>
+template<typename T, size_t N>
 constexpr auto make_array(T value) -> std::array<T, N> {
     std::array<T, N> a;
 
@@ -42,7 +42,7 @@ void Application::initAudioPlaybackDevices() {
     SDL_AudioDeviceID* playbackDevices = SDL_GetAudioPlaybackDevices(&playbackDeviceCount);
 
     if(playbackDevices == nullptr) {
-        SDL_Log("Couldn't enumerate playback devices: %s", SDL_GetError());
+        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't enumerate playback devices: %s", SDL_GetError());
 
         setShouldQuit(true);
         return;
@@ -64,7 +64,7 @@ void Application::openAudioPlaybackDevice() {
 
     m_audioPlayback.device = SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &m_audioSpec);
     if(m_audioPlayback.device == 0) {
-        SDL_Log("Couldn't open playback device: %s", SDL_GetError());
+        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't open playback device: %s", SDL_GetError());
         return;
     }
 
@@ -75,7 +75,8 @@ void Application::openAudioPlaybackDevice() {
 
     m_audioPlayback.stream = SDL_CreateAudioStream(&m_audioSpec, &m_audioPlayback.spec);
     SDL_BindAudioStream(m_audioPlayback.device, m_audioPlayback.stream);
-    updateVolume();
+
+    updateVolume(false);
 
     m_audioPlayback.buffer = (Uint8*)malloc(m_audioPlayback.bufferSize);
     SDL_SetAudioStreamGetCallback(m_audioPlayback.stream, &Application::onPlaybackCallback, this);
