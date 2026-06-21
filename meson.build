@@ -1,4 +1,4 @@
-project('capturecardrelay', 'cpp', 'c', version: '1.3', default_options: [ 'cpp_std=c++20', 'c_std=c99' ])
+project('capturecardrelay', 'cpp', 'c', version: '1.4', default_options: [ 'cpp_std=c++20', 'c_std=c99' ])
 
 executable(
     'CaptureCardRelay',
