@@ -150,7 +150,11 @@ void Application::update() {
     m_mouseHeld    = buttons & SDL_BUTTON_LMASK;
 
     if(!m_mouseHeld && m_slidingVolume) {
-        m_slidingVolume = false;
+        m_slidingVolume        = false;
+        m_volumeSnapped        = false;
+        m_volumeInSnapRange    = false;
+        m_volumeFreeDuringSnap = false;
+
         Settings::get()->setVolume(m_volume);
     }
 
@@ -181,7 +185,7 @@ void Application::setFullscreen(bool fullscreen) {
     SDL_SetWindowFullscreen(m_window, fullscreen);
 }
 
-void Application::setVolume(int volume, bool save) {
+void Application::setVolume(int volume, bool showStatus, bool save) {
     m_volume     = volume;
     m_volumeText = std::format("{}%", m_volume);
 
@@ -189,7 +193,7 @@ void Application::setVolume(int volume, bool save) {
         Settings::get()->setVolume(volume);
     }
 
-    updateVolume();
+    updateVolume(showStatus);
 }
 
 void Application::updateVolume(bool showStatus) {

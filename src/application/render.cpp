@@ -30,17 +30,6 @@ std::optional<CameraDisplayMode> displayModeFromStr(const char* str) {
     return std::nullopt;
 }
 
-const Clay_ElementId camerasContainerID          = CLAY_ID("CamerasContainer");
-const Clay_ElementId recordingDevicesContainerID = CLAY_ID("RecordingDevicesContainer");
-
-const Clay_ElementId fullscreenContainerID = CLAY_ID("FullscreenContainer");
-const Clay_ElementId fullscreenToggleID    = CLAY_ID("FullscreenToggle");
-
-const Clay_ElementId volumeContainerID   = CLAY_ID("VolumeContainer");
-const Clay_ElementId volumeSliderTrackID = CLAY_ID("VolumeSliderTrack");
-
-const Clay_ElementId displayModeContainerID = CLAY_ID("DisplayModeContainer");
-
 Clay_TransitionData EnterExitSlide(Clay_TransitionData initialState, Clay_TransitionProperty properties);
 void Application::render() {
     SDL_SetRenderDrawColor(m_renderData.renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
@@ -53,6 +42,11 @@ void Application::render() {
     });
 
     SDL_Cursor* nextCursor = m_defaultCursor;
+
+    static const Clay_ElementId volumeSliderTrackID         = CLAY_ID("VolumeSliderTrack");
+    static const Clay_ElementId camerasContainerID          = CLAY_ID("CamerasContainer");
+    static const Clay_ElementId recordingDevicesContainerID = CLAY_ID("RecordingDevicesContainer");
+    static const Clay_ElementId displayModeContainerID      = CLAY_ID("DisplayModeContainer");
 
     CLAY(
         CLAY_ID("Body"),
@@ -290,20 +284,17 @@ void Application::render() {
                         }
                     }
 
-                    CLAY(
-                        fullscreenContainerID,
-                        {
-                            .layout = {
-                                .padding         = CLAY_PADDING_ALL(12),
-                                .childGap        = 6,
-                                .childAlignment  = { .x = CLAY_ALIGN_X_CENTER, .y = CLAY_ALIGN_Y_TOP },
-                                .layoutDirection = CLAY_TOP_TO_BOTTOM,
-                            },
-                            .backgroundColor = { 0x34, 0x34, 0x34, 0xFF },
-                            .cornerRadius    = CLAY_CORNER_RADIUS(6),
-                            .border          = { .color = { 0xFF, 0xFF, 0xFF, 0xFF }, .width = CLAY_BORDER_OUTSIDE(1) },
-                        }
-                    ) {
+                    CLAY_AUTO_ID({
+                        .layout = {
+                            .padding         = CLAY_PADDING_ALL(12),
+                            .childGap        = 6,
+                            .childAlignment  = { .x = CLAY_ALIGN_X_CENTER, .y = CLAY_ALIGN_Y_TOP },
+                            .layoutDirection = CLAY_TOP_TO_BOTTOM,
+                        },
+                        .backgroundColor = { 0x34, 0x34, 0x34, 0xFF },
+                        .cornerRadius    = CLAY_CORNER_RADIUS(6),
+                        .border          = { .color = { 0xFF, 0xFF, 0xFF, 0xFF }, .width = CLAY_BORDER_OUTSIDE(1) },
+                    }) {
                         CLAY_TEXT(CLAY_STRING("Fullscreen"), defaultTextConfig);
                         SEPARATOR;
 
@@ -486,10 +477,9 @@ void Application::render() {
 
     static float prevCursorX = 0.0f;
     if(m_slidingVolume) {
-
         // snap volume to 100, if it goes within a range outside of the snap range then dont snap to 100
         Clay_ElementData data = Clay_GetElementData(volumeSliderTrackID);
-        if(data.found && prevCursorX != m_cursorX) {
+        if(data.found && (prevCursorX != m_cursorX || m_mouseClicked)) {
             float percent = std::clamp((m_cursorX - data.boundingBox.x) / data.boundingBox.width, 0.0f, 1.0f);
             int volume    = percent * MAX_VOLUME;
 
@@ -510,8 +500,7 @@ void Application::render() {
             }
 
             m_volumeSnapped = m_volumeSnapped && keepSnapRange;
-
-            setVolume(volume, false);
+            setVolume(volume, false, false);
         }
     }
 

@@ -68,7 +68,7 @@ private:
 
     void setFullscreen(bool fullscreen = true);
 
-    void setVolume(int volume, bool save = true);
+    void setVolume(int volume, bool showStatus = true, bool save = true);
     void updateVolume(bool showStatus = true);
 
     void playbackCallbackHandler(SDL_AudioStream* stream, int additional_amount, int total_amount);
