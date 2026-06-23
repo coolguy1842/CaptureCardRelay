@@ -307,24 +307,27 @@ void SDL_Clay_RenderClayCommands(Clay_SDL3RendererData* rendererData, Clay_Rende
 
             switch(data->type) {
             case CUSTOM_ELEMENT_TYPE_CAMERA: {
-                SDL_SetRenderDrawBlendMode(rendererData->renderer, SDL_BLENDMODE_BLEND);
                 SDL_SetRenderDrawColor(rendererData->renderer, rcmd->renderData.custom.backgroundColor.r, rcmd->renderData.custom.backgroundColor.g, rcmd->renderData.custom.backgroundColor.b, rcmd->renderData.custom.backgroundColor.a);
-
                 SDL_RenderFillRect(rendererData->renderer, &rect);
 
-                SDL_Texture*& tex = data->camera.texture;
-                SDL_CameraSpec spec;
+                SDL_Texture*& tex    = data->camera.texture;
+                SDL_CameraSpec& spec = data->camera.spec;
 
                 auto lock = std::unique_lock(data->camera.mutex);
-                if(data->camera.device == nullptr || SDL_GetCameraPermissionState(data->camera.device) != 1 || !SDL_GetCameraFormat(data->camera.device, &spec)) {
-                    SDL_DestroyTexture(tex);
-                    tex = nullptr;
+                if(data->camera.device == nullptr || !data->camera.approved) {
+                    if(tex != nullptr) {
+                        SDL_DestroyTexture(tex);
+                        tex = nullptr;
+                    }
 
                     break;
                 }
 
                 if(tex == nullptr || tex->format != spec.format || tex->w != spec.width || tex->h != spec.height) {
-                    SDL_DestroyTexture(tex);
+                    if(tex != nullptr) {
+                        SDL_DestroyTexture(tex);
+                    }
+
                     tex = SDL_CreateTexture(rendererData->renderer, spec.format, SDL_TEXTUREACCESS_STREAMING, spec.width, spec.height);
                 }
 

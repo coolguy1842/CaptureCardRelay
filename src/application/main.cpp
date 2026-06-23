@@ -21,24 +21,41 @@ Application::Application()
           },
       }) {
     if(!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_CAMERA)) {
-        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't initialize SDL: %s", SDL_GetError());
+        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't initialize SDL: %s\n", SDL_GetError());
         setShouldQuit();
 
         return;
     }
 
-    if(!SDL_CreateWindowAndRenderer(
-           "Capture Card Relay",
-           m_width,
-           m_height,
-           SDL_WINDOW_RESIZABLE,
-           &m_window,
-           &m_renderData.renderer
-       )) {
-        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't initialize SDL: %s", SDL_GetError());
+    if((m_window = SDL_CreateWindow("Capture Card Relay", m_width, m_height, SDL_WINDOW_RESIZABLE)) == nullptr) {
+        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't create window: %s\n", SDL_GetError());
         setShouldQuit();
 
         return;
+    }
+
+    if((m_renderData.renderer = SDL_CreateGPURenderer(NULL, m_window)) == NULL) {
+        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't create renderer: %s\n", SDL_GetError());
+        setShouldQuit();
+
+        return;
+    }
+
+    SDL_GPUDevice* gpu = SDL_GetGPURendererDevice(m_renderData.renderer);
+    if(gpu == nullptr) {
+        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Created renderer with GPU device, but GPU somehow null: %s\n", SDL_GetError());
+        setShouldQuit();
+
+        return;
+    }
+
+    SDL_PropertiesID props = SDL_GetGPUDeviceProperties(gpu);
+    if(props != 0) {
+        const char* name = SDL_GetStringProperty(props, SDL_PROP_GPU_DEVICE_NAME_STRING, "");
+        SDL_Log("Created renderer with GPU: %s\n\n", name);
+    }
+    else {
+        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to get GPU name: %s\n\n", SDL_GetError());
     }
 
     if(!TTF_Init()) {
@@ -116,6 +133,9 @@ Application::~Application() {
 
         TTF_CloseFont(font);
     }
+
+    SDL_DestroyCursor(m_pointerCursor);
+    SDL_DestroyCursor(m_defaultCursor);
 
     SDL_DestroyRenderer(m_renderData.renderer);
     SDL_DestroyWindow(m_window);

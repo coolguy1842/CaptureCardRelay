@@ -62,9 +62,13 @@ void Application::handleEvent(SDL_Event* event) {
 
         break;
     case SDL_EVENT_CAMERA_DEVICE_APPROVED:
-        m_cameraApproved = true;
-        SDL_Log("Opened camera: %s", SDL_GetCameraName(SDL_GetCameraID(m_cameraData->camera.device)));
+        SDL_Log("Opened camera: %s", m_currentCamera.name);
+        if(!SDL_GetCameraFormat(m_cameraData->camera.device, &m_cameraData->camera.spec)) {
+            SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Camera approved but failed to get format");
+            break;
+        }
 
+        m_cameraData->camera.approved = true;
         break;
     case SDL_EVENT_CAMERA_DEVICE_DENIED:
         SDL_Log("Camera %s was rejected", SDL_GetCameraName(SDL_GetCameraID(m_cameraData->camera.device)));
@@ -93,9 +97,8 @@ void Application::handleEvent(SDL_Event* event) {
 
             {
                 auto lock = std::unique_lock(m_cameraData->camera.mutex);
-                if(!m_cameraApproved && m_cameraData->camera.device != nullptr) {
-                    lock.unlock();
-                    closeCamera();
+                if(!m_cameraData->camera.approved && m_cameraData->camera.device != nullptr) {
+                    closeCamera(false);
                 }
             }
 

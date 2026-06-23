@@ -32,8 +32,11 @@ enum CameraDisplayMode {
 struct CameraData {
     SDL_Camera* device;
     SDL_Texture* texture;
-    CameraDisplayMode displayMode;
 
+    bool approved;
+    SDL_CameraSpec spec;
+
+    CameraDisplayMode displayMode;
     std::mutex mutex;
 };
 

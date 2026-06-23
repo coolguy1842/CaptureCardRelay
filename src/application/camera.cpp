@@ -1,5 +1,6 @@
 #include <application.hpp>
 #include <format>
+#include <mutex>
 #include <set>
 #include <settings.hpp>
 #include <vector>
@@ -228,8 +229,8 @@ void Application::openCamera() {
     SDL_Log("Opening camera: %s\n", name);
     auto lock = std::unique_lock(m_cameraData->camera.mutex);
 
-    m_cameraApproved = false;
-    m_currentCamera  = { camID, name };
+    m_cameraData->camera.approved = false;
+    m_currentCamera               = { camID, name };
 
     m_cameraData->camera.device = SDL_OpenCamera(camID, spec);
 
@@ -238,10 +239,14 @@ void Application::openCamera() {
     }
 }
 
-void Application::closeCamera() {
-    auto lock        = std::unique_lock(m_cameraData->camera.mutex);
-    m_cameraApproved = false;
-    m_currentCamera  = { .id = 0, .name = "(null)" };
+void Application::closeCamera(bool shouldLock) {
+    std::unique_lock<std::mutex> lock;
+    if(shouldLock) {
+        lock = std::unique_lock(m_cameraData->camera.mutex);
+    }
+
+    m_cameraData->camera.approved = false;
+    m_currentCamera               = { .id = 0, .name = "(null)" };
 
     if(m_cameraData->camera.device != nullptr) {
         SDL_CloseCamera(m_cameraData->camera.device);

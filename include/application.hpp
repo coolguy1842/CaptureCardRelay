@@ -45,11 +45,21 @@ private:
         const char* name;
     };
 
+    struct AudioData {
+        SDL_AudioDeviceID device = 0;
+        SDL_AudioSpec spec;
+
+        SDL_AudioStream* stream = nullptr;
+
+        int bufferSize;
+        Uint8* buffer;
+    };
+
 private:
     void initCameras();
 
     void openCamera();
-    void closeCamera();
+    void closeCamera(bool lock = true);
 
     void setCamera(CameraInfo info);
     void setRecordingDevice(RecordingDeviceInfo info);
@@ -81,7 +91,6 @@ private:
 private:
     bool m_shouldQuit     = false;
     bool m_settingsActive = false;
-    bool m_cameraApproved = false;
 
     bool m_shouldHideCursor = true;
     bool m_mouseHeld        = false;
@@ -91,6 +100,8 @@ private:
     bool m_shiftHeld    = false;
 
     bool m_slidingVolume = false;
+
+    std::chrono::time_point<std::chrono::system_clock> m_showCursorExpire;
 
     float m_cursorX = 0.0f;
     float m_cursorY = 0.0f;
@@ -102,6 +113,7 @@ private:
     Clay_ElementId m_activeDropdown        = m_invalidDropdown;
 
     SDL_Window* m_window = nullptr;
+    Clay_SDL3RendererData m_renderData;
 
     SDL_Cursor* m_pointerCursor = nullptr;
     SDL_Cursor* m_defaultCursor = nullptr;
@@ -109,7 +121,6 @@ private:
 
     std::mutex m_streamMutex;
     std::mutex m_audioMutex;
-    Clay_SDL3RendererData m_renderData;
 
     static constexpr SDL_AudioSpec m_audioSpec = { SDL_AUDIO_S16, 2, 48000 };
     static constexpr size_t audioBufferSize    = 64;
@@ -125,25 +136,8 @@ private:
     int m_width;
     int m_height;
 
-    struct {
-        SDL_AudioDeviceID device = 0;
-        SDL_AudioSpec spec;
-
-        SDL_AudioStream* stream = nullptr;
-
-        int bufferSize;
-        Uint8* buffer;
-    } m_audioPlayback;
-
-    struct {
-        SDL_AudioDeviceID device = 0;
-        SDL_AudioSpec spec;
-
-        SDL_AudioStream* stream = nullptr;
-
-        int bufferSize;
-        Uint8* buffer;
-    } m_audioRecording;
+    AudioData m_audioPlayback;
+    AudioData m_audioRecording;
 
     int m_volume = 100;
     std::string m_volumeText;
@@ -151,8 +145,6 @@ private:
     bool m_volumeSnapped        = false;
     bool m_volumeFreeDuringSnap = false;
     bool m_volumeInSnapRange    = false;
-
-    std::chrono::time_point<std::chrono::system_clock> m_showCursorExpire;
 
     std::vector<CameraInfo> m_cameras;
 
