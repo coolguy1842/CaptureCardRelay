@@ -164,35 +164,17 @@ void Application::update() {
         SDL_HideCursor();
     }
 
-    uint32_t buttons = SDL_GetMouseState(&m_cursorX, &m_cursorY);
+    updateUI();
+}
 
-    m_mouseClicked = buttons & SDL_BUTTON_LMASK && !m_mouseHeld;
-    m_mouseHeld    = buttons & SDL_BUTTON_LMASK;
+void Application::render() {
+    SDL_SetRenderDrawColor(m_renderData.renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
+    SDL_RenderClear(m_renderData.renderer);
 
-    if(!m_mouseHeld && m_slidingVolume) {
-        m_slidingVolume        = false;
-        m_volumeSnapped        = false;
-        m_volumeInSnapRange    = false;
-        m_volumeFreeDuringSnap = false;
+    Clay_RenderCommandArray commands = buildUI();
+    SDL_Clay_RenderClayCommands(&m_renderData, &commands);
 
-        Settings::get()->setVolume(m_volume);
-    }
-
-    Clay_SetPointerState(
-        Clay_Vector2{ .x = m_cursorX, .y = m_cursorY },
-        m_mouseHeld
-    );
-
-    static uint64_t prev = SDL_GetPerformanceCounter();
-    uint64_t now         = SDL_GetPerformanceCounter();
-
-    float deltaTime = static_cast<double>(((now - prev) * 1000 / static_cast<float>(SDL_GetPerformanceFrequency())));
-    prev            = now;
-
-    Clay_UpdateScrollContainers(!m_slidingVolume, Clay_Vector2{ m_mouseWheelX, m_mouseWheelY }, deltaTime);
-
-    m_mouseWheelX = 0.0f;
-    m_mouseWheelY = 0.0f;
+    SDL_RenderPresent(m_renderData.renderer);
 }
 
 void Application::changeStatus(std::string text, std::chrono::milliseconds timeToExpire) {

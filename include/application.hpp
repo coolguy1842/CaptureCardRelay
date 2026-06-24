@@ -56,6 +56,49 @@ private:
     };
 
 private:
+    // UI related
+    const Clay_ElementId volumeSliderTrackID       = CLAY_ID("VolumeSliderTrack");
+    const Clay_TextElementConfig defaultTextConfig = CLAY_TEXT_CONFIG({
+        .textColor = { 0xFF, 0xFF, 0xFF, 0xFF },
+        .fontSize  = 24,
+    });
+
+    const Clay_TextElementConfig selectedTextConfig = CLAY_TEXT_CONFIG({
+        .textColor = { 0x9F, 0x9F, 0x9F, 0xFF },
+        .fontSize  = static_cast<uint16_t>(defaultTextConfig.fontSize + 2),
+    });
+
+    const Clay_TextElementConfig hoveredTextConfig = CLAY_TEXT_CONFIG({
+        .textColor = { 0xBF, 0xBF, 0xBF, 0xFF },
+        .fontSize  = static_cast<uint16_t>(defaultTextConfig.fontSize + 1),
+    });
+
+    bool Clay_MouseClicked();
+    bool Clay_MouseHeld();
+    // only if current element itself is clicked, not including children
+    bool Clay_DirectlyClicked();
+
+    void updateUI();
+    void updateSettingsUI();
+
+    void BuildCameraLabel(const CameraInfo& info);
+    void BuildCameraSettings();
+
+    void BuildRecordingDeviceLabel(const RecordingDeviceInfo& info);
+    void BuildRecordingDeviceSettings();
+
+    void BuildDisplayModeLabel(const CameraDisplayMode& displayMode);
+    void BuildDisplayModeSettings();
+
+    void BuildFullscreenSettings();
+    void BuildVolumeSettings();
+
+    void BuildSettingsMenu();
+
+    void BuildStatus();
+    Clay_RenderCommandArray buildUI();
+
+private:
     void initCameras();
 
     void openCamera();
@@ -94,7 +137,6 @@ private:
 
     bool m_shouldHideCursor = true;
     bool m_mouseHeld        = false;
-    bool m_mouseClicked     = false;
 
     bool m_isFullscreen = false;
     bool m_shiftHeld    = false;
@@ -117,7 +159,9 @@ private:
 
     SDL_Cursor* m_pointerCursor = nullptr;
     SDL_Cursor* m_defaultCursor = nullptr;
+
     SDL_Cursor* m_currentCursor = nullptr;
+    SDL_Cursor* m_nextCursor    = nullptr;
 
     std::mutex m_streamMutex;
     std::mutex m_audioMutex;

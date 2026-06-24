@@ -1,4 +1,8 @@
-project('capturecardrelay', 'cpp', 'c', version: '1.4', default_options: [ 'cpp_std=c++20', 'c_std=c99' ])
+project('capturecardrelay', 'cpp', 'c', version: '1.5', default_options: [ 'cpp_std=c++20', 'c_std=c99' ])
+
+if get_option('debug')
+    add_project_arguments('-DDEBUG', language: 'cpp')
+endif
 
 executable(
     'CaptureCardRelay',
@@ -6,12 +10,16 @@ executable(
         'ext/src/clay_renderer_SDL3.cpp',
         'src/settings.cpp',
 
-        'src/application/main.cpp',
-        'src/application/events.cpp',
-        'src/application/render.cpp',
-        'src/application/camera.cpp',
-        'src/application/audio/playback.cpp',
-        'src/application/audio/recording.cpp',
+        'src/Application/main.cpp',
+        'src/Application/events.cpp',
+
+        'src/Application/Media/camera.cpp',
+        'src/Application/Media/playback.cpp',
+        'src/Application/Media/recording.cpp',
+
+        'src/Application/UI/main.cpp',
+        'src/Application/UI/status.cpp',
+        'src/Application/UI/settings.cpp',
 
         'src/main.cpp'
     ],

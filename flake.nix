@@ -1,88 +1,29 @@
 {
     inputs = {
         nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable"; 
+        flake-utils.url = "github:numtide/flake-utils";
     };
 
-    outputs = { self, nixpkgs, systems }: let 
-        forEachSystem = nixpkgs.lib.genAttrs (import systems);
+    outputs = { self, nixpkgs, flake-utils }: flake-utils.lib.eachDefaultSystem (system: let
+        pkgs = nixpkgs.legacyPackages.${system};
     in {
-        devShells = forEachSystem (system: let
-            pkgs = nixpkgs.legacyPackages.${system};
-        in {
-            default = pkgs.mkShell {
-                hardeningDisable = [ "all" ];
+        devShells = {
+            default = pkgs.callPackage ./nix/devShell.nix {};
+        };
 
-                nativeBuildInputs = with pkgs; [
-                    clang-tools
-                    
-                    llvmPackages_latest.lldb
-                    llvmPackages_latest.libllvm
-                    llvmPackages_latest.libcxx
-                    llvmPackages_latest.clang
+        packages = rec {
+            CaptureCardRelay = pkgs.callPackage ./nix/package.nix {};
+            default = CaptureCardRelay;
+        };
 
-                    pkg-config
-                    ninja
-                    cmake
-                    meson
-                ];
-
-                buildInputs = with pkgs; [
-                    sdl3
-                    sdl3-ttf
-                    sdl3-image
-                ];
-            };
-        });
-
-        packages = forEachSystem (system: let
-            pkgs = nixpkgs.legacyPackages.${system};
-        in {
-            default = pkgs.stdenv.mkDerivation {
-                name = "CaptureCardRelay";
-                version = "1.4";
-                src = ./.;
-
-                # TODO: remove this later, for debugging purposes
-                hardeningDisable = [ "all" ];
-                nativeBuildInputs = with pkgs; [
-                    clang
-                    pkg-config
-                    ninja
-                    cmake
-                    meson
-                ];
-
-                buildInputs = with pkgs; [
-                    sdl3
-                    sdl3-ttf
-                    sdl3-image
-                    imgui
-                ];
-
-                configurePhase = ''
-                    meson setup -Dprefix=$out build
-                '';
-
-                buildPhase = ''
-                    meson compile -C build
-                '';
-
-                installPhase = ''
-                    mkdir -p $out/bin
-                    mkdir -p $out/share/applications
-                    mkdir -p $out/share/icons/hicolor/64x64/apps
-                    
-                    cp build/CaptureCardRelay $out/bin/
-                    cp assets/capture-card-relay.desktop $out/share/applications
-                    cp assets/capture-card-relay.png $out/share/icons/hicolor/64x64/apps
-                '';
-
-                meta = with pkgs.lib; {
-                    description = "Viewer for capture cards";
-                    homepage = "https://github.com/coolguy1842/CaptureCardRelay/";
-                    license = licenses.gpl3;
-                };
-            };
-        });
-    };
+        nixosModules = rec {
+            CaptureCardRelay = (import ./nix/module.nix);
+            default = CaptureCardRelay;
+        };
+    }) //
+    flake-utils.lib.eachDefaultSystemPassThrough (system: {
+        nixosConfigurations.container = nixpkgs.lib.nixosSystem {
+            modules = [ ./nix/container.nix ];
+        };
+    });
 }

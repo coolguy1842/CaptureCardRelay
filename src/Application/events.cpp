@@ -42,10 +42,17 @@ void Application::handleEvent(SDL_Event* event) {
         Settings::get()->setFullscreen(false);
 
         break;
-    case SDL_EVENT_MOUSE_MOTION:
     case SDL_EVENT_MOUSE_BUTTON_DOWN:
     case SDL_EVENT_MOUSE_BUTTON_UP:
-        m_shouldHideCursor = event->type != SDL_EVENT_MOUSE_BUTTON_DOWN;
+        m_mouseHeld        = event->type != SDL_EVENT_MOUSE_BUTTON_UP;
+        m_shouldHideCursor = !m_mouseHeld;
+
+        goto cursorMain;
+    case SDL_EVENT_MOUSE_MOTION:
+        m_cursorX = event->motion.x;
+        m_cursorY = event->motion.y;
+
+    cursorMain:
         m_showCursorExpire = std::chrono::system_clock::now() + std::chrono::milliseconds(1000);
 
         SDL_ShowCursor();
@@ -168,10 +175,12 @@ void Application::handleEvent(SDL_Event* event) {
             setFullscreen(!m_isFullscreen);
             break;
         }
+#ifdef DEBUG
         case SDLK_F12:
             Clay_SetDebugModeEnabled(!Clay_IsDebugModeEnabled());
 
             break;
+#endif
         case SDLK_O:
             m_settingsActive = !m_settingsActive;
             m_activeDropdown = m_invalidDropdown;

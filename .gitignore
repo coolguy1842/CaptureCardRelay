@@ -1,9 +1,10 @@
 .cache
 .direnv
 .vscode
+.tmp
+
 result
-build
-builddir
+build*
 debug.sh
 run.sh
 compile_commands.json
