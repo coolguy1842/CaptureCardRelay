@@ -65,24 +65,26 @@ Clay_ElementDeclaration SettingContainerConfig(Clay_SizingAxis widthSizing = CLA
 }
 
 void Application::BuildCameraLabel(const Application::CameraInfo& info) {
-    Clay_TextElementConfig textConfig = defaultTextConfig;
-    if(m_activeDropdown.id == camerasContainerID.id) {
-        if(Clay_Hovered()) {
-            m_nextCursor = m_pointerCursor;
-            textConfig   = hoveredTextConfig;
+    CLAY_AUTO_ID() {
+        Clay_TextElementConfig textConfig = defaultTextConfig;
+        if(m_activeDropdown.id == camerasContainerID.id) {
+            if(Clay_Hovered()) {
+                m_nextCursor = m_pointerCursor;
+                textConfig   = hoveredTextConfig;
 
-            if(Clay_MouseClicked()) {
-                setCamera(info);
-                m_activeDropdown = m_invalidDropdown;
+                if(Clay_MouseClicked()) {
+                    setCamera(info);
+                    m_activeDropdown = m_invalidDropdown;
+                }
+            }
+
+            if(m_currentCamera.id == info.id) {
+                textConfig = selectedTextConfig;
             }
         }
 
-        if(m_currentCamera.id == info.id) {
-            textConfig = selectedTextConfig;
-        }
+        CLAY_TEXT(toClayString(info.name), textConfig);
     }
-
-    CLAY_TEXT(toClayString(info.name), textConfig);
 }
 
 void Application::BuildCameraSettings() {
@@ -110,24 +112,26 @@ void Application::BuildCameraSettings() {
 }
 
 void Application::BuildRecordingDeviceLabel(const RecordingDeviceInfo& info) {
-    Clay_TextElementConfig textConfig = defaultTextConfig;
-    if(m_activeDropdown.id == recordingDevicesContainerID.id) {
-        if(Clay_Hovered()) {
-            m_nextCursor = m_pointerCursor;
-            textConfig   = hoveredTextConfig;
+    CLAY_AUTO_ID() {
+        Clay_TextElementConfig textConfig = defaultTextConfig;
+        if(m_activeDropdown.id == recordingDevicesContainerID.id) {
+            if(Clay_Hovered()) {
+                m_nextCursor = m_pointerCursor;
+                textConfig   = hoveredTextConfig;
 
-            if(Clay_MouseClicked()) {
-                setRecordingDevice(info);
-                m_activeDropdown = m_invalidDropdown;
+                if(Clay_MouseClicked()) {
+                    setRecordingDevice(info);
+                    m_activeDropdown = m_invalidDropdown;
+                }
+            }
+
+            if(m_currentRecordingDevice.id == info.id) {
+                textConfig = selectedTextConfig;
             }
         }
 
-        if(m_currentRecordingDevice.id == info.id) {
-            textConfig = selectedTextConfig;
-        }
+        CLAY_TEXT(toClayString(info.name), textConfig);
     }
-
-    CLAY_TEXT(toClayString(info.name), textConfig);
 }
 
 void Application::BuildRecordingDeviceSettings() {
@@ -155,24 +159,26 @@ void Application::BuildRecordingDeviceSettings() {
 }
 
 void Application::BuildDisplayModeLabel(const CameraDisplayMode& displayMode) {
-    Clay_TextElementConfig textConfig = defaultTextConfig;
-    if(m_activeDropdown.id == displayModeContainerID.id) {
-        if(Clay_Hovered()) {
-            m_nextCursor = m_pointerCursor;
-            textConfig   = hoveredTextConfig;
+    CLAY_AUTO_ID() {
+        Clay_TextElementConfig textConfig = defaultTextConfig;
+        if(m_activeDropdown.id == displayModeContainerID.id) {
+            if(Clay_Hovered()) {
+                m_nextCursor = m_pointerCursor;
+                textConfig   = hoveredTextConfig;
 
-            if(Clay_MouseClicked()) {
-                Settings::get()->setDisplayMode(displayMode);
-                m_activeDropdown = m_invalidDropdown;
+                if(Clay_MouseClicked()) {
+                    Settings::get()->setDisplayMode(displayMode);
+                    m_activeDropdown = m_invalidDropdown;
+                }
+            }
+
+            if(m_cameraData->camera.displayMode == displayMode) {
+                textConfig = selectedTextConfig;
             }
         }
 
-        if(m_cameraData->camera.displayMode == displayMode) {
-            textConfig = selectedTextConfig;
-        }
+        CLAY_TEXT(displayModeStr(displayMode), textConfig);
     }
-
-    CLAY_TEXT(displayModeStr(displayMode), textConfig);
 }
 
 void Application::BuildDisplayModeSettings() {
