@@ -23,10 +23,10 @@ typedef enum {
 } CustomElementType;
 
 enum CameraDisplayMode {
-    CONTAIN, // letterboxing or pillarboxing
-    COVER,   // covers the image to the display while maintaining aspect ratio, will hide content if needed
-    FILL,    // stretches to the display size
-    NONE     // nothing is done to the image
+    DISPLAY_MODE_CONTAIN, // letterboxing or pillarboxing
+    DISPLAY_MODE_COVER,   // covers the image to the display while maintaining aspect ratio, will hide content if needed
+    DISPLAY_MODE_FILL,    // stretches to the display size
+    DISPLAY_MODE_NONE     // nothing is done to the image
 };
 
 struct CameraData {

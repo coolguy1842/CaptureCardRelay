@@ -1,6 +1,5 @@
 #include <application.hpp>
 #include <chrono>
-#include <settings.hpp>
 
 void Application::handleEvent(SDL_Event* event) {
     auto it = m_eventHandlers.find((SDL_EventType)event->type);
@@ -76,10 +75,13 @@ void Application::handleEvent(SDL_Event* event) {
         }
 
         m_cameraData->camera.approved = true;
+        updateFrameLimiter(m_frameLimitInfo);
         break;
     case SDL_EVENT_CAMERA_DEVICE_DENIED:
         SDL_Log("Camera %s was rejected", SDL_GetCameraName(SDL_GetCameraID(m_cameraData->camera.device)));
+
         closeCamera();
+        updateFrameLimiter(m_frameLimitInfo);
 
         break;
     case SDL_EVENT_AUDIO_DEVICE_ADDED:

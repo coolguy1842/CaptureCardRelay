@@ -2,7 +2,6 @@
 #include <format>
 #include <mutex>
 #include <set>
-#include <settings.hpp>
 #include <vector>
 
 const char* formatName(SDL_PixelFormat format) {

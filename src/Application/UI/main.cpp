@@ -56,7 +56,7 @@ void Application::updateUI() {
     float deltaTime = static_cast<double>(((now - prev) * 1000 / static_cast<float>(SDL_GetPerformanceFrequency())));
     prev            = now;
 
-    Clay_UpdateScrollContainers(!m_slidingVolume, Clay_Vector2{ m_mouseWheelX, m_mouseWheelY }, deltaTime);
+    Clay_UpdateScrollContainers(!(m_slidingVolume | m_slidingFPS), Clay_Vector2{ m_mouseWheelX, m_mouseWheelY }, deltaTime);
     m_mouseWheelX = 0.0f;
     m_mouseWheelY = 0.0f;
 

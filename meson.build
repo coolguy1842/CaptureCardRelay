@@ -9,6 +9,7 @@ executable(
     sources: [
         'ext/src/clay_renderer_SDL3.cpp',
         'src/settings.cpp',
+        'src/frame_limiter.cpp',
 
         'src/Application/main.cpp',
         'src/Application/events.cpp',

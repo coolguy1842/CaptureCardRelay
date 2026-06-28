@@ -1,9 +1,13 @@
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <settings.hpp>
 #include <string>
 
-const CameraDisplayMode DEFAULT_MODE = CameraDisplayMode::CONTAIN;
+const CameraDisplayMode DEFAULT_DISPLAY_MODE = DISPLAY_MODE_CONTAIN;
+
+const FrameLimitType DEFAULT_FRAME_LIMIT_TYPE = FRAME_LIMIT_CAMERA;
+const float DEFAULT_FRAME_LIMIT_FPS           = 0.0f;
 
 std::string Settings::getSettingsPath() {
     std::string configPath;
@@ -166,23 +170,48 @@ void Settings::setFullscreen(bool fullscreen) {
 }
 
 CameraDisplayMode Settings::getDisplayMode() {
-    int mode = std::atoi(getValue("displayMode").value_or(std::to_string(DEFAULT_MODE)).c_str());
+    int mode = std::atoi(getValue("displayMode").value_or(std::to_string(DEFAULT_DISPLAY_MODE)).c_str());
 
     switch(mode) {
-    case CameraDisplayMode::CONTAIN:
-    case CameraDisplayMode::COVER:
-    case CameraDisplayMode::FILL:
-    case CameraDisplayMode::NONE:
+    case DISPLAY_MODE_CONTAIN:
+    case DISPLAY_MODE_COVER:
+    case DISPLAY_MODE_FILL:
+    case DISPLAY_MODE_NONE:
         return static_cast<CameraDisplayMode>(mode);
     default:
-        setDisplayMode(DEFAULT_MODE);
-        return DEFAULT_MODE;
+        setDisplayMode(DEFAULT_DISPLAY_MODE);
+        return DEFAULT_DISPLAY_MODE;
     }
 }
 
 void Settings::setDisplayMode(CameraDisplayMode mode) {
     setValue("displayMode", std::to_string(mode));
     displayModeChanged(mode);
+}
+
+FrameLimitInfo Settings::getFrameLimitInfo() {
+    FrameLimitInfo info;
+
+    switch(std::atoi(getValue("frameLimitType").value_or(std::to_string(DEFAULT_FRAME_LIMIT_TYPE)).c_str())) {
+    case FRAME_LIMIT_CAMERA:         info.type = FRAME_LIMIT_CAMERA; break;
+    case FRAME_LIMIT_VSYNC:          info.type = FRAME_LIMIT_VSYNC; break;
+    case FRAME_LIMIT_VSYNC_ADAPTIVE: info.type = FRAME_LIMIT_VSYNC_ADAPTIVE; break;
+    case FRAME_LIMIT_FPS:            info.type = FRAME_LIMIT_FPS; break;
+    case FRAME_LIMIT_NONE:           info.type = FRAME_LIMIT_NONE; break;
+    default:                         info.type = DEFAULT_FRAME_LIMIT_TYPE; break;
+    }
+
+    float fps = std::atof(getValue("frameLimitFPS").value_or(std::to_string(DEFAULT_FRAME_LIMIT_FPS)).c_str());
+    info.fps  = std::clamp(fps, MIN_FPS, MAX_FPS);
+
+    return info;
+}
+
+void Settings::setFrameLimitInfo(FrameLimitInfo info) {
+    setValue("frameLimitType", std::to_string(info.type));
+    setValue("frameLimitFPS", std::to_string(info.fps));
+
+    frameLimitInfoChanged(info);
 }
 
 std::optional<std::string> Settings::getValue(std::string key) {

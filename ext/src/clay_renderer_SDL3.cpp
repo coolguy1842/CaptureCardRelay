@@ -342,14 +342,14 @@ void SDL_Clay_RenderClayCommands(Clay_SDL3RendererData* rendererData, Clay_Rende
                 if(tex != nullptr) {
                     SDL_FRect destRect = rect;
                     switch(data->camera.displayMode) {
-                    case CameraDisplayMode::CONTAIN:
-                    case CameraDisplayMode::COVER:   {
+                    case DISPLAY_MODE_CONTAIN:
+                    case DISPLAY_MODE_COVER:   {
                         // most logic here from: https://github.com/nrkn/object-fit-math/blob/master/src/fitter.ts
                         float widthRatio  = rect.w / tex->w;
                         float heightRatio = rect.h / tex->h;
 
                         // min of width vs height ratios
-                        float ratio = data->camera.displayMode == CameraDisplayMode::CONTAIN
+                        float ratio = data->camera.displayMode == DISPLAY_MODE_CONTAIN
                                           ? CLAY__MIN(widthRatio, heightRatio)
                                           : CLAY__MAX((rect.w / tex->w), (rect.h / tex->h));
 
@@ -360,8 +360,8 @@ void SDL_Clay_RenderClayCommands(Clay_SDL3RendererData* rendererData, Clay_Rende
 
                         break;
                     }
-                    case CameraDisplayMode::FILL: break;
-                    case CameraDisplayMode::NONE:
+                    case DISPLAY_MODE_FILL: break;
+                    case DISPLAY_MODE_NONE:
                         destRect = {
                             .x = 0,
                             .y = 0,

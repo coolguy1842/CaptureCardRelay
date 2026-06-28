@@ -1,3 +1,4 @@
+#include <SDL3/SDL_render.h>
 #include <application.hpp>
 #include <cmath>
 #include <damase_ttf.hpp>
@@ -14,6 +15,7 @@ void HandleClayErrors(Clay_ErrorData errorData) {
 Application::Application()
     : m_width(800)
     , m_height(600)
+    , m_frameLimiter(true)
     , m_cameraData(new CustomElementData{
           .type   = CUSTOM_ELEMENT_TYPE_CAMERA,
           .camera = CameraData{
@@ -34,6 +36,7 @@ Application::Application()
         return;
     }
 
+    setFullscreen(Settings::get()->isFullscreen());
     if((m_renderData.renderer = SDL_CreateGPURenderer(NULL, m_window)) == NULL) {
         SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't create renderer: %s\n", SDL_GetError());
         setShouldQuit();
@@ -103,17 +106,10 @@ Application::Application()
     Clay_Initialize(clayMemory, Clay_Dimensions(m_width, m_height), Clay_ErrorHandler(HandleClayErrors));
     Clay_SetMeasureTextFunction(SDL_MeasureText, &m_renderData.fonts);
 
-    if(Settings::get()->isFullscreen()) {
-        SDL_SetWindowFullscreen(m_window, true);
-    }
+    Settings::get()->displayModeChanged.connect<&Application::updateCameraDisplayMode>(this);
+    Settings::get()->frameLimitInfoChanged.connect<&Application::updateFrameLimiter>(this);
 
-    Settings::get()->displayModeChanged.connect([this](CameraDisplayMode mode) {
-        if(m_cameraData == nullptr) {
-            return;
-        }
-
-        m_cameraData->camera.displayMode = mode;
-    });
+    updateFrameLimiter(Settings::get()->getFrameLimitInfo());
 
     m_pointerCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_POINTER);
     m_defaultCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_DEFAULT);
@@ -141,6 +137,52 @@ Application::~Application() {
     SDL_DestroyWindow(m_window);
 
     SDL_Quit();
+}
+
+void Application::updateCameraDisplayMode(CameraDisplayMode mode) {
+    if(m_cameraData == nullptr) {
+        return;
+    }
+
+    m_cameraData->camera.displayMode = mode;
+}
+
+void Application::updateFrameLimiter(FrameLimitInfo info) {
+    m_frameLimitInfo = info;
+    m_fpsText        = std::format("{} FPS", info.fps);
+
+    switch(info.type) {
+    case FRAME_LIMIT_CAMERA:
+        if(m_cameraData == nullptr) {
+            break;
+        }
+
+        SDL_SetRenderVSync(m_renderData.renderer, SDL_RENDERER_VSYNC_DISABLED);
+        m_frameLimiter.setFPSLimit(m_cameraData->camera.spec.framerate_numerator / static_cast<float>(m_cameraData->camera.spec.framerate_denominator));
+
+        break;
+    case FRAME_LIMIT_VSYNC:
+        m_frameLimiter.setFPSLimit(0);
+        SDL_SetRenderVSync(m_renderData.renderer, 1);
+
+        break;
+    case FRAME_LIMIT_VSYNC_ADAPTIVE:
+        m_frameLimiter.setFPSLimit(0);
+        SDL_SetRenderVSync(m_renderData.renderer, SDL_RENDERER_VSYNC_ADAPTIVE);
+
+        break;
+    case FRAME_LIMIT_FPS:
+        SDL_SetRenderVSync(m_renderData.renderer, SDL_RENDERER_VSYNC_DISABLED);
+        m_frameLimiter.setFPSLimit(info.fps);
+
+        break;
+    case FRAME_LIMIT_NONE:
+    default:
+        SDL_SetRenderVSync(m_renderData.renderer, SDL_RENDERER_VSYNC_DISABLED);
+        m_frameLimiter.setFPSLimit(0.0f);
+
+        break;
+    }
 }
 
 bool Application::loop() {
@@ -174,7 +216,9 @@ void Application::render() {
     Clay_RenderCommandArray commands = buildUI();
     SDL_Clay_RenderClayCommands(&m_renderData, &commands);
 
+    m_frameLimiter.limit(true);
     SDL_RenderPresent(m_renderData.renderer);
+    m_frameLimiter.limit(false);
 }
 
 void Application::changeStatus(std::string text, std::chrono::milliseconds timeToExpire) {

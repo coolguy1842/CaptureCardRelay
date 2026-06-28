@@ -5,11 +5,13 @@
 #include <clay.h>
 
 #include <clay_renderer_SDL3.hpp>
+#include <frame_limiter.hpp>
 #include <functional>
 #include <list>
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <settings.hpp>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -57,6 +59,7 @@ private:
 
 private:
     // UI related
+    const Clay_ElementId fpsSliderTrackID          = CLAY_ID("FPSSliderTrack");
     const Clay_ElementId volumeSliderTrackID       = CLAY_ID("VolumeSliderTrack");
     const Clay_TextElementConfig defaultTextConfig = CLAY_TEXT_CONFIG({
         .textColor = { 0xFF, 0xFF, 0xFF, 0xFF },
@@ -90,6 +93,9 @@ private:
     void BuildDisplayModeLabel(const CameraDisplayMode& displayMode);
     void BuildDisplayModeSettings();
 
+    void BuildFrameLimitTypeLabel(const FrameLimitType& type);
+    void BuildFrameLimiterSettings();
+
     void BuildFullscreenSettings();
     void BuildVolumeSettings();
 
@@ -106,6 +112,9 @@ private:
 
     void setCamera(CameraInfo info);
     void setRecordingDevice(RecordingDeviceInfo info);
+
+    void updateCameraDisplayMode(CameraDisplayMode mode);
+    void updateFrameLimiter(FrameLimitInfo info);
 
     void initAudioPlaybackDevices();
 
@@ -133,7 +142,7 @@ private:
 
 private:
     bool m_shouldQuit     = false;
-    bool m_settingsActive = false;
+    bool m_settingsActive = true;
 
     bool m_shouldHideCursor = true;
     bool m_mouseHeld        = false;
@@ -142,6 +151,7 @@ private:
     bool m_shiftHeld    = false;
 
     bool m_slidingVolume = false;
+    bool m_slidingFPS    = false;
 
     std::chrono::time_point<std::chrono::system_clock> m_showCursorExpire;
 
@@ -189,6 +199,13 @@ private:
     bool m_volumeSnapped        = false;
     bool m_volumeFreeDuringSnap = false;
     bool m_volumeInSnapRange    = false;
+
+    FrameLimitInfo m_frameLimitInfo;
+    float m_fpsSliderPosition = 0.0f;
+
+    std::string m_fpsText;
+
+    FrameLimiter m_frameLimiter;
 
     std::vector<CameraInfo> m_cameras;
 

@@ -11,6 +11,25 @@
 #define MAX_VOLUME 150
 #define MIN_VOLUME 0
 
+#define MAX_FPS 250.0f
+#define MIN_FPS 0.0f
+
+enum FrameLimitType {
+    // limits to the cameras refresh rate
+    FRAME_LIMIT_CAMERA,
+    FRAME_LIMIT_VSYNC,
+    FRAME_LIMIT_VSYNC_ADAPTIVE,
+    // limits to user specified frame rate, 0 is unlimited
+    FRAME_LIMIT_FPS,
+    FRAME_LIMIT_NONE,
+};
+
+struct FrameLimitInfo {
+    FrameLimitType type;
+    // only available if type is FPS
+    float fps;
+};
+
 class Settings {
 public:
     ~Settings();
@@ -34,12 +53,16 @@ public:
     CameraDisplayMode getDisplayMode();
     void setDisplayMode(CameraDisplayMode mode);
 
+    FrameLimitInfo getFrameLimitInfo();
+    void setFrameLimitInfo(FrameLimitInfo info);
+
 public:
     rocket::thread_safe_signal<void(SDL_CameraID)> selectedCameraChanged;
     rocket::thread_safe_signal<void(SDL_AudioDeviceID)> selectedRecordingDeviceChanged;
     rocket::thread_safe_signal<void(int)> volumeChanged;
     rocket::thread_safe_signal<void(bool)> fullscreenChanged;
     rocket::thread_safe_signal<void(CameraDisplayMode)> displayModeChanged;
+    rocket::thread_safe_signal<void(FrameLimitInfo)> frameLimitInfoChanged;
 
 protected:
     std::optional<std::string> getValue(std::string key);

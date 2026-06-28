@@ -28,7 +28,7 @@ Nix:
   };
   ```
 - A: Install package with `environment.systemPackages/users.users.<user>.packages = [ inputs.capturecardrelay.packages.${pkgs.stdenv.hostPlatform.system}.default ];`
-- B: Add `inputs.capturecardrelay.nixosModules.default` to nixosSystem modules, and configure with `programs.CaptureCardRelay`.
+- B: Add `inputs.capturecardrelay.nixosModules.<hostPlatform>.default` to nixosSystem modules, and configure with `programs.CaptureCardRelay`.
 
 ### Building
 ```sh
