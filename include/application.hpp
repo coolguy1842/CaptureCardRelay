@@ -142,7 +142,7 @@ private:
 
 private:
     bool m_shouldQuit     = false;
-    bool m_settingsActive = true;
+    bool m_settingsActive = false;
 
     bool m_shouldHideCursor = true;
     bool m_mouseHeld        = false;
