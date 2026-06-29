@@ -1,6 +1,9 @@
 #include <clay_renderer_SDL3.hpp>
+#include <cstddef>
+#include <cstring>
 #include <map>
 #include <stack>
+#include <unordered_map>
 
 Clay_Dimensions SDL_MeasureText(Clay_StringSlice text, Clay_TextElementConfig* config, void* userData) {
     std::vector<TTF_Font*>& fonts = *reinterpret_cast<std::vector<TTF_Font*>*>(userData);
@@ -123,6 +126,13 @@ void SDL_Clay_RenderFillRoundedRect(Clay_SDL3RendererData* rendererData, const S
     if(clampedRadii.bottomRight > 0.0f) SDL_Clay_RenderFilledArc(rendererData, { bottomX + bottomWidth, y + height }, clampedRadii.bottomRight, 0.0f, 90.0f, color); // bottom right
 }
 
+inline bool SDL_Clay_FRectEqual(const SDL_FRect& a, const SDL_FRect& b) {
+    return a.x == b.x &&
+           a.y == b.y &&
+           a.w == b.w &&
+           a.y == b.y;
+}
+
 static std::map<int, const char*> idToName = {
     { CLAY_ID("Settings").id, "Settings" },
     { CLAY_ID("CamerasContainer").id, "Cameras" },
@@ -132,7 +142,17 @@ static std::map<int, const char*> idToName = {
     { CLAY_ID("VolumeSliderHandle").id, "Volume Slider Handle" },
 };
 
-std::stack<SDL_Rect> m_scissorStack;
+// Clay_ElementID.id: text
+static std::unordered_map<uint32_t, TTF_Text*> s_textMap;
+static std::stack<SDL_Rect> s_scissorStack;
+
+void SDL_Clay_Exit() {
+    while(!s_scissorStack.empty()) {
+        s_scissorStack.pop();
+    }
+
+    s_textMap.clear();
+}
 void SDL_Clay_RenderClayCommands(Clay_SDL3RendererData* rendererData, Clay_RenderCommandArray* rcommands) {
     for(int32_t i = 0; i < rcommands->length; i++) {
         Clay_RenderCommand* rcmd            = Clay_RenderCommandArray_Get(rcommands, i);
@@ -164,10 +184,20 @@ void SDL_Clay_RenderClayCommands(Clay_SDL3RendererData* rendererData, Clay_Rende
             TTF_Font* font = rendererData->fonts[config->fontId];
             TTF_SetFontSize(font, config->fontSize);
 
-            TTF_Text* text = TTF_CreateText(rendererData->textEngine, font, config->stringContents.chars, config->stringContents.length);
-            TTF_SetTextColor(text, config->textColor.r, config->textColor.g, config->textColor.b, config->textColor.a);
-            TTF_DrawRendererText(text, rect.x, rect.y);
-            TTF_DestroyText(text);
+            auto it = s_textMap.find(rcmd->id);
+            if(it == s_textMap.end()) {
+                TTF_Text* text = TTF_CreateText(rendererData->textEngine, font, config->stringContents.chars, config->stringContents.length);
+                TTF_SetTextColor(text, config->textColor.r, config->textColor.g, config->textColor.b, config->textColor.a);
+
+                it = s_textMap.emplace(rcmd->id, text).first;
+            }
+            else {
+                TTF_Text* text = it->second;
+                TTF_SetTextColor(text, config->textColor.r, config->textColor.g, config->textColor.b, config->textColor.a);
+                TTF_SetTextString(it->second, config->stringContents.chars, config->stringContents.length);
+            }
+
+            TTF_DrawRendererText(it->second, rect.x, rect.y);
 
             break;
         }
@@ -245,21 +275,21 @@ void SDL_Clay_RenderClayCommands(Clay_SDL3RendererData* rendererData, Clay_Rende
         case CLAY_RENDER_COMMAND_TYPE_SCISSOR_START: {
             Clay_BoundingBox bounds = rcmd->boundingBox;
 
-            if(!m_scissorStack.empty()) {
-                SDL_Rect parent = m_scissorStack.top();
+            if(!s_scissorStack.empty()) {
+                SDL_Rect parent = s_scissorStack.top();
 
                 int minX = SDL_max(parent.x, bounds.x);
                 int maxX = SDL_min(parent.x + parent.w, bounds.x + bounds.width);
 
                 if(maxX - minX < 1) {
-                    m_scissorStack.push({ 0, 0, 0, 0 });
+                    s_scissorStack.push({ 0, 0, 0, 0 });
                     goto setRect;
                 }
 
                 int minY = SDL_max(parent.y, bounds.y);
                 int maxY = SDL_min(parent.y + parent.h, bounds.y + bounds.height);
                 if(maxY - minY < 1) {
-                    m_scissorStack.push({ 0, 0, 0, 0 });
+                    s_scissorStack.push({ 0, 0, 0, 0 });
                     goto setRect;
                 }
 
@@ -270,24 +300,24 @@ void SDL_Clay_RenderClayCommands(Clay_SDL3RendererData* rendererData, Clay_Rende
                     .h = SDL_max(1, maxY - minY),
                 };
 
-                m_scissorStack.push(scissor);
+                s_scissorStack.push(scissor);
             }
             else {
-                m_scissorStack.push({ (int)bounds.x, (int)bounds.y, (int)bounds.width, (int)bounds.height });
+                s_scissorStack.push({ (int)bounds.x, (int)bounds.y, (int)bounds.width, (int)bounds.height });
             }
 
         setRect:
-            SDL_SetRenderClipRect(rendererData->renderer, &m_scissorStack.top());
+            SDL_SetRenderClipRect(rendererData->renderer, &s_scissorStack.top());
 
             break;
         }
         case CLAY_RENDER_COMMAND_TYPE_SCISSOR_END: {
-            if(m_scissorStack.empty()) {
+            if(s_scissorStack.empty()) {
                 break;
             }
 
-            m_scissorStack.pop();
-            SDL_SetRenderClipRect(rendererData->renderer, !m_scissorStack.empty() ? &m_scissorStack.top() : nullptr);
+            s_scissorStack.pop();
+            SDL_SetRenderClipRect(rendererData->renderer, !s_scissorStack.empty() ? &s_scissorStack.top() : nullptr);
 
             break;
         }
@@ -310,11 +340,19 @@ void SDL_Clay_RenderClayCommands(Clay_SDL3RendererData* rendererData, Clay_Rende
                 SDL_SetRenderDrawColor(rendererData->renderer, rcmd->renderData.custom.backgroundColor.r, rcmd->renderData.custom.backgroundColor.g, rcmd->renderData.custom.backgroundColor.b, rcmd->renderData.custom.backgroundColor.a);
                 SDL_RenderFillRect(rendererData->renderer, &rect);
 
-                SDL_Texture*& tex    = data->camera.texture;
-                SDL_CameraSpec& spec = data->camera.spec;
+                CameraData& camera   = data->camera;
+                SDL_Texture*& tex    = camera.texture;
+                SDL_CameraSpec& spec = camera.spec;
 
-                auto lock = std::unique_lock(data->camera.mutex);
-                if(data->camera.device == nullptr || !data->camera.approved) {
+                auto lock = std::unique_lock(camera.mutex);
+                if(camera.device == nullptr || !camera.approved) {
+                    camera.__prevDisplayMode = static_cast<CameraDisplayMode>(-1);
+
+                    if(camera.__pixels != nullptr) {
+                        SDL_free(camera.__pixels);
+                        camera.__pixels = nullptr;
+                    }
+
                     if(tex != nullptr) {
                         SDL_DestroyTexture(tex);
                         tex = nullptr;
@@ -323,25 +361,89 @@ void SDL_Clay_RenderClayCommands(Clay_SDL3RendererData* rendererData, Clay_Rende
                     break;
                 }
 
-                if(tex == nullptr || tex->format != spec.format || tex->w != spec.width || tex->h != spec.height) {
-                    if(tex != nullptr) {
-                        SDL_DestroyTexture(tex);
+                if(
+                    tex == nullptr || tex->w != spec.width || tex->h != spec.height ||
+                    (camera.textureFormat == SDL_PIXELFORMAT_UNKNOWN && tex->format != spec.format) ||
+                    (camera.textureFormat != SDL_PIXELFORMAT_UNKNOWN && tex->format != camera.textureFormat)
+                ) {
+                    camera.__prevDisplayMode = static_cast<CameraDisplayMode>(-1);
+
+                    if(camera.__pixels != nullptr) {
+                        SDL_free(camera.__pixels);
+                        camera.__pixels = nullptr;
                     }
 
-                    tex = SDL_CreateTexture(rendererData->renderer, spec.format, SDL_TEXTUREACCESS_STREAMING, spec.width, spec.height);
+                    if(tex != nullptr) {
+                        SDL_DestroyTexture(tex);
+                        tex = nullptr;
+                    }
+
+                    SDL_PropertiesID props = SDL_CreateProperties();
+                    if(props == 0) {
+                        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to create properties for texture: %s\n", SDL_GetError());
+                        break;
+                    }
+
+                    SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_WIDTH_NUMBER, spec.width);
+                    SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_HEIGHT_NUMBER, spec.height);
+                    SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_ACCESS_NUMBER, SDL_TEXTUREACCESS_STREAMING);
+                    SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_COLORSPACE_NUMBER, spec.colorspace);
+
+                    SDL_PixelFormat format = camera.textureFormat;
+                    if(format == SDL_PIXELFORMAT_UNKNOWN) {
+                        format = spec.format;
+                    }
+
+                    SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_FORMAT_NUMBER, format);
+
+                    if((tex = SDL_CreateTextureWithProperties(rendererData->renderer, props)) == nullptr) {
+                        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to create texture: %s\n", SDL_GetError());
+                        SDL_DestroyProperties(props);
+
+                        break;
+                    }
+
+                    camera.__pitch      = (((tex->w * SDL_BYTESPERPIXEL(tex->format)) + 3) & ~3);
+                    camera.__pixelsSize = (size_t)tex->h * camera.__pitch;
+                    camera.__pixels     = SDL_malloc(camera.__pixelsSize);
+
+                    SDL_DestroyProperties(props);
                 }
 
-                SDL_Surface* surface = SDL_AcquireCameraFrame(data->camera.device, nullptr);
+                SDL_Surface* surface = SDL_AcquireCameraFrame(camera.device, NULL);
                 if(surface != nullptr) {
-                    SDL_UpdateTexture(tex, NULL, surface->pixels, surface->pitch);
-                    SDL_ReleaseCameraFrame(data->camera.device, surface);
+                    switch(tex->format) {
+                    case SDL_PIXELFORMAT_RGB24: {
+                        if(!SDL_ConvertPixels(
+                               tex->w, tex->h,
+                               surface->format, surface->pixels, surface->pitch,
+                               tex->format, camera.__pixels, camera.__pitch
+                           )) {
+                            SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Error converting pixels: %s\n", SDL_GetError());
+                        }
+
+                        SDL_ReleaseCameraFrame(camera.device, surface);
+
+                        void* pixels;
+                        int pitch;
+
+                        SDL_LockTexture(tex, NULL, &pixels, &pitch);
+                        SDL_memmove(pixels, camera.__pixels, camera.__pixelsSize);
+                        SDL_UnlockTexture(tex);
+                        break;
+                    }
+                    default:
+                        SDL_UpdateTexture(tex, NULL, surface->pixels, surface->pitch);
+                        SDL_ReleaseCameraFrame(camera.device, surface);
+                        break;
+                    }
                 }
 
                 lock.unlock();
+                if(!SDL_Clay_FRectEqual(camera.__prevRect, rect) || camera.__prevDisplayMode != camera.displayMode) {
+                    SDL_FRect displayRect = camera.__prevDisplayRect;
 
-                if(tex != nullptr) {
-                    SDL_FRect destRect = rect;
-                    switch(data->camera.displayMode) {
+                    switch(camera.displayMode) {
                     case DISPLAY_MODE_CONTAIN:
                     case DISPLAY_MODE_COVER:   {
                         // most logic here from: https://github.com/nrkn/object-fit-math/blob/master/src/fitter.ts
@@ -349,20 +451,20 @@ void SDL_Clay_RenderClayCommands(Clay_SDL3RendererData* rendererData, Clay_Rende
                         float heightRatio = rect.h / tex->h;
 
                         // min of width vs height ratios
-                        float ratio = data->camera.displayMode == DISPLAY_MODE_CONTAIN
+                        float ratio = camera.displayMode == DISPLAY_MODE_CONTAIN
                                           ? CLAY__MIN(widthRatio, heightRatio)
                                           : CLAY__MAX((rect.w / tex->w), (rect.h / tex->h));
 
-                        destRect.w = tex->w * ratio;
-                        destRect.h = tex->h * ratio;
-                        destRect.x = (rect.w - destRect.w) / 2.0f;
-                        destRect.y = (rect.h - destRect.h) / 2.0f;
+                        displayRect.w = tex->w * ratio;
+                        displayRect.h = tex->h * ratio;
+                        displayRect.x = (rect.w - displayRect.w) / 2.0f;
+                        displayRect.y = (rect.h - displayRect.h) / 2.0f;
 
                         break;
                     }
                     case DISPLAY_MODE_FILL: break;
                     case DISPLAY_MODE_NONE:
-                        destRect = {
+                        displayRect = {
                             .x = 0,
                             .y = 0,
                             .w = static_cast<float>(tex->w),
@@ -373,9 +475,12 @@ void SDL_Clay_RenderClayCommands(Clay_SDL3RendererData* rendererData, Clay_Rende
                     default: break;
                     }
 
-                    SDL_RenderTexture(rendererData->renderer, tex, NULL, &destRect);
+                    camera.__prevRect        = rect;
+                    camera.__prevDisplayRect = displayRect;
+                    camera.__prevDisplayMode = camera.displayMode;
                 }
 
+                SDL_RenderTexture(rendererData->renderer, tex, NULL, &camera.__prevDisplayRect);
                 break;
             }
             default:

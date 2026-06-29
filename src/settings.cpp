@@ -1,3 +1,4 @@
+#include <SDL3/SDL_pixels.h>
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
@@ -8,6 +9,8 @@ const CameraDisplayMode DEFAULT_DISPLAY_MODE = DISPLAY_MODE_CONTAIN;
 
 const FrameLimitType DEFAULT_FRAME_LIMIT_TYPE = FRAME_LIMIT_CAMERA;
 const float DEFAULT_FRAME_LIMIT_FPS           = 0.0f;
+
+const PixelFormat DEFAULT_PIXEL_FORMAT = PIXEL_FORMAT_RGB24;
 
 std::string Settings::getSettingsPath() {
     std::string configPath;
@@ -212,6 +215,25 @@ void Settings::setFrameLimitInfo(FrameLimitInfo info) {
     setValue("frameLimitFPS", std::to_string(info.fps));
 
     frameLimitInfoChanged(info);
+}
+
+PixelFormat Settings::getPixelFormat() {
+    int mode = std::atoi(getValue("pixelFormat").value_or(std::to_string(DEFAULT_PIXEL_FORMAT)).c_str());
+
+    switch(mode) {
+    case PIXEL_FORMAT_CAMERA:
+    case PIXEL_FORMAT_RGB24:
+        return static_cast<PixelFormat>(mode);
+    default:
+        setPixelFormat(DEFAULT_PIXEL_FORMAT);
+        return DEFAULT_PIXEL_FORMAT;
+    }
+}
+
+void Settings::setPixelFormat(PixelFormat format) {
+    setValue("pixelFormat", std::to_string(format));
+
+    pixelFormatChanged(format);
 }
 
 std::optional<std::string> Settings::getValue(std::string key) {

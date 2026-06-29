@@ -1,3 +1,4 @@
+#include <SDL3/SDL_camera.h>
 #include <application.hpp>
 #include <chrono>
 
@@ -69,10 +70,16 @@ void Application::handleEvent(SDL_Event* event) {
         break;
     case SDL_EVENT_CAMERA_DEVICE_APPROVED:
         SDL_Log("Opened camera: %s", m_currentCamera.name);
-        if(!SDL_GetCameraFormat(m_cameraData->camera.device, &m_cameraData->camera.spec)) {
+
+        SDL_CameraSpec spec;
+        if(!SDL_GetCameraFormat(m_cameraData->camera.device, &spec)) {
+            m_cameraData->camera.spec = {};
             SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Camera approved but failed to get format");
             break;
         }
+
+        m_cameraData->camera.spec = spec;
+        SDL_Log("Camera spec: %dx%d@%0.2f - Format: %s - Colorspace: %s", spec.width, spec.height, spec.framerate_numerator / static_cast<float>(spec.framerate_denominator), formatName(spec.format), colorspaceName(spec.colorspace));
 
         m_cameraData->camera.approved = true;
         updateFrameLimiter(m_frameLimitInfo);
@@ -180,6 +187,11 @@ void Application::handleEvent(SDL_Event* event) {
 #ifdef DEBUG
         case SDLK_F12:
             Clay_SetDebugModeEnabled(!Clay_IsDebugModeEnabled());
+            m_showFrametime = Clay_IsDebugModeEnabled();
+
+            break;
+        case SDLK_F3:
+            m_showFrametime = !m_showFrametime;
 
             break;
 #endif

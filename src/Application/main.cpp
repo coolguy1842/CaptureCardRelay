@@ -1,4 +1,5 @@
 #include <SDL3/SDL_render.h>
+#include <SDL3_ttf/SDL_ttf.h>
 #include <application.hpp>
 #include <cmath>
 #include <damase_ttf.hpp>
@@ -16,10 +17,12 @@ Application::Application()
     : m_width(800)
     , m_height(600)
     , m_frameLimiter(true)
+    , m_pixelFormat(Settings::get()->getPixelFormat())
     , m_cameraData(new CustomElementData{
           .type   = CUSTOM_ELEMENT_TYPE_CAMERA,
           .camera = CameraData{
-              .displayMode = Settings::get()->getDisplayMode(),
+              .textureFormat = static_cast<SDL_PixelFormat>(m_pixelFormat),
+              .displayMode   = Settings::get()->getDisplayMode(),
           },
       }) {
     if(!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_CAMERA)) {
@@ -108,6 +111,7 @@ Application::Application()
 
     Settings::get()->displayModeChanged.connect<&Application::updateCameraDisplayMode>(this);
     Settings::get()->frameLimitInfoChanged.connect<&Application::updateFrameLimiter>(this);
+    Settings::get()->pixelFormatChanged.connect<&Application::updateCameraPixelFormat>(this);
 
     updateFrameLimiter(Settings::get()->getFrameLimitInfo());
 
@@ -122,6 +126,9 @@ Application::~Application() {
     closeAudioRecordingDevice();
     closeAudioPlaybackDevice();
 
+    SDL_DestroyCursor(m_pointerCursor);
+    SDL_DestroyCursor(m_defaultCursor);
+
     for(auto font : m_renderData.fonts) {
         if(font == nullptr) {
             continue;
@@ -130,8 +137,7 @@ Application::~Application() {
         TTF_CloseFont(font);
     }
 
-    SDL_DestroyCursor(m_pointerCursor);
-    SDL_DestroyCursor(m_defaultCursor);
+    TTF_DestroyRendererTextEngine(m_renderData.textEngine);
 
     SDL_DestroyRenderer(m_renderData.renderer);
     SDL_DestroyWindow(m_window);
@@ -145,6 +151,15 @@ void Application::updateCameraDisplayMode(CameraDisplayMode mode) {
     }
 
     m_cameraData->camera.displayMode = mode;
+}
+
+void Application::updateCameraPixelFormat(PixelFormat format) {
+    if(m_cameraData == nullptr) {
+        return;
+    }
+
+    m_pixelFormat                      = format;
+    m_cameraData->camera.textureFormat = static_cast<SDL_PixelFormat>(format);
 }
 
 void Application::updateFrameLimiter(FrameLimitInfo info) {

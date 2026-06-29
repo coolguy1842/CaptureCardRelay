@@ -1,4 +1,5 @@
 #include <application.hpp>
+#include <format>
 
 bool Application::Clay_MouseClicked() { return Clay_GetPointerState().state == CLAY_POINTER_DATA_PRESSED_THIS_FRAME; }
 bool Application::Clay_MouseHeld() {
@@ -8,6 +9,9 @@ bool Application::Clay_MouseHeld() {
     default:                                   return false;
     }
 }
+
+bool Application::Clay_MouseReleasedNow() { return Clay_GetPointerState().state == CLAY_POINTER_DATA_RELEASED_THIS_FRAME; }
+bool Application::Clay_MouseReleased() { return !Clay_MouseHeld(); }
 
 bool Application::Clay_DirectlyClicked() {
     if(!Clay_MouseClicked()) {
@@ -29,6 +33,41 @@ Clay_RenderCommandArray Application::buildUI() {
             .custom = { .customData = m_cameraData.get() },
         }
     ) {
+#ifdef DEBUG
+        if(m_showFrametime) {
+            CLAY_AUTO_ID({
+                .layout          = { .padding = CLAY_PADDING_ALL(8) },
+                .backgroundColor = { 0x00, 0x00, 0x00, 0xAF },
+                .cornerRadius    = CLAY_CORNER_RADIUS(6),
+
+                .floating = {
+                    .offset       = { .x = 16, .y = 16 },
+                    .attachPoints = {
+                        .element = CLAY_ATTACH_POINT_LEFT_TOP,
+                        .parent  = CLAY_ATTACH_POINT_LEFT_TOP,
+                    },
+                    .attachTo = CLAY_ATTACH_TO_PARENT,
+                },
+            }) {
+                if(m_frameTimeText.empty() || m_frameLimiter.willFrameTimeRollover()) {
+                    float stableTime = m_frameLimiter.stableFrameTime();
+
+                    m_frameTimeText = std::format(
+                        "FPS: {}  |  {:0.2}ms\nmin: {:0.2}ms\nmax: {:0.2}ms",
+                        static_cast<int64_t>(1000 / stableTime), stableTime,
+                        m_frameLimiter.frameTimeMin(),
+                        m_frameLimiter.frameTimeMax()
+                    );
+                }
+
+                Clay_String str = { .isStaticallyAllocated = false, .length = static_cast<int32_t>(m_frameTimeText.size()), .chars = m_frameTimeText.c_str() };
+                CLAY_TEXT(str, defaultTextConfig);
+            }
+        }
+
+        m_frameLimiter.frameTime();
+#endif
+
         BuildSettingsMenu();
         BuildStatus();
     }
@@ -56,7 +95,7 @@ void Application::updateUI() {
     float deltaTime = static_cast<double>(((now - prev) * 1000 / static_cast<float>(SDL_GetPerformanceFrequency())));
     prev            = now;
 
-    Clay_UpdateScrollContainers(!(m_slidingVolume | m_slidingFPS), Clay_Vector2{ m_mouseWheelX, m_mouseWheelY }, deltaTime);
+    Clay_UpdateScrollContainers(!(m_slidingVolume || m_slidingFPS || m_currentScrollBar != 0), Clay_Vector2{ m_mouseWheelX, m_mouseWheelY }, deltaTime);
     m_mouseWheelX = 0.0f;
     m_mouseWheelY = 0.0f;
 

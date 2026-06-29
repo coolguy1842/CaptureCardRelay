@@ -2,6 +2,7 @@
 #define __CLAY_RENDERER_SDL3_HPP__
 
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_pixels.h>
 #include <SDL3_image/SDL_image.h>
 #include <SDL3_ttf/SDL_ttf.h>
 #include <clay.h>
@@ -32,12 +33,22 @@ enum CameraDisplayMode {
 struct CameraData {
     SDL_Camera* device;
     SDL_Texture* texture;
+    SDL_PixelFormat textureFormat;
 
     bool approved;
     SDL_CameraSpec spec;
 
     CameraDisplayMode displayMode;
     std::mutex mutex;
+
+    // internal
+    void* __pixels;
+    size_t __pixelsSize;
+    int __pitch;
+
+    SDL_FRect __prevRect;
+    SDL_FRect __prevDisplayRect;
+    CameraDisplayMode __prevDisplayMode = static_cast<CameraDisplayMode>(-1);
 };
 
 typedef struct {
@@ -46,6 +57,8 @@ typedef struct {
         CameraData camera;
     };
 } CustomElementData;
+
+void SDL_Clay_Exit();
 
 Clay_Dimensions SDL_MeasureText(Clay_StringSlice text, Clay_TextElementConfig* config, void* userData);
 

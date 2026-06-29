@@ -1,5 +1,6 @@
 #ifndef __APPLICATION_HPP__
 #define __APPLICATION_HPP__
+#include <SDL3/SDL_rect.h>
 #define SDL_MAIN_NOIMPL
 
 #include <clay.h>
@@ -81,11 +82,21 @@ private:
     // only if current element itself is clicked, not including children
     bool Clay_DirectlyClicked();
 
+    bool Clay_MouseReleasedNow();
+    bool Clay_MouseReleased();
+
     void updateUI();
     void updateSettingsUI();
 
+    uint32_t m_currentScrollBar           = 0;
+    SDL_FPoint m_currentScrollClickOrigin = { 0.0f, 0.0f };
+    void Build_ScrollBar(Clay_ElementId id, bool vertical = true);
+
     void BuildCameraLabel(const CameraInfo& info);
     void BuildCameraSettings();
+
+    void BuildPixelFormatLabel(const PixelFormat& format);
+    void BuildPixelFormatSettings();
 
     void BuildRecordingDeviceLabel(const RecordingDeviceInfo& info);
     void BuildRecordingDeviceSettings();
@@ -105,6 +116,9 @@ private:
     Clay_RenderCommandArray buildUI();
 
 private:
+    const char* formatName(SDL_PixelFormat format);
+    const char* colorspaceName(SDL_Colorspace colorspace);
+
     void initCameras();
 
     void openCamera();
@@ -114,6 +128,7 @@ private:
     void setRecordingDevice(RecordingDeviceInfo info);
 
     void updateCameraDisplayMode(CameraDisplayMode mode);
+    void updateCameraPixelFormat(PixelFormat format);
     void updateFrameLimiter(FrameLimitInfo info);
 
     void initAudioPlaybackDevices();
@@ -153,6 +168,9 @@ private:
     bool m_slidingVolume = false;
     bool m_slidingFPS    = false;
 
+    bool m_showFrametime = false;
+
+    std::string m_frameTimeText;
     std::chrono::time_point<std::chrono::system_clock> m_showCursorExpire;
 
     float m_cursorX = 0.0f;
@@ -212,6 +230,7 @@ private:
     std::vector<SDL_AudioDeviceID> m_playbackDevices;
     std::vector<RecordingDeviceInfo> m_recordingDevices;
 
+    PixelFormat m_pixelFormat;
     std::shared_ptr<CustomElementData> m_cameraData;
 
     CameraInfo m_currentCamera                   = { .id = 0, .name = "(null)" };

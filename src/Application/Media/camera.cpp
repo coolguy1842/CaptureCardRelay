@@ -1,10 +1,11 @@
+#include <SDL3/SDL_camera.h>
 #include <application.hpp>
 #include <format>
 #include <mutex>
 #include <set>
 #include <vector>
 
-const char* formatName(SDL_PixelFormat format) {
+const char* Application::formatName(SDL_PixelFormat format) {
     switch(format) {
     case SDL_PIXELFORMAT_UNKNOWN:       return "SDL_PIXELFORMAT_UNKNOWN";
     case SDL_PIXELFORMAT_INDEX1LSB:     return "SDL_PIXELFORMAT_INDEX1LSB";
@@ -71,7 +72,23 @@ const char* formatName(SDL_PixelFormat format) {
     case SDL_PIXELFORMAT_P010:          return "SDL_PIXELFORMAT_P010";
     case SDL_PIXELFORMAT_EXTERNAL_OES:  return "SDL_PIXELFORMAT_EXTERNAL_OES";
     case SDL_PIXELFORMAT_MJPG:          return "SDL_PIXELFORMAT_MJPG";
-    default:                            return "unknown";
+    default:                            return "SDL_PIXELFORMAT_UNKNOWN";
+    }
+}
+
+const char* Application::colorspaceName(SDL_Colorspace colorspace) {
+    switch(colorspace) {
+    case SDL_COLORSPACE_SRGB:           return "SDL_COLORSPACE_SRGB";
+    case SDL_COLORSPACE_SRGB_LINEAR:    return "SDL_COLORSPACE_SRGB_LINEAR";
+    case SDL_COLORSPACE_HDR10:          return "SDL_COLORSPACE_HDR10";
+    case SDL_COLORSPACE_JPEG:           return "SDL_COLORSPACE_JPEG";
+    case SDL_COLORSPACE_BT601_LIMITED:  return "SDL_COLORSPACE_BT601_LIMITED";
+    case SDL_COLORSPACE_BT601_FULL:     return "SDL_COLORSPACE_BT601_FULL";
+    case SDL_COLORSPACE_BT709_LIMITED:  return "SDL_COLORSPACE_BT709_LIMITED";
+    case SDL_COLORSPACE_BT709_FULL:     return "SDL_COLORSPACE_BT709_FULL";
+    case SDL_COLORSPACE_BT2020_LIMITED: return "SDL_COLORSPACE_BT2020_LIMITED";
+    case SDL_COLORSPACE_BT2020_FULL:    return "SDL_COLORSPACE_BT2020_FULL";
+    default:                            return "SDL_COLORSPACE_UNKNOWN";
     }
 }
 

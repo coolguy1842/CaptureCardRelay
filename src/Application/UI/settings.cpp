@@ -1,5 +1,7 @@
+#include "settings.hpp"
 #include <algorithm>
 #include <application.hpp>
+#include <clay_renderer_SDL3.hpp>
 
 #define SEPARATOR CLAY_AUTO_ID({                                                                      \
     .layout          = { .sizing = { .width = CLAY_SIZING_GROW(), .height = CLAY_SIZING_FIXED(2) } }, \
@@ -17,6 +19,7 @@
 #define GROWGROW { .width = CLAY_SIZING_GROW(), .height = CLAY_SIZING_GROW() }
 
 static const Clay_ElementId camerasContainerID          = CLAY_ID("CamerasContainer");
+static const Clay_ElementId pixelFormatContainerID      = CLAY_ID("PixelFormatContainer");
 static const Clay_ElementId recordingDevicesContainerID = CLAY_ID("RecordingDevicesContainer");
 static const Clay_ElementId displayModeContainerID      = CLAY_ID("DisplayModeContainer");
 static const Clay_ElementId frameLimitTypeContainerID   = CLAY_ID("FrameLimitTypeContainer");
@@ -27,6 +30,14 @@ const Clay_String toClayString(const char* str) {
     }
 
     return { .isStaticallyAllocated = true, .length = static_cast<int32_t>(strlen(str)), .chars = str };
+}
+
+Clay_String cameraPixelFormatStr(PixelFormat mode) {
+    switch(mode) {
+    case PIXEL_FORMAT_CAMERA: return toClayString("Camera");
+    case PIXEL_FORMAT_RGB24:  return toClayString("RGB24");
+    default:                  return toClayString("Unknown");
+    }
 }
 
 Clay_String displayModeStr(CameraDisplayMode mode) {
@@ -50,19 +61,100 @@ Clay_String frameLimitTypeStr(FrameLimitType type) {
     }
 }
 
-Clay_ElementDeclaration SettingContainerConfig(Clay_SizingAxis widthSizing = CLAY_SIZING_FIT(), bool clip = false) {
-    return {
-        .layout = {
-            .sizing          = { .width = widthSizing },
-            .padding         = CLAY_PADDING_ALL(12),
-            .childGap        = 6,
-            .layoutDirection = CLAY_TOP_TO_BOTTOM,
-        },
-        .backgroundColor = { 0x34, 0x34, 0x34, 0xFF },
-        .cornerRadius    = CLAY_CORNER_RADIUS(6),
-        .clip            = { .vertical = clip, .childOffset = Clay_GetScrollOffset() },
-        .border          = { .color = { 0xFF, 0xFF, 0xFF, 0xFF }, .width = CLAY_BORDER_OUTSIDE(1) },
-    };
+#define SettingContainer(id, widthSizing, shouldClip)                                                \
+    CLAY_AUTO_ID({                                                                                   \
+        .layout = {                                                                                  \
+            .padding = CLAY_PADDING_ALL(12),                                                         \
+        },                                                                                           \
+        .backgroundColor = { 0x34, 0x34, 0x34, 0xFF },                                               \
+        .cornerRadius    = CLAY_CORNER_RADIUS(6),                                                    \
+        .border          = { .color = { 0xFF, 0xFF, 0xFF, 0xFF }, .width = CLAY_BORDER_OUTSIDE(1) }, \
+    })                                                                                               \
+    CLAY(                                                                                            \
+        id,                                                                                          \
+        {                                                                                            \
+            .layout = {                                                                              \
+                .sizing          = { .width = widthSizing },                                         \
+                .childGap        = 6,                                                                \
+                .layoutDirection = CLAY_TOP_TO_BOTTOM,                                               \
+            },                                                                                       \
+            .clip = { .vertical = shouldClip, .childOffset = Clay_GetScrollOffset() },               \
+        }                                                                                            \
+    )
+
+void Application::Build_ScrollBar(Clay_ElementId id, bool vertical) {
+    Clay_ScrollContainerData scrollData = Clay_GetScrollContainerData(id);
+    Clay_ElementData elementData        = Clay_GetElementData(id);
+    if(
+        !scrollData.found || !elementData.found ||
+        (vertical ? scrollData.scrollContainerDimensions.height >= scrollData.contentDimensions.height : scrollData.scrollContainerDimensions.width >= scrollData.contentDimensions.width)
+    ) {
+        return;
+    }
+
+    Clay_FloatingAttachPoints verticalAttach   = { .element = CLAY_ATTACH_POINT_RIGHT_TOP, .parent = CLAY_ATTACH_POINT_RIGHT_TOP };
+    Clay_FloatingAttachPoints horizontalAttach = { .element = CLAY_ATTACH_POINT_LEFT_BOTTOM, .parent = CLAY_ATTACH_POINT_LEFT_BOTTOM };
+
+    CLAY_AUTO_ID(
+        {
+            .layout = {
+                .sizing = {
+                    .width  = vertical ? CLAY_SIZING_FIXED(6) : CLAY_SIZING_FIXED(scrollData.scrollContainerDimensions.width),
+                    .height = vertical ? CLAY_SIZING_FIXED(scrollData.scrollContainerDimensions.height) : CLAY_SIZING_FIXED(6),
+                },
+            },
+            .floating = {
+                .offset = {
+                    .x = vertical ? 0 : -(scrollData.scrollPosition->x / scrollData.contentDimensions.width) * scrollData.scrollContainerDimensions.width,
+                    .y = vertical ? -(scrollData.scrollPosition->y / scrollData.contentDimensions.height) * scrollData.scrollContainerDimensions.height : 0,
+                },
+                .parentId     = id.id,
+                .zIndex       = 1,
+                .attachPoints = vertical ? verticalAttach : horizontalAttach,
+                .attachTo     = CLAY_ATTACH_TO_ELEMENT_WITH_ID,
+            },
+        }
+    ) {
+        bool parentHovered = Clay_Hovered();
+
+        float handleWidth  = (scrollData.scrollContainerDimensions.width / scrollData.contentDimensions.width) * scrollData.scrollContainerDimensions.width;
+        float handleHeight = (scrollData.scrollContainerDimensions.height / scrollData.contentDimensions.height) * scrollData.scrollContainerDimensions.height;
+
+        Clay_Color regularColor = { 0x54, 0x54, 0x54, 0xFF };
+        Clay_Color hoveredColor = { 0x44, 0x44, 0x44, 0xFF };
+
+        CLAY_AUTO_ID({
+            .layout = {
+                .sizing = {
+                    vertical ? CLAY_SIZING_FIXED(6) : CLAY_SIZING_FIXED(handleWidth),
+                    vertical ? CLAY_SIZING_FIXED(handleHeight) : CLAY_SIZING_FIXED(6),
+                },
+            },
+            .backgroundColor = parentHovered || Clay_Hovered() ? hoveredColor : regularColor,
+            .cornerRadius    = CLAY_CORNER_RADIUS(6),
+        });
+
+        uint32_t currentID = Clay_GetOpenElementId();
+        if(m_currentScrollBar != currentID && parentHovered && Clay_MouseClicked()) {
+            m_currentScrollBar         = currentID;
+            m_currentScrollClickOrigin = { m_cursorX, m_cursorY };
+        }
+
+        if(m_currentScrollBar == currentID) {
+            if(vertical) {
+                float centerOffset  = ((elementData.boundingBox.y + (handleHeight / 2)) - m_cursorY);
+                float scrollPercent = centerOffset / (scrollData.scrollContainerDimensions.height - handleHeight);
+
+                scrollData.scrollPosition->y = scrollPercent * (scrollData.contentDimensions.height - scrollData.scrollContainerDimensions.height);
+            }
+            else {
+                float centerOffset  = ((elementData.boundingBox.x + (handleWidth / 2)) - m_cursorX);
+                float scrollPercent = centerOffset / (scrollData.scrollContainerDimensions.width - handleWidth);
+
+                scrollData.scrollPosition->x = scrollPercent * (scrollData.contentDimensions.width - scrollData.scrollContainerDimensions.width);
+            }
+        }
+    }
 }
 
 void Application::BuildCameraLabel(const Application::CameraInfo& info) {
@@ -89,7 +181,7 @@ void Application::BuildCameraLabel(const Application::CameraInfo& info) {
 }
 
 void Application::BuildCameraSettings() {
-    CLAY(camerasContainerID, SettingContainerConfig(CLAY_SIZING_FIXED(200), true)) {
+    SettingContainer(camerasContainerID, CLAY_SIZING_FIXED(200), true) {
         CONTAINER_TITLE("Camera");
         SEPARATOR;
 
@@ -110,6 +202,56 @@ void Application::BuildCameraSettings() {
             }
         }
     }
+
+    Build_ScrollBar(camerasContainerID);
+}
+
+void Application::BuildPixelFormatLabel(const PixelFormat& format) {
+    CLAY_AUTO_ID() {
+        Clay_TextElementConfig textConfig = defaultTextConfig;
+        if(m_activeDropdown.id == pixelFormatContainerID.id) {
+            if(Clay_Hovered()) {
+                m_nextCursor = m_pointerCursor;
+                textConfig   = hoveredTextConfig;
+
+                if(Clay_MouseClicked()) {
+                    Settings::get()->setPixelFormat(format);
+                    m_activeDropdown = m_invalidDropdown;
+                }
+            }
+
+            if(m_cameraData->camera.textureFormat == static_cast<SDL_PixelFormat>(format)) {
+                textConfig = selectedTextConfig;
+            }
+        }
+
+        CLAY_TEXT(cameraPixelFormatStr(format), textConfig);
+    }
+}
+
+void Application::BuildPixelFormatSettings() {
+    SettingContainer(pixelFormatContainerID, CLAY_SIZING_FIXED(200), true) {
+        CONTAINER_TITLE("Pixel Format");
+        SEPARATOR;
+
+        if(m_activeDropdown.id == pixelFormatContainerID.id) {
+            BuildPixelFormatLabel(PIXEL_FORMAT_RGB24);
+            BuildPixelFormatLabel(PIXEL_FORMAT_CAMERA);
+
+            continue;
+        }
+
+        BuildPixelFormatLabel(m_pixelFormat);
+        if(Clay_Hovered()) {
+            m_nextCursor = m_pointerCursor;
+
+            if(Clay_MouseClicked()) {
+                m_activeDropdown = pixelFormatContainerID;
+            }
+        }
+    }
+
+    Build_ScrollBar(pixelFormatContainerID);
 }
 
 void Application::BuildRecordingDeviceLabel(const RecordingDeviceInfo& info) {
@@ -136,7 +278,7 @@ void Application::BuildRecordingDeviceLabel(const RecordingDeviceInfo& info) {
 }
 
 void Application::BuildRecordingDeviceSettings() {
-    CLAY(recordingDevicesContainerID, SettingContainerConfig(CLAY_SIZING_FIXED(250), true)) {
+    SettingContainer(recordingDevicesContainerID, CLAY_SIZING_FIXED(250), true) {
         CONTAINER_TITLE("Recording Device");
         SEPARATOR;
 
@@ -157,6 +299,8 @@ void Application::BuildRecordingDeviceSettings() {
             }
         }
     }
+
+    Build_ScrollBar(recordingDevicesContainerID);
 }
 
 void Application::BuildDisplayModeLabel(const CameraDisplayMode& displayMode) {
@@ -183,7 +327,7 @@ void Application::BuildDisplayModeLabel(const CameraDisplayMode& displayMode) {
 }
 
 void Application::BuildDisplayModeSettings() {
-    CLAY(displayModeContainerID, SettingContainerConfig(CLAY_SIZING_FIT(), true)) {
+    SettingContainer(displayModeContainerID, CLAY_SIZING_FIT(), true) {
         CONTAINER_TITLE("Display Mode");
         SEPARATOR;
 
@@ -205,9 +349,10 @@ void Application::BuildDisplayModeSettings() {
             }
         }
     }
+
+    Build_ScrollBar(displayModeContainerID);
 }
 
-// TODO: add scroll bar later to bottom of settings screen
 void Application::BuildFrameLimitTypeLabel(const FrameLimitType& type) {
     CLAY_AUTO_ID() {
         Clay_TextElementConfig textConfig = defaultTextConfig;
@@ -217,7 +362,9 @@ void Application::BuildFrameLimitTypeLabel(const FrameLimitType& type) {
                 textConfig   = hoveredTextConfig;
 
                 if(Clay_MouseClicked()) {
-                    Settings::get()->setFrameLimitInfo({ .type = type, .fps = m_frameLimitInfo.fps });
+                    m_frameLimitInfo.type = type;
+                    Settings::get()->setFrameLimitInfo(m_frameLimitInfo);
+
                     m_activeDropdown = m_invalidDropdown;
                 }
             }
@@ -244,7 +391,7 @@ void Application::BuildFrameLimiterSettings() {
         }
     };
 
-    CLAY_AUTO_ID(SettingContainerConfig()) {
+    SettingContainer(CLAY_ID("FrameLimitContainer"), CLAY_SIZING_FIT(), false) {
         CONTAINER_TITLE("Frame Limiting");
         SEPARATOR;
 
@@ -282,6 +429,8 @@ void Application::BuildFrameLimiterSettings() {
                 }
             }
         }
+
+        Build_ScrollBar(frameLimitTypeContainerID);
 
         if(m_frameLimitInfo.type == FRAME_LIMIT_FPS) {
             SEPARATOR;
@@ -332,7 +481,7 @@ void Application::BuildFrameLimiterSettings() {
 }
 
 void Application::BuildFullscreenSettings() {
-    CLAY(CLAY_ID("FullscreenContainer"), SettingContainerConfig()) {
+    SettingContainer(CLAY_ID("FullscreenContainer"), CLAY_SIZING_FIT(), false) {
         CONTAINER_TITLE("Fullscreen");
         SEPARATOR;
 
@@ -387,7 +536,7 @@ void Application::BuildVolumeSettings() {
     const Clay_Color regularColor = { 0x52, 0xFA, 0x4D, 0xFF };
     const Clay_Color extraColor   = { 0xFA, 0x4D, 0x4D, 0xFF };
 
-    CLAY(CLAY_ID("VolumeContainer"), SettingContainerConfig()) {
+    SettingContainer(CLAY_ID("VolumeContainer"), CLAY_SIZING_FIT(), false) {
         CONTAINER_TITLE("Volume");
         SEPARATOR;
 
@@ -453,6 +602,7 @@ void Application::BuildVolumeSettings() {
     }
 }
 
+const Clay_ElementId settingsContainerID = CLAY_ID("SettingsContainer");
 void Application::BuildSettingsMenu() {
     if(!m_settingsActive) {
         return;
@@ -476,13 +626,10 @@ void Application::BuildSettingsMenu() {
             CLAY_ID("Settings"),
             {
                 .layout = {
-                    .sizing   = { CLAY_SIZING_PERCENT(0.66), CLAY_SIZING_PERCENT(0.66) },
-                    .padding  = CLAY_PADDING_ALL(16),
-                    .childGap = 16,
-                },
+                    .sizing  = { CLAY_SIZING_PERCENT(0.66), CLAY_SIZING_PERCENT(0.66) },
+                    .padding = CLAY_PADDING_ALL(16) },
                 .backgroundColor = { 0x24, 0x24, 0x24, 0xEF },
                 .cornerRadius    = CLAY_CORNER_RADIUS(6),
-                .clip            = { .horizontal = true, .childOffset = Clay_GetScrollOffset() },
                 .border          = { .color = { 0x9F, 0x9F, 0x9F, 0xFF }, .width = CLAY_BORDER_OUTSIDE(1) },
             }
         ) {
@@ -490,14 +637,32 @@ void Application::BuildSettingsMenu() {
                 m_activeDropdown = m_invalidDropdown;
             }
 
-            BuildCameraSettings();
-            BuildRecordingDeviceSettings();
-            BuildDisplayModeSettings();
+            CLAY_AUTO_ID({ .layout = { .sizing = GROWGROW, .layoutDirection = CLAY_TOP_TO_BOTTOM } }) {
+                CLAY(
+                    settingsContainerID,
+                    {
+                        .layout = { .sizing = { .height = CLAY_SIZING_GROW() }, .childGap = 16 },
+                        .clip   = { .horizontal = true, .childOffset = Clay_GetScrollOffset() },
+                    }
+                ) {
+                    if(Clay_DirectlyClicked()) {
+                        m_activeDropdown = m_invalidDropdown;
+                    }
 
-            BuildFrameLimiterSettings();
+                    BuildCameraSettings();
+                    BuildRecordingDeviceSettings();
+                    BuildDisplayModeSettings();
+                    BuildPixelFormatSettings();
 
-            BuildFullscreenSettings();
-            BuildVolumeSettings();
+                    BuildFrameLimiterSettings();
+
+                    BuildFullscreenSettings();
+                    BuildVolumeSettings();
+                }
+
+                // Build_ScrollBar(settingsContainerID, true);
+                Build_ScrollBar(settingsContainerID, false);
+            }
         }
     }
 }
@@ -509,18 +674,22 @@ void Application::updateSettingsUI() {
     // offset from snap range to keep snapped variable
     const static int VOLUME_SNAP_RANGE_KEEP = 12;
 
-    if(m_slidingVolume && !Clay_MouseHeld()) {
-        m_slidingVolume        = false;
-        m_volumeSnapped        = false;
-        m_volumeInSnapRange    = false;
-        m_volumeFreeDuringSnap = false;
+    if(Clay_MouseReleasedNow()) {
+        if(m_slidingFPS) {
+            m_slidingFPS = false;
+            Settings::get()->setFrameLimitInfo(m_frameLimitInfo);
+        }
 
-        Settings::get()->setVolume(m_volume);
-    }
+        if(m_slidingVolume) {
+            m_slidingVolume        = false;
+            m_volumeSnapped        = false;
+            m_volumeInSnapRange    = false;
+            m_volumeFreeDuringSnap = false;
 
-    if(m_slidingFPS & !Clay_MouseHeld()) {
-        m_slidingFPS = false;
-        Settings::get()->setFrameLimitInfo(m_frameLimitInfo);
+            Settings::get()->setVolume(m_volume);
+        }
+
+        m_currentScrollBar = 0;
     }
 
     static float prevCursorX = 0.0f;
