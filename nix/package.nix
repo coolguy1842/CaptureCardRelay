@@ -1,6 +1,6 @@
 { pkgs, lib, ... }: pkgs.stdenv.mkDerivation {
     name = "CaptureCardRelay";
-    version = "1.6";
+    version = "1.7";
     src = ../.;
 
     nativeBuildInputs = with pkgs; [
