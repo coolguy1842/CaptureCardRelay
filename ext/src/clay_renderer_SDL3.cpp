@@ -441,7 +441,7 @@ void SDL_Clay_RenderClayCommands(Clay_SDL3RendererData* rendererData, Clay_Rende
 
                 lock.unlock();
                 if(!SDL_Clay_FRectEqual(camera.__prevRect, rect) || camera.__prevDisplayMode != camera.displayMode) {
-                    SDL_FRect displayRect = camera.__prevDisplayRect;
+                    SDL_FRect displayRect = rect;
 
                     switch(camera.displayMode) {
                     case DISPLAY_MODE_CONTAIN:
