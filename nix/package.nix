@@ -33,7 +33,8 @@
         mkdir -p $out/share/applications
         mkdir -p $out/share/icons/hicolor/64x64/apps
         
-        makeWrapper build/CaptureCardRelay $out/bin/CaptureCardRelay \
+        cp build/CaptureCardRelay $out/bin/
+        wrapProgram $out/bin/CaptureCardRelay \
             --add-flags ${lib.escapeShellArg commandLineArgs}
 
         cp assets/capture-card-relay.desktop $out/share/applications
