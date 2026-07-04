@@ -1,4 +1,4 @@
-{ pkgs, lib, ... }: pkgs.stdenv.mkDerivation {
+{ pkgs, lib, commandLineArgs ? "", ... }: pkgs.stdenv.mkDerivation {
     name = "CaptureCardRelay";
     version = "1.7";
     src = ../.;
@@ -9,6 +9,8 @@
         ninja
         cmake
         meson
+
+        makeWrapper
     ];
 
     buildInputs = with pkgs; [
@@ -31,7 +33,9 @@
         mkdir -p $out/share/applications
         mkdir -p $out/share/icons/hicolor/64x64/apps
         
-        cp build/CaptureCardRelay $out/bin/
+        makeWrapper build/CaptureCardRelay $out/bin/CaptureCardRelay \
+            --add-flags ${lib.escapeShellArg commandLineArgs}
+
         cp assets/capture-card-relay.desktop $out/share/applications
         cp assets/capture-card-relay.png $out/share/icons/hicolor/64x64/apps
     '';

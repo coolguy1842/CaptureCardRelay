@@ -2,6 +2,7 @@
 #include <SDL3_ttf/SDL_ttf.h>
 #include <application.hpp>
 #include <cmath>
+#include <cstddef>
 #include <damase_ttf.hpp>
 #include <format>
 #include <settings.hpp>
@@ -13,16 +14,17 @@ void HandleClayErrors(Clay_ErrorData errorData) {
     SDL_LogError(SDL_LOG_CATEGORY_ERROR, "%s\n", errorData.errorText.chars);
 }
 
-Application::Application()
-    : m_width(800)
+Application::Application(const char* settingsPath)
+    : m_settings(settingsPath)
+    , m_width(800)
     , m_height(600)
     , m_frameLimiter(true)
-    , m_pixelFormat(Settings::get()->getPixelFormat())
+    , m_pixelFormat(m_settings.getPixelFormat())
     , m_cameraData(new CustomElementData{
           .type   = CUSTOM_ELEMENT_TYPE_CAMERA,
           .camera = CameraData{
               .textureFormat = static_cast<SDL_PixelFormat>(m_pixelFormat),
-              .displayMode   = Settings::get()->getDisplayMode(),
+              .displayMode   = m_settings.getDisplayMode(),
           },
       }) {
     if(!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_CAMERA)) {
@@ -39,29 +41,35 @@ Application::Application()
         return;
     }
 
-    setFullscreen(Settings::get()->isFullscreen());
-    if((m_renderData.renderer = SDL_CreateGPURenderer(NULL, m_window)) == NULL) {
-        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't create renderer: %s\n", SDL_GetError());
-        setShouldQuit();
+    setFullscreen(m_settings.isFullscreen());
+    if((m_renderData.renderer = SDL_CreateGPURenderer(NULL, m_window)) != NULL) {
+        SDL_GPUDevice* gpu = SDL_GetGPURendererDevice(m_renderData.renderer);
+        if(gpu == nullptr) {
+            SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Created renderer with GPU device, but GPU somehow null: %s", SDL_GetError());
+            setShouldQuit();
 
-        return;
-    }
+            return;
+        }
 
-    SDL_GPUDevice* gpu = SDL_GetGPURendererDevice(m_renderData.renderer);
-    if(gpu == nullptr) {
-        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Created renderer with GPU device, but GPU somehow null: %s\n", SDL_GetError());
-        setShouldQuit();
-
-        return;
-    }
-
-    SDL_PropertiesID props = SDL_GetGPUDeviceProperties(gpu);
-    if(props != 0) {
-        const char* name = SDL_GetStringProperty(props, SDL_PROP_GPU_DEVICE_NAME_STRING, "");
-        SDL_Log("Created renderer with GPU: %s\n\n", name);
+        SDL_PropertiesID props = SDL_GetGPUDeviceProperties(gpu);
+        if(props != 0) {
+            const char* name = SDL_GetStringProperty(props, SDL_PROP_GPU_DEVICE_NAME_STRING, "");
+            SDL_Log("Created renderer with GPU: %s\n\n", name);
+        }
+        else {
+            SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to get GPU name: %s\n", SDL_GetError());
+        }
     }
     else {
-        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to get GPU name: %s\n\n", SDL_GetError());
+        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't create GPU renderer, using SDL_CreateRenderer: %s", SDL_GetError());
+        if((m_renderData.renderer = SDL_CreateRenderer(m_window, NULL)) == NULL) {
+            SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't create renderer: %s", SDL_GetError());
+            setShouldQuit();
+
+            return;
+        }
+
+        SDL_Log("Created renderer.");
     }
 
     if(!TTF_Init()) {
@@ -86,7 +94,7 @@ Application::Application()
         return;
     }
 
-    m_volume     = Settings::get()->getVolume();
+    m_volume     = m_settings.getVolume();
     m_volumeText = std::format("{}%", m_volume);
 
     SDL_PumpEvents();
@@ -109,11 +117,11 @@ Application::Application()
     Clay_Initialize(clayMemory, Clay_Dimensions(m_width, m_height), Clay_ErrorHandler(HandleClayErrors));
     Clay_SetMeasureTextFunction(SDL_MeasureText, &m_renderData.fonts);
 
-    Settings::get()->displayModeChanged.connect<&Application::updateCameraDisplayMode>(this);
-    Settings::get()->frameLimitInfoChanged.connect<&Application::updateFrameLimiter>(this);
-    Settings::get()->pixelFormatChanged.connect<&Application::updateCameraPixelFormat>(this);
+    m_settings.displayModeChanged.connect<&Application::updateCameraDisplayMode>(this);
+    m_settings.frameLimitInfoChanged.connect<&Application::updateFrameLimiter>(this);
+    m_settings.pixelFormatChanged.connect<&Application::updateCameraPixelFormat>(this);
 
-    updateFrameLimiter(Settings::get()->getFrameLimitInfo());
+    updateFrameLimiter(m_settings.getFrameLimitInfo());
 
     m_pointerCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_POINTER);
     m_defaultCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_DEFAULT);
@@ -251,7 +259,7 @@ void Application::setVolume(int volume, bool showStatus, bool save) {
     m_volumeText = std::format("{}%", m_volume);
 
     if(save) {
-        Settings::get()->setVolume(volume);
+        m_settings.setVolume(volume);
     }
 
     updateVolume(showStatus);

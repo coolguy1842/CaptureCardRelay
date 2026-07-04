@@ -4,7 +4,6 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_pixels.h>
 #include <clay_renderer_SDL3.hpp>
-
 #include <rocket.hpp>
 #include <string>
 #include <unordered_map>
@@ -39,33 +38,39 @@ struct FrameLimitInfo {
 
 class Settings {
 public:
+    Settings(const char* manualFile = NULL);
     ~Settings();
 
-    static Settings* get();
-    static void close();
-
+    bool canSetSelectedCamera() const;
     SDL_CameraID getSelectedCamera();
     void setSelectedCamera(SDL_CameraID camera);
 
+    bool canSetRecordingDevice() const;
     SDL_AudioDeviceID getSelectedRecordingDevice();
     void setSelectedRecordingDevice(SDL_AudioDeviceID recordingDevice);
 
-    // 0 to 150
-    int getVolume();
-    void setVolume(int volume);
-
-    bool isFullscreen();
-    void setFullscreen(bool fullscreen = true);
-
+    bool canSetDisplayMode() const;
     CameraDisplayMode getDisplayMode();
     void setDisplayMode(CameraDisplayMode mode);
 
+    // display format, camera is fastest, but may have issues, defaults to RGB24
+    bool canSetPixelFormat() const;
+    PixelFormat getPixelFormat();
+    void setPixelFormat(PixelFormat format);
+
+    bool canSetFrameLimitType() const;
+    bool canSetFrameLimitFPS() const;
     FrameLimitInfo getFrameLimitInfo();
     void setFrameLimitInfo(FrameLimitInfo info);
 
-    // display format, camera is fastest, but may have issues, defaults to RGB24
-    PixelFormat getPixelFormat();
-    void setPixelFormat(PixelFormat format);
+    bool canSetFullscreen() const;
+    bool isFullscreen();
+    void setFullscreen(bool fullscreen = true);
+
+    // 0 to 150
+    bool canSetVolume() const;
+    int getVolume();
+    void setVolume(int volume);
 
 public:
     rocket::thread_safe_signal<void(SDL_CameraID)> selectedCameraChanged;
@@ -78,18 +83,24 @@ public:
 
 protected:
     std::optional<std::string> getValue(std::string key);
-    void setValue(std::string key, std::string value);
+    // if the value was locked then false is returned
+    bool setValue(std::string key, std::string value);
+    bool valueLocked(std::string key) const;
 
-    void clearValue(std::string key);
+    // same as setValue
+    bool clearValue(std::string key);
 
+    void loadLocked(std::string path);
     void load();
+
     void save();
 
 private:
     std::string getSettingsPath();
-    std::unordered_map<std::string, std::string> m_cache;
 
-    Settings();
+    // priority is given to locked, locked options can't change
+    std::unordered_map<std::string, std::string> m_lockedCache;
+    std::unordered_map<std::string, std::string> m_cache;
 };
 
 #endif

@@ -190,16 +190,15 @@ uint16_t getFormatScore(const SDL_PixelFormat& format) {
 };
 
 void Application::openCamera() {
-    if(m_cameraData->camera.device != nullptr) {
-        closeCamera();
-    }
-
+    // cleanup old data
+    closeCamera();
     initCameras();
+
     if(m_cameras.empty()) {
         return;
     }
 
-    SDL_CameraID camID = Settings::get()->getSelectedCamera();
+    SDL_CameraID camID = m_settings.getSelectedCamera();
     if(camID == 0) {
         camID = m_cameras[0].id;
     }
@@ -276,7 +275,7 @@ void Application::closeCamera(bool shouldLock) {
 }
 
 void Application::setCamera(Application::CameraInfo info) {
-    Settings::get()->setSelectedCamera(info.id);
+    m_settings.setSelectedCamera(info.id);
 
     const char* cameraName = "(null)";
     if(info.id != 0) {

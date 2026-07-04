@@ -160,7 +160,10 @@ void Application::Build_ScrollBar(Clay_ElementId id, bool vertical) {
 void Application::BuildCameraLabel(const Application::CameraInfo& info) {
     CLAY_AUTO_ID() {
         Clay_TextElementConfig textConfig = defaultTextConfig;
-        if(m_activeDropdown.id == camerasContainerID.id) {
+        if(!m_settings.canSetSelectedCamera()) {
+            textConfig = lockedTextConfig;
+        }
+        else if(m_activeDropdown.id == camerasContainerID.id) {
             if(Clay_Hovered()) {
                 m_nextCursor = m_pointerCursor;
                 textConfig   = hoveredTextConfig;
@@ -194,7 +197,7 @@ void Application::BuildCameraSettings() {
         }
 
         BuildCameraLabel(m_currentCamera);
-        if(Clay_Hovered()) {
+        if(m_settings.canSetSelectedCamera() && Clay_Hovered()) {
             m_nextCursor = m_pointerCursor;
 
             if(Clay_MouseClicked()) {
@@ -209,13 +212,16 @@ void Application::BuildCameraSettings() {
 void Application::BuildPixelFormatLabel(const PixelFormat& format) {
     CLAY_AUTO_ID() {
         Clay_TextElementConfig textConfig = defaultTextConfig;
-        if(m_activeDropdown.id == pixelFormatContainerID.id) {
+        if(!m_settings.canSetPixelFormat()) {
+            textConfig = lockedTextConfig;
+        }
+        else if(m_activeDropdown.id == pixelFormatContainerID.id) {
             if(Clay_Hovered()) {
                 m_nextCursor = m_pointerCursor;
                 textConfig   = hoveredTextConfig;
 
                 if(Clay_MouseClicked()) {
-                    Settings::get()->setPixelFormat(format);
+                    m_settings.setPixelFormat(format);
                     m_activeDropdown = m_invalidDropdown;
                 }
             }
@@ -242,7 +248,7 @@ void Application::BuildPixelFormatSettings() {
         }
 
         BuildPixelFormatLabel(m_pixelFormat);
-        if(Clay_Hovered()) {
+        if(m_settings.canSetPixelFormat() && Clay_Hovered()) {
             m_nextCursor = m_pointerCursor;
 
             if(Clay_MouseClicked()) {
@@ -257,7 +263,10 @@ void Application::BuildPixelFormatSettings() {
 void Application::BuildRecordingDeviceLabel(const RecordingDeviceInfo& info) {
     CLAY_AUTO_ID() {
         Clay_TextElementConfig textConfig = defaultTextConfig;
-        if(m_activeDropdown.id == recordingDevicesContainerID.id) {
+        if(!m_settings.canSetRecordingDevice()) {
+            textConfig = lockedTextConfig;
+        }
+        else if(m_activeDropdown.id == recordingDevicesContainerID.id) {
             if(Clay_Hovered()) {
                 m_nextCursor = m_pointerCursor;
                 textConfig   = hoveredTextConfig;
@@ -291,7 +300,7 @@ void Application::BuildRecordingDeviceSettings() {
         }
 
         BuildRecordingDeviceLabel(m_currentRecordingDevice);
-        if(Clay_Hovered()) {
+        if(m_settings.canSetRecordingDevice() && Clay_Hovered()) {
             m_nextCursor = m_pointerCursor;
 
             if(Clay_MouseClicked()) {
@@ -306,13 +315,16 @@ void Application::BuildRecordingDeviceSettings() {
 void Application::BuildDisplayModeLabel(const CameraDisplayMode& displayMode) {
     CLAY_AUTO_ID() {
         Clay_TextElementConfig textConfig = defaultTextConfig;
-        if(m_activeDropdown.id == displayModeContainerID.id) {
+        if(!m_settings.canSetDisplayMode()) {
+            textConfig = lockedTextConfig;
+        }
+        else if(m_activeDropdown.id == displayModeContainerID.id) {
             if(Clay_Hovered()) {
                 m_nextCursor = m_pointerCursor;
                 textConfig   = hoveredTextConfig;
 
                 if(Clay_MouseClicked()) {
-                    Settings::get()->setDisplayMode(displayMode);
+                    m_settings.setDisplayMode(displayMode);
                     m_activeDropdown = m_invalidDropdown;
                 }
             }
@@ -341,7 +353,7 @@ void Application::BuildDisplayModeSettings() {
         }
 
         BuildDisplayModeLabel(m_cameraData->camera.displayMode);
-        if(Clay_Hovered()) {
+        if(m_settings.canSetDisplayMode() && Clay_Hovered()) {
             m_nextCursor = m_pointerCursor;
 
             if(Clay_MouseClicked()) {
@@ -356,14 +368,17 @@ void Application::BuildDisplayModeSettings() {
 void Application::BuildFrameLimitTypeLabel(const FrameLimitType& type) {
     CLAY_AUTO_ID() {
         Clay_TextElementConfig textConfig = defaultTextConfig;
-        if(m_activeDropdown.id == frameLimitTypeContainerID.id) {
+        if(!m_settings.canSetFrameLimitType()) {
+            textConfig = lockedTextConfig;
+        }
+        else if(m_activeDropdown.id == frameLimitTypeContainerID.id) {
             if(Clay_Hovered()) {
                 m_nextCursor = m_pointerCursor;
                 textConfig   = hoveredTextConfig;
 
                 if(Clay_MouseClicked()) {
                     m_frameLimitInfo.type = type;
-                    Settings::get()->setFrameLimitInfo(m_frameLimitInfo);
+                    m_settings.setFrameLimitInfo(m_frameLimitInfo);
 
                     m_activeDropdown = m_invalidDropdown;
                 }
@@ -379,8 +394,11 @@ void Application::BuildFrameLimitTypeLabel(const FrameLimitType& type) {
 }
 
 void Application::BuildFrameLimiterSettings() {
-    const auto checkSliderClicked = [this]() {
-        if(Clay_Hovered()) {
+    const bool canSetType = m_settings.canSetFrameLimitType();
+    const bool canSetFPS  = m_settings.canSetFrameLimitFPS();
+
+    const auto checkSliderClicked = [this, canSetFPS]() {
+        if(canSetFPS && Clay_Hovered()) {
             if(!Clay_MouseHeld()) {
                 m_nextCursor = m_pointerCursor;
             }
@@ -417,11 +435,11 @@ void Application::BuildFrameLimiterSettings() {
             }
 
             CLAY_AUTO_ID() {
-                CLAY_TEXT(CLAY_STRING("Type: "), defaultTextConfig);
+                CLAY_TEXT(CLAY_STRING("Type: "), canSetType ? defaultTextConfig : lockedTextConfig);
                 BuildFrameLimitTypeLabel(m_frameLimitInfo.type);
             }
 
-            if(Clay_Hovered()) {
+            if(canSetType && Clay_Hovered()) {
                 m_nextCursor = m_pointerCursor;
 
                 if(Clay_MouseClicked()) {
@@ -447,12 +465,15 @@ void Application::BuildFrameLimiterSettings() {
 
                 Clay_ElementData data = Clay_GetElementData(fpsSliderTrackID);
                 if(data.found && data.boundingBox.width != 0.0f) {
+                    Clay_Color handleDefaultColor = { 0xFF, 0xFF, 0xFF, 0xFF };
+                    Clay_Color handleLockedColor  = { 0xAF, 0xAF, 0xAF, 0xFF };
+
                     CLAY_AUTO_ID({
                         .layout = {
                             .sizing  = { .width = CLAY_SIZING_FIXED(6), .height = CLAY_SIZING_FIXED(12) },
                             .padding = CLAY_PADDING_ALL(1),
                         },
-                        .backgroundColor = { 0xFF, 0xFF, 0xFF, 0xFF },
+                        .backgroundColor = canSetFPS ? handleDefaultColor : handleLockedColor,
                         .cornerRadius    = CLAY_CORNER_RADIUS(4),
 
                         .floating = {
@@ -473,7 +494,7 @@ void Application::BuildFrameLimiterSettings() {
             CLAY_AUTO_ID({ .layout = { .sizing = { .width = CLAY_SIZING_GROW() }, .padding = { 0, 0, 6, 0 }, .childAlignment = { .x = CLAY_ALIGN_X_CENTER } } }) {
                 CLAY_TEXT(
                     toClayString(m_fpsText.c_str()),
-                    CLAY_TEXT_CONFIG({ .textColor = defaultTextConfig.textColor, .fontSize = static_cast<uint16_t>(defaultTextConfig.fontSize - 4) })
+                    CLAY_TEXT_CONFIG({ .textColor = canSetFPS ? defaultTextConfig.textColor : lockedTextConfig.textColor, .fontSize = static_cast<uint16_t>(defaultTextConfig.fontSize - 4) })
                 );
             }
         }
@@ -481,6 +502,8 @@ void Application::BuildFrameLimiterSettings() {
 }
 
 void Application::BuildFullscreenSettings() {
+    const bool canSetFullscreen = m_settings.canSetFullscreen();
+
     SettingContainer(CLAY_ID("FullscreenContainer"), CLAY_SIZING_FIT(), false) {
         CONTAINER_TITLE("Fullscreen");
         SEPARATOR;
@@ -491,19 +514,22 @@ void Application::BuildFullscreenSettings() {
         const Clay_Sizing regularSizing = { .width = CLAY_SIZING_FIXED(baseSize), .height = CLAY_SIZING_FIXED(baseSize) };
         const Clay_Sizing hoveredSizing = { .width = CLAY_SIZING_FIXED(baseSize + hoveredSizeOffset), .height = CLAY_SIZING_FIXED(baseSize + hoveredSizeOffset) };
 
+        const Clay_Color boxRegularColor = { 0xFF, 0xFF, 0xFF, 0xFF };
+        const Clay_Color boxLockedColor  = { 0xAF, 0xAF, 0xAF, 0xFF };
+
         CLAY_AUTO_ID({ .layout = { .sizing = { .width = CLAY_SIZING_GROW() }, .childAlignment = { .x = CLAY_ALIGN_X_CENTER } } }) {
             CLAY(
                 CLAY_ID("FullscreenToggleButton"),
                 {
                     .layout = {
-                        .sizing  = Clay_Hovered() ? hoveredSizing : regularSizing,
+                        .sizing  = canSetFullscreen && Clay_Hovered() ? hoveredSizing : regularSizing,
                         .padding = CLAY_PADDING_ALL(2),
                     },
-                    .backgroundColor = { 0xFF, 0xFF, 0xFF, 0xFF },
+                    .backgroundColor = canSetFullscreen ? boxRegularColor : boxLockedColor,
                     .cornerRadius    = CLAY_CORNER_RADIUS(2),
                 }
             ) {
-                if(Clay_Hovered()) {
+                if(canSetFullscreen && Clay_Hovered()) {
                     if(Clay_MouseClicked()) {
                         setFullscreen(!m_isFullscreen);
                     }
@@ -511,18 +537,26 @@ void Application::BuildFullscreenSettings() {
                     m_nextCursor = m_pointerCursor;
                 }
 
-                const Clay_Color fullscreenColor    = { 0x36, 0x7E, 0xFF, 0xFF };
-                const Clay_Color nonFullscreenColor = { 0xAF, 0xAF, 0xAF, 0xFF };
+                const Clay_Color fullscreenRegularColor = { 0x36, 0x7E, 0xFF, 0xFF };
+                const Clay_Color fullscreenLockedColor  = { 0x20, 0x41, 0x8C, 0xFF };
 
-                CLAY(CLAY_ID("FullscreenToggleButtonInner"), { .layout = { .sizing = GROWGROW }, .backgroundColor = m_isFullscreen ? fullscreenColor : nonFullscreenColor });
+                const Clay_Color nonFullscreenRegularColor = { 0xAF, 0xAF, 0xAF, 0xFF };
+                const Clay_Color nonFullscreenLockedColor  = { 0x70, 0x70, 0x70, 0xFF };
+
+                const Clay_Color color = m_isFullscreen
+                                             ? (canSetFullscreen ? fullscreenRegularColor : fullscreenLockedColor)
+                                             : (canSetFullscreen ? nonFullscreenRegularColor : nonFullscreenLockedColor);
+
+                CLAY(CLAY_ID("FullscreenToggleButtonInner"), { .layout = { .sizing = GROWGROW }, .backgroundColor = color });
             }
         }
     }
 }
 
 void Application::BuildVolumeSettings() {
-    const auto checkSliderClicked = [this]() {
-        if(Clay_Hovered()) {
+    const bool canSetVolume       = m_settings.canSetVolume();
+    const auto checkSliderClicked = [this, canSetVolume]() {
+        if(canSetVolume && Clay_Hovered()) {
             if(!Clay_MouseHeld()) {
                 m_nextCursor = m_pointerCursor;
             }
@@ -533,8 +567,11 @@ void Application::BuildVolumeSettings() {
         }
     };
 
-    const Clay_Color regularColor = { 0x52, 0xFA, 0x4D, 0xFF };
-    const Clay_Color extraColor   = { 0xFA, 0x4D, 0x4D, 0xFF };
+    const Clay_Color regularColor       = { 0x52, 0xFA, 0x4D, 0xFF };
+    const Clay_Color regularLockedColor = { 0x2E, 0x96, 0x2E, 0xFF };
+
+    const Clay_Color extraColor       = { 0xFA, 0x4D, 0x4D, 0xFF };
+    const Clay_Color extraLockedColor = { 0xA6, 0x37, 0x37, 0xFF };
 
     SettingContainer(CLAY_ID("VolumeContainer"), CLAY_SIZING_FIT(), false) {
         CONTAINER_TITLE("Volume");
@@ -554,7 +591,7 @@ void Application::BuildVolumeSettings() {
                 {
                     // 0 to 100% volume
                     .layout          = { .sizing = { .width = CLAY_SIZING_PERCENT(100.0f / MAX_VOLUME), .height = CLAY_SIZING_GROW() } },
-                    .backgroundColor = regularColor,
+                    .backgroundColor = canSetVolume ? regularColor : regularLockedColor,
                     .cornerRadius    = { 6, 0, 6, 0 },
                 }
             );
@@ -563,19 +600,22 @@ void Application::BuildVolumeSettings() {
                 CLAY_ID("VolumeTrackExtraRange"),
                 {
                     .layout          = { .sizing = GROWGROW },
-                    .backgroundColor = extraColor,
+                    .backgroundColor = canSetVolume ? extraColor : extraLockedColor,
                     .cornerRadius    = { 0, 6, 0, 6 },
                 }
             );
 
             Clay_ElementData data = Clay_GetElementData(volumeSliderTrackID);
             if(data.found && data.boundingBox.width != 0.0f) {
+                Clay_Color handleDefaultColor = { 0xFF, 0xFF, 0xFF, 0xFF };
+                Clay_Color handleLockedColor  = { 0xAF, 0xAF, 0xAF, 0xFF };
+
                 CLAY_AUTO_ID({
                     .layout = {
                         .sizing  = { .width = CLAY_SIZING_FIXED(6), .height = CLAY_SIZING_FIXED(12) },
                         .padding = CLAY_PADDING_ALL(1),
                     },
-                    .backgroundColor = { 0xFF, 0xFF, 0xFF, 0xFF },
+                    .backgroundColor = canSetVolume ? handleDefaultColor : handleLockedColor,
                     .cornerRadius    = CLAY_CORNER_RADIUS(4),
 
                     .floating = {
@@ -596,7 +636,7 @@ void Application::BuildVolumeSettings() {
         CLAY_AUTO_ID({ .layout = { .sizing = { .width = CLAY_SIZING_GROW() }, .padding = { 0, 0, 6, 0 }, .childAlignment = { .x = CLAY_ALIGN_X_CENTER } } }) {
             CLAY_TEXT(
                 toClayString(m_volumeText.c_str()),
-                CLAY_TEXT_CONFIG({ .textColor = defaultTextConfig.textColor, .fontSize = static_cast<uint16_t>(defaultTextConfig.fontSize - 4) })
+                CLAY_TEXT_CONFIG({ .textColor = canSetVolume ? defaultTextConfig.textColor : lockedTextConfig.textColor, .fontSize = static_cast<uint16_t>(defaultTextConfig.fontSize - 4) })
             );
         }
     }
@@ -677,7 +717,7 @@ void Application::updateSettingsUI() {
     if(Clay_MouseReleasedNow()) {
         if(m_slidingFPS) {
             m_slidingFPS = false;
-            Settings::get()->setFrameLimitInfo(m_frameLimitInfo);
+            m_settings.setFrameLimitInfo(m_frameLimitInfo);
         }
 
         if(m_slidingVolume) {
@@ -686,7 +726,7 @@ void Application::updateSettingsUI() {
             m_volumeInSnapRange    = false;
             m_volumeFreeDuringSnap = false;
 
-            Settings::get()->setVolume(m_volume);
+            m_settings.setVolume(m_volume);
         }
 
         m_currentScrollBar = 0;

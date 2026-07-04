@@ -33,13 +33,21 @@ void Application::handleEvent(SDL_Event* event) {
 
         break;
     case SDL_EVENT_WINDOW_ENTER_FULLSCREEN:
+        if(!m_settings.canSetFullscreen()) {
+            break;
+        }
+
         m_isFullscreen = true;
-        Settings::get()->setFullscreen(true);
+        m_settings.setFullscreen(true);
 
         break;
     case SDL_EVENT_WINDOW_LEAVE_FULLSCREEN:
+        if(!m_settings.canSetFullscreen()) {
+            break;
+        }
+
         m_isFullscreen = false;
-        Settings::get()->setFullscreen(false);
+        m_settings.setFullscreen(false);
 
         break;
     case SDL_EVENT_MOUSE_BUTTON_DOWN:
@@ -107,7 +115,7 @@ void Application::handleEvent(SDL_Event* event) {
     case SDL_EVENT_KEY_DOWN:
         switch(event->key.key) {
         case SDLK_LEFT: {
-            if(m_cameras.empty()) {
+            if(m_cameras.empty() || !m_settings.canSetSelectedCamera()) {
                 break;
             }
 
@@ -144,7 +152,7 @@ void Application::handleEvent(SDL_Event* event) {
             break;
         }
         case SDLK_RIGHT: {
-            if(m_recordingDevices.empty()) {
+            if(m_recordingDevices.empty() || !m_settings.canSetRecordingDevice()) {
                 break;
             }
 
@@ -171,19 +179,30 @@ void Application::handleEvent(SDL_Event* event) {
             break;
         }
         case SDLK_UP:
-            setVolume(std::min(Settings::get()->getVolume() + 5, 150));
-            goto volumeStatus;
-        case SDLK_DOWN:
-            setVolume(std::max(Settings::get()->getVolume() - 5, 0));
-            goto volumeStatus;
-        volumeStatus:
+            if(!m_settings.canSetVolume()) {
+                break;
+            }
+
+            setVolume(std::min(m_settings.getVolume() + 5, 150));
             updateVolume();
 
             break;
-        case SDLK_F11: {
+        case SDLK_DOWN:
+            if(!m_settings.canSetVolume()) {
+                break;
+            }
+
+            setVolume(std::max(m_settings.getVolume() - 5, 0));
+            updateVolume();
+
+            break;
+        case SDLK_F11:
+            if(!m_settings.canSetFullscreen()) {
+                break;
+            }
+
             setFullscreen(!m_isFullscreen);
             break;
-        }
 #ifdef DEBUG
         case SDLK_F12:
             Clay_SetDebugModeEnabled(!Clay_IsDebugModeEnabled());

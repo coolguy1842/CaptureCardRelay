@@ -18,5 +18,18 @@
 
     programs.CaptureCardRelay = {
         enable = true;
+        settings = {
+            camera = "Live Gamer MINI";
+            recordingDevice = "Live Gamer MINI Analog Stereo";
+
+            displayMode = "fill";
+            pixelFormat = "rgb24";
+
+            frameLimiting = "fps";
+            fps = 59.998;
+            
+            fullscreen = true;
+            volume = 75;
+        };
     };
 }

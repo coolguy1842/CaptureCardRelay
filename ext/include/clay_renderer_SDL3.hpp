@@ -47,8 +47,8 @@ struct CameraData {
     int __pitch;
 
     SDL_FRect __prevRect;
-    SDL_FRect __prevDisplayRect;
     CameraDisplayMode __prevDisplayMode = static_cast<CameraDisplayMode>(-1);
+    SDL_FRect __displayRect;
 };
 
 typedef struct {

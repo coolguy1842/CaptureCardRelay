@@ -1,15 +1,30 @@
 # Capture Card Relay
+#### Tested on NixOS, ArchLinux, Windows
+
 While this is meant for viewing and listening to a capture cards output, it is, essentially, a webcam viewer and a microphone relay.
 
-#### Tested on NixOS, ArchLinux, Windows
-### Controls
+<br>
 
-| Key | Action                        |
-| --- | ----------------------------- |
-| Left Arrow    | Cycle Camera        |
-| Right Arrow   | Cycle Microphone    |
-| Up/Down Arrow | Up/Lower Volume     |
-| O             | Open Settings Menu  |
+<strong>This program is feature complete.</strong><br>
+I will try fix any bugs reported or that I find, if a feature request is given, I may implement it. 
+
+### Controls
+| Key | Action                       |
+| --- | ---------------------------- |
+| Left Arrow    | Cycle Cameras      |
+| Right Arrow   | Cycle Microphones  |
+| Up/Down Arrow | Raise/Lower Volume |
+| O             | Open Settings Menu |
+
+### Settings
+Currently, there are settings for:
+  - Camera
+  - Microphone
+  - Display Mode (Letterbox/Cover etc)
+  - Pixel Format (for compatibility, Camera is fastest, but less compatible)
+  - Frame Limiting (Camera is likely to be best, and is default)
+  - Fullscreen
+  - Volume
 
 ### Installing<br><sub>NOTE: Others may be added if requested, otherwise build manually.</sub>
 
@@ -28,7 +43,7 @@ Nix:
   };
   ```
 - A: Install package with `environment.systemPackages/users.users.<user>.packages = [ inputs.capturecardrelay.packages.${pkgs.stdenv.hostPlatform.system}.default ];`
-- B: Add `inputs.capturecardrelay.nixosModules.<hostPlatform>.default` to nixosSystem modules, and configure with `programs.CaptureCardRelay`.
+- B: Add `inputs.capturecardrelay.nixosModules.<hostPlatform>.default` to nixosSystem modules, and configure with `programs.CaptureCardRelay`. See [module.nix](https://github.com/coolguy1842/CaptureCardRelay/blob/master/nix/module.nix) for settings
 
 ### Building
 ```sh
@@ -41,9 +56,7 @@ meson compile -C build
 ./build/CaptureCardRelay
 ```
 
-### TODO:
-- Add VSync & Frame Limiter
-
 ## Thanks To
+- [SDL3](https://github.com/libsdl-org/SDL) Great cross-platform multimedia library
 - [Clay](https://github.com/nicbarker/clay) Great UI layout library.
 - [rocket](https://github.com/tripleslash/rocket) Easy to use & safe signal library.

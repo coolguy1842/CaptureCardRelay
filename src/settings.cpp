@@ -2,8 +2,10 @@
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
+#include <optional>
 #include <settings.hpp>
 #include <string>
+#include <unordered_map>
 
 const CameraDisplayMode DEFAULT_DISPLAY_MODE = DISPLAY_MODE_CONTAIN;
 
@@ -50,8 +52,20 @@ std::string Settings::getSettingsPath() {
     return configPath;
 }
 
-Settings::Settings() { load(); }
+Settings::Settings(const char* manualFile) {
+    if(manualFile != nullptr) {
+        loadLocked(manualFile);
+    }
+
+    load();
+}
+
 Settings::~Settings() { save(); }
+
+bool Settings::canSetSelectedCamera() const {
+    static bool canSet = !valueLocked("camera");
+    return canSet;
+}
 
 SDL_CameraID Settings::getSelectedCamera() {
     int cameraCount       = 0;
@@ -69,41 +83,46 @@ SDL_CameraID Settings::getSelectedCamera() {
         return camera;
     }
 
-    SDL_CameraID camera;
+    SDL_CameraID camera = 0;
     for(int i = 0; i < cameraCount; i++) {
         camera = cameras[i];
 
         const char* name = SDL_GetCameraName(camera);
         if(name != nullptr && strcmp(name, selectedName.value().c_str()) == 0) {
-            SDL_free(cameras);
-            return camera;
+            break;
         }
     }
 
-    camera = cameras[0];
     SDL_free(cameras);
-
     return camera;
 }
 
 void Settings::setSelectedCamera(SDL_CameraID camera) {
     if(camera == 0) {
-        clearValue("camera");
-        selectedCameraChanged(camera);
+        if(clearValue("camera")) {
+            selectedCameraChanged(camera);
+        }
 
         return;
     }
 
     const char* name = SDL_GetCameraName(camera);
     if(name == nullptr) {
-        clearValue("camera");
-        selectedCameraChanged(camera);
+        if(clearValue("camera")) {
+            selectedCameraChanged(camera);
+        }
 
         return;
     }
 
-    setValue("camera", name);
-    selectedCameraChanged(camera);
+    if(setValue("camera", name)) {
+        selectedCameraChanged(camera);
+    }
+}
+
+bool Settings::canSetRecordingDevice() const {
+    static bool canSet = !valueLocked("recordingDevice");
+    return canSet;
 }
 
 SDL_AudioDeviceID Settings::getSelectedRecordingDevice() {
@@ -139,37 +158,30 @@ SDL_AudioDeviceID Settings::getSelectedRecordingDevice() {
 
 void Settings::setSelectedRecordingDevice(SDL_AudioDeviceID device) {
     if(device == 0) {
-        clearValue("recordingDevice");
-        selectedRecordingDeviceChanged(device);
+        if(clearValue("recordingDevice")) {
+            selectedRecordingDeviceChanged(device);
+        }
 
         return;
     }
 
     const char* name = SDL_GetAudioDeviceName(device);
     if(name == nullptr) {
-        clearValue("recordingDevice");
-        selectedRecordingDeviceChanged(device);
+        if(clearValue("recordingDevice")) {
+            selectedRecordingDeviceChanged(device);
+        }
 
         return;
     }
 
-    setValue("recordingDevice", name);
-    selectedRecordingDeviceChanged(device);
+    if(setValue("recordingDevice", name)) {
+        selectedRecordingDeviceChanged(device);
+    }
 }
 
-int clampVolume(int volume) { return std::max(MIN_VOLUME, std::min(MAX_VOLUME, volume)); }
-int Settings::getVolume() { return clampVolume(std::atoi(getValue("volume").value_or("100").c_str())); }
-void Settings::setVolume(int volume) {
-    volume = clampVolume(volume);
-
-    setValue("volume", std::to_string(volume));
-    volumeChanged(volume);
-}
-
-bool Settings::isFullscreen() { return getValue("fullscreen").value_or("false") == "true"; }
-void Settings::setFullscreen(bool fullscreen) {
-    setValue("fullscreen", fullscreen ? "true" : "false");
-    fullscreenChanged(fullscreen);
+bool Settings::canSetDisplayMode() const {
+    static bool canSet = !valueLocked("displayMode");
+    return canSet;
 }
 
 CameraDisplayMode Settings::getDisplayMode() {
@@ -188,8 +200,43 @@ CameraDisplayMode Settings::getDisplayMode() {
 }
 
 void Settings::setDisplayMode(CameraDisplayMode mode) {
-    setValue("displayMode", std::to_string(mode));
-    displayModeChanged(mode);
+    if(setValue("displayMode", std::to_string(mode))) {
+        displayModeChanged(mode);
+    }
+}
+
+bool Settings::canSetPixelFormat() const {
+    static bool canSet = !valueLocked("pixelFormat");
+    return canSet;
+}
+
+PixelFormat Settings::getPixelFormat() {
+    int mode = std::atoi(getValue("pixelFormat").value_or(std::to_string(DEFAULT_PIXEL_FORMAT)).c_str());
+
+    switch(mode) {
+    case PIXEL_FORMAT_CAMERA:
+    case PIXEL_FORMAT_RGB24:
+        return static_cast<PixelFormat>(mode);
+    default:
+        setPixelFormat(DEFAULT_PIXEL_FORMAT);
+        return DEFAULT_PIXEL_FORMAT;
+    }
+}
+
+void Settings::setPixelFormat(PixelFormat format) {
+    if(setValue("pixelFormat", std::to_string(format))) {
+        pixelFormatChanged(format);
+    }
+}
+
+bool Settings::canSetFrameLimitType() const {
+    static bool canSet = !valueLocked("frameLimitType");
+    return canSet;
+}
+
+bool Settings::canSetFrameLimitFPS() const {
+    static bool canSet = !valueLocked("frameLimitFPS");
+    return canSet;
 }
 
 FrameLimitInfo Settings::getFrameLimitInfo() {
@@ -211,95 +258,116 @@ FrameLimitInfo Settings::getFrameLimitInfo() {
 }
 
 void Settings::setFrameLimitInfo(FrameLimitInfo info) {
-    setValue("frameLimitType", std::to_string(info.type));
-    setValue("frameLimitFPS", std::to_string(info.fps));
-
-    frameLimitInfoChanged(info);
-}
-
-PixelFormat Settings::getPixelFormat() {
-    int mode = std::atoi(getValue("pixelFormat").value_or(std::to_string(DEFAULT_PIXEL_FORMAT)).c_str());
-
-    switch(mode) {
-    case PIXEL_FORMAT_CAMERA:
-    case PIXEL_FORMAT_RGB24:
-        return static_cast<PixelFormat>(mode);
-    default:
-        setPixelFormat(DEFAULT_PIXEL_FORMAT);
-        return DEFAULT_PIXEL_FORMAT;
+    // use bitwise or to make both get evaluated
+    if(
+        (int)setValue("frameLimitType", std::to_string(info.type)) |
+        setValue("frameLimitFPS", std::to_string(info.fps))
+    ) {
+        frameLimitInfoChanged(getFrameLimitInfo());
     }
 }
 
-void Settings::setPixelFormat(PixelFormat format) {
-    setValue("pixelFormat", std::to_string(format));
+bool Settings::canSetFullscreen() const {
+    static bool canSet = !valueLocked("fullscreen");
+    return canSet;
+}
 
-    pixelFormatChanged(format);
+bool Settings::isFullscreen() { return getValue("fullscreen").value_or("false") == "true"; }
+void Settings::setFullscreen(bool fullscreen) {
+    if(setValue("fullscreen", fullscreen ? "true" : "false")) {
+        fullscreenChanged(fullscreen);
+    }
+}
+
+int clampVolume(int volume) { return std::max(MIN_VOLUME, std::min(MAX_VOLUME, volume)); }
+
+bool Settings::canSetVolume() const {
+    static bool canSet = !valueLocked("volume");
+    return canSet;
+}
+
+int Settings::getVolume() { return clampVolume(std::atoi(getValue("volume").value_or("100").c_str())); }
+void Settings::setVolume(int volume) {
+    volume = clampVolume(volume);
+
+    if(setValue("volume", std::to_string(volume))) {
+        volumeChanged(volume);
+    }
 }
 
 std::optional<std::string> Settings::getValue(std::string key) {
-    if(m_cache.find(key) == m_cache.end()) {
-        return std::nullopt;
+    auto lockedIt  = m_lockedCache.find(key);
+    auto regularIt = m_cache.find(key);
+
+    if(lockedIt != m_lockedCache.end()) {
+        return lockedIt->second;
+    }
+    else if(regularIt != m_cache.end()) {
+        return regularIt->second;
     }
 
-    return m_cache[key];
+    return std::nullopt;
 }
 
-void Settings::setValue(std::string key, std::string value) {
-    m_cache[key] = value;
+bool Settings::setValue(std::string key, std::string value) {
+    if(valueLocked(key)) {
+        return false;
+    }
 
-    save();
+    auto it = m_cache.find(key);
+    if(it == m_cache.end() || it->second != value) {
+        m_cache[key] = value;
+        save();
+    }
+
+    return true;
 }
 
-void Settings::clearValue(std::string key) {
+bool Settings::valueLocked(std::string key) const {
+    return m_lockedCache.contains(key);
+}
+
+bool Settings::clearValue(std::string key) {
+    if(valueLocked(key)) {
+        return false;
+    }
+
     auto it = m_cache.find(key);
     if(it != m_cache.end()) {
         m_cache.erase(it);
+        save();
     }
 
-    save();
+    return true;
 }
 
-void Settings::load() {
-    std::ifstream file(getSettingsPath());
+void _load(std::unordered_map<std::string, std::string>& cache, std::string path) {
+    std::ifstream file(path);
+    if(!file.is_open()) {
+        return;
+    }
 
     for(std::string line; std::getline(file, line);) {
-        size_t pos = line.find(":");
+        size_t pos = line.find_first_of(":");
         if(pos == std::string::npos) {
             continue;
         }
 
         std::string key   = line.substr(0, pos);
         std::string value = line.substr(pos + 1);
-
-        m_cache[key] = value;
+        cache[key]        = value;
     }
-
-    file.close();
 }
+
+void Settings::loadLocked(std::string path) { _load(m_lockedCache, path); }
+void Settings::load() { _load(m_cache, getSettingsPath()); }
 
 void Settings::save() {
     std::ofstream file(getSettingsPath(), std::ios_base::out | std::ios_base::trunc);
 
-    for(auto pair : m_cache) {
+    for(const auto& pair : m_cache) {
         file << pair.first + ":" + pair.second + "\n";
     }
 
     file.close();
-}
-
-static Settings* instance = nullptr;
-Settings* Settings::get() {
-    if(instance == nullptr) {
-        instance = new Settings();
-    }
-
-    return instance;
-}
-
-void Settings::close() {
-    if(instance == nullptr) {
-        return;
-    }
-
-    delete instance;
 }

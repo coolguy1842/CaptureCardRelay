@@ -46,16 +46,15 @@ void Application::initAudioRecordingDevices() {
 }
 
 void Application::openAudioRecordingDevice() {
-    if(m_audioRecording.device != 0) {
-        closeAudioRecordingDevice();
-    }
-
+    // cleanup old data
+    closeAudioRecordingDevice();
     initAudioRecordingDevices();
+
     if(m_recordingDevices.empty()) {
         return;
     }
 
-    SDL_AudioDeviceID deviceID = Settings::get()->getSelectedRecordingDevice();
+    SDL_AudioDeviceID deviceID = m_settings.getSelectedRecordingDevice();
     if(deviceID == 0) {
         deviceID = SDL_AUDIO_DEVICE_DEFAULT_RECORDING;
     }
@@ -111,7 +110,7 @@ void Application::closeAudioRecordingDevice() {
 }
 
 void Application::setRecordingDevice(Application::RecordingDeviceInfo info) {
-    Settings::get()->setSelectedRecordingDevice(info.id);
+    m_settings.setSelectedRecordingDevice(info.id);
 
     const char* deviceName = "(null)";
     if(info.id != 0) {

@@ -476,11 +476,11 @@ void SDL_Clay_RenderClayCommands(Clay_SDL3RendererData* rendererData, Clay_Rende
                     }
 
                     camera.__prevRect        = rect;
-                    camera.__prevDisplayRect = displayRect;
                     camera.__prevDisplayMode = camera.displayMode;
+                    camera.__displayRect     = displayRect;
                 }
 
-                SDL_RenderTexture(rendererData->renderer, tex, NULL, &camera.__prevDisplayRect);
+                SDL_RenderTexture(rendererData->renderer, tex, NULL, &camera.__displayRect);
                 break;
             }
             default:

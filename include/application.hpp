@@ -22,7 +22,7 @@ public:
     // if true, keep event handler, else remove from handlers
     using EventHandler = std::function<bool(SDL_Event* event, void* extraData)>;
 
-    Application();
+    Application(const char* settingsFile = nullptr);
     virtual ~Application();
 
     bool loop();
@@ -65,6 +65,11 @@ private:
     const Clay_TextElementConfig defaultTextConfig = CLAY_TEXT_CONFIG({
         .textColor = { 0xFF, 0xFF, 0xFF, 0xFF },
         .fontSize  = 24,
+    });
+
+    const Clay_TextElementConfig lockedTextConfig = CLAY_TEXT_CONFIG({
+        .textColor = { 0x8F, 0x8F, 0x8F, 0xFF },
+        .fontSize  = defaultTextConfig.fontSize,
     });
 
     const Clay_TextElementConfig selectedTextConfig = CLAY_TEXT_CONFIG({
@@ -156,6 +161,8 @@ private:
     static void onRecordingCallback(void* userdata, SDL_AudioStream* stream, int additional_amount, int total_amount);
 
 private:
+    Settings m_settings;
+
     bool m_shouldQuit     = false;
     bool m_settingsActive = false;
 
