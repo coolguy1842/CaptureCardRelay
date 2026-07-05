@@ -30,6 +30,9 @@
             
             fullscreen = true;
             volume = 75;
+
+            preferredColorspace = "SDL_COLORSPACE_SRGB";
+            preferredPixelFormat = "SDL_PIXELFORMAT_NV12";
         };
     };
 }

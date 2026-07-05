@@ -51,12 +51,14 @@ struct CameraData {
     SDL_FRect __displayRect;
 };
 
-typedef struct {
+struct CustomElementData {
+    ~CustomElementData();
+
     CustomElementType type;
     union {
         CameraData camera;
     };
-} CustomElementData;
+};
 
 void SDL_Clay_Exit();
 

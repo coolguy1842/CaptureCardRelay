@@ -21,10 +21,16 @@ Currently, there are settings for:
   - Camera
   - Microphone
   - Display Mode (Letterbox/Cover etc)
-  - Pixel Format (for compatibility, Camera is fastest, but less compatible)
+  - Pixel Format (For compatibility, Camera is fastest, but less compatible)
   - Frame Limiting (Camera is likely to be best, and is default)
   - Fullscreen
   - Volume
+
+#### There are also hidden settings (not in gui settings) for:
+| Setting | Description | Example |
+| ------- | ----------- | ------- |
+| preferredColorspace  | Valid options are found [here](https://wiki.libsdl.org/SDL3/SDL_Colorspace) | SDL_COLORSPACE_SRGB |
+| preferredPixelFormat | Which pixel format the camera outputs to the program, the other pixelFormat setting applies to the texture output. Valid options are found [here](https://wiki.libsdl.org/SDL3/SDL_PixelFormat) | SDL_PIXELFORMAT_NV12 |
 
 ### Installing<br><sub>NOTE: Others may be added if requested, otherwise build manually.</sub>
 

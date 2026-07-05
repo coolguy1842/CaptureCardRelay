@@ -36,6 +36,9 @@ struct FrameLimitInfo {
     float fps;
 };
 
+const char* pixelFormatName(SDL_PixelFormat format);
+const char* colorspaceName(SDL_Colorspace colorspace);
+
 class Settings {
 public:
     Settings(const char* manualFile = NULL);
@@ -72,6 +75,18 @@ public:
     int getVolume();
     void setVolume(int volume);
 
+    // cameras preferred specs, not what the display texture uses, internal settings that user can use from changing the file
+    // colorspace has higher priority than format
+    // SDL_COLORSPACE_UNKNOWN is equal to unset, and will not bias the program
+    bool canSetPreferredColorspace() const;
+    SDL_Colorspace getPreferredColorspace();
+    void setPreferredColorspace(SDL_Colorspace colorspace);
+
+    // SDL_PIXELFORMAT_UNKNOWN is equal to unset, and will not bias the program
+    bool canSetPreferredPixelFormat() const;
+    SDL_PixelFormat getPreferredPixelFormat();
+    void setPreferredPixelFormat(SDL_PixelFormat colorspace);
+
 public:
     rocket::thread_safe_signal<void(SDL_CameraID)> selectedCameraChanged;
     rocket::thread_safe_signal<void(SDL_AudioDeviceID)> selectedRecordingDeviceChanged;
@@ -80,6 +95,8 @@ public:
     rocket::thread_safe_signal<void(CameraDisplayMode)> displayModeChanged;
     rocket::thread_safe_signal<void(FrameLimitInfo)> frameLimitInfoChanged;
     rocket::thread_safe_signal<void(PixelFormat)> pixelFormatChanged;
+    rocket::thread_safe_signal<void(SDL_Colorspace)> preferredColorspaceChanged;
+    rocket::thread_safe_signal<void(SDL_PixelFormat)> preferredPixelFormatChanged;
 
 protected:
     std::optional<std::string> getValue(std::string key);

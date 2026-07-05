@@ -121,9 +121,6 @@ private:
     Clay_RenderCommandArray buildUI();
 
 private:
-    const char* formatName(SDL_PixelFormat format);
-    const char* colorspaceName(SDL_Colorspace colorspace);
-
     void initCameras();
 
     void openCamera();

@@ -87,7 +87,7 @@ void Application::handleEvent(SDL_Event* event) {
         }
 
         m_cameraData->camera.spec = spec;
-        SDL_Log("Camera spec: %dx%d@%0.2f - Format: %s - Colorspace: %s", spec.width, spec.height, spec.framerate_numerator / static_cast<float>(spec.framerate_denominator), formatName(spec.format), colorspaceName(spec.colorspace));
+        SDL_Log("Camera spec: %dx%d@%0.2f - Format: %s - Colorspace: %s", spec.width, spec.height, spec.framerate_numerator / static_cast<float>(spec.framerate_denominator), pixelFormatName(spec.format), colorspaceName(spec.colorspace));
 
         m_cameraData->camera.approved = true;
         updateFrameLimiter(m_frameLimitInfo);

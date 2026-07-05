@@ -5,6 +5,9 @@
 #include <stack>
 #include <unordered_map>
 
+// for windows compiling
+CustomElementData::~CustomElementData() {}
+
 Clay_Dimensions SDL_MeasureText(Clay_StringSlice text, Clay_TextElementConfig* config, void* userData) {
     std::vector<TTF_Font*>& fonts = *reinterpret_cast<std::vector<TTF_Font*>*>(userData);
     TTF_Font* font                = fonts[config->fontId];
@@ -130,7 +133,7 @@ inline bool SDL_Clay_FRectEqual(const SDL_FRect& a, const SDL_FRect& b) {
     return a.x == b.x &&
            a.y == b.y &&
            a.w == b.w &&
-           a.y == b.y;
+           a.h == b.h;
 }
 
 static std::map<int, const char*> idToName = {
@@ -346,7 +349,10 @@ void SDL_Clay_RenderClayCommands(Clay_SDL3RendererData* rendererData, Clay_Rende
 
                 auto lock = std::unique_lock(camera.mutex);
                 if(camera.device == nullptr || !camera.approved) {
+                cleanupCamera:
                     camera.__prevDisplayMode = static_cast<CameraDisplayMode>(-1);
+                    camera.__prevRect        = { 0, 0, 0, 0 };
+                    camera.__displayRect     = { 0, 0, 0, 0 };
 
                     if(camera.__pixels != nullptr) {
                         SDL_free(camera.__pixels);
@@ -381,7 +387,7 @@ void SDL_Clay_RenderClayCommands(Clay_SDL3RendererData* rendererData, Clay_Rende
                     SDL_PropertiesID props = SDL_CreateProperties();
                     if(props == 0) {
                         SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to create properties for texture: %s\n", SDL_GetError());
-                        break;
+                        goto cleanupCamera;
                     }
 
                     SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_WIDTH_NUMBER, spec.width);
@@ -395,12 +401,11 @@ void SDL_Clay_RenderClayCommands(Clay_SDL3RendererData* rendererData, Clay_Rende
                     }
 
                     SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_FORMAT_NUMBER, format);
-
                     if((tex = SDL_CreateTextureWithProperties(rendererData->renderer, props)) == nullptr) {
                         SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to create texture: %s\n", SDL_GetError());
                         SDL_DestroyProperties(props);
 
-                        break;
+                        goto cleanupCamera;
                     }
 
                     camera.__pitch      = (((tex->w * SDL_BYTESPERPIXEL(tex->format)) + 3) & ~3);

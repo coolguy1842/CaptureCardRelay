@@ -14,6 +14,192 @@ const float DEFAULT_FRAME_LIMIT_FPS           = 0.0f;
 
 const PixelFormat DEFAULT_PIXEL_FORMAT = PIXEL_FORMAT_RGB24;
 
+constexpr uint64_t hash(std::string_view str) {
+    uint64_t hash = 0;
+    for(char c : str) {
+        hash = (hash * 131) + c;
+    }
+    return hash;
+}
+
+constexpr uint64_t operator""_hash(const char* str, size_t len) {
+    return hash(std::string_view(str, len));
+}
+
+const char* pixelFormatName(SDL_PixelFormat format) {
+    switch(format) {
+    case SDL_PIXELFORMAT_UNKNOWN:       return "SDL_PIXELFORMAT_UNKNOWN";
+    case SDL_PIXELFORMAT_INDEX1LSB:     return "SDL_PIXELFORMAT_INDEX1LSB";
+    case SDL_PIXELFORMAT_INDEX1MSB:     return "SDL_PIXELFORMAT_INDEX1MSB";
+    case SDL_PIXELFORMAT_INDEX2LSB:     return "SDL_PIXELFORMAT_INDEX2LSB";
+    case SDL_PIXELFORMAT_INDEX2MSB:     return "SDL_PIXELFORMAT_INDEX2MSB";
+    case SDL_PIXELFORMAT_INDEX4LSB:     return "SDL_PIXELFORMAT_INDEX4LSB";
+    case SDL_PIXELFORMAT_INDEX4MSB:     return "SDL_PIXELFORMAT_INDEX4MSB";
+    case SDL_PIXELFORMAT_INDEX8:        return "SDL_PIXELFORMAT_INDEX8";
+    case SDL_PIXELFORMAT_RGB332:        return "SDL_PIXELFORMAT_RGB332";
+    case SDL_PIXELFORMAT_XRGB4444:      return "SDL_PIXELFORMAT_XRGB4444";
+    case SDL_PIXELFORMAT_XBGR4444:      return "SDL_PIXELFORMAT_XBGR4444";
+    case SDL_PIXELFORMAT_XRGB1555:      return "SDL_PIXELFORMAT_XRGB1555";
+    case SDL_PIXELFORMAT_XBGR1555:      return "SDL_PIXELFORMAT_XBGR1555";
+    case SDL_PIXELFORMAT_ARGB4444:      return "SDL_PIXELFORMAT_ARGB4444";
+    case SDL_PIXELFORMAT_RGBA4444:      return "SDL_PIXELFORMAT_RGBA4444";
+    case SDL_PIXELFORMAT_ABGR4444:      return "SDL_PIXELFORMAT_ABGR4444";
+    case SDL_PIXELFORMAT_BGRA4444:      return "SDL_PIXELFORMAT_BGRA4444";
+    case SDL_PIXELFORMAT_ARGB1555:      return "SDL_PIXELFORMAT_ARGB1555";
+    case SDL_PIXELFORMAT_RGBA5551:      return "SDL_PIXELFORMAT_RGBA5551";
+    case SDL_PIXELFORMAT_ABGR1555:      return "SDL_PIXELFORMAT_ABGR1555";
+    case SDL_PIXELFORMAT_BGRA5551:      return "SDL_PIXELFORMAT_BGRA5551";
+    case SDL_PIXELFORMAT_RGB565:        return "SDL_PIXELFORMAT_RGB565";
+    case SDL_PIXELFORMAT_BGR565:        return "SDL_PIXELFORMAT_BGR565";
+    case SDL_PIXELFORMAT_RGB24:         return "SDL_PIXELFORMAT_RGB24";
+    case SDL_PIXELFORMAT_BGR24:         return "SDL_PIXELFORMAT_BGR24";
+    case SDL_PIXELFORMAT_XRGB8888:      return "SDL_PIXELFORMAT_XRGB8888";
+    case SDL_PIXELFORMAT_RGBX8888:      return "SDL_PIXELFORMAT_RGBX8888";
+    case SDL_PIXELFORMAT_XBGR8888:      return "SDL_PIXELFORMAT_XBGR8888";
+    case SDL_PIXELFORMAT_BGRX8888:      return "SDL_PIXELFORMAT_BGRX8888";
+    case SDL_PIXELFORMAT_ARGB8888:      return "SDL_PIXELFORMAT_ARGB8888";
+    case SDL_PIXELFORMAT_RGBA8888:      return "SDL_PIXELFORMAT_RGBA8888";
+    case SDL_PIXELFORMAT_ABGR8888:      return "SDL_PIXELFORMAT_ABGR8888";
+    case SDL_PIXELFORMAT_BGRA8888:      return "SDL_PIXELFORMAT_BGRA8888";
+    case SDL_PIXELFORMAT_XRGB2101010:   return "SDL_PIXELFORMAT_XRGB2101010";
+    case SDL_PIXELFORMAT_XBGR2101010:   return "SDL_PIXELFORMAT_XBGR2101010";
+    case SDL_PIXELFORMAT_ARGB2101010:   return "SDL_PIXELFORMAT_ARGB2101010";
+    case SDL_PIXELFORMAT_ABGR2101010:   return "SDL_PIXELFORMAT_ABGR2101010";
+    case SDL_PIXELFORMAT_RGB48:         return "SDL_PIXELFORMAT_RGB48";
+    case SDL_PIXELFORMAT_BGR48:         return "SDL_PIXELFORMAT_BGR48";
+    case SDL_PIXELFORMAT_RGBA64:        return "SDL_PIXELFORMAT_RGBA64";
+    case SDL_PIXELFORMAT_ARGB64:        return "SDL_PIXELFORMAT_ARGB64";
+    case SDL_PIXELFORMAT_BGRA64:        return "SDL_PIXELFORMAT_BGRA64";
+    case SDL_PIXELFORMAT_ABGR64:        return "SDL_PIXELFORMAT_ABGR64";
+    case SDL_PIXELFORMAT_RGB48_FLOAT:   return "SDL_PIXELFORMAT_RGB48_FLOAT";
+    case SDL_PIXELFORMAT_BGR48_FLOAT:   return "SDL_PIXELFORMAT_BGR48_FLOAT";
+    case SDL_PIXELFORMAT_RGBA64_FLOAT:  return "SDL_PIXELFORMAT_RGBA64_FLOAT";
+    case SDL_PIXELFORMAT_ARGB64_FLOAT:  return "SDL_PIXELFORMAT_ARGB64_FLOAT";
+    case SDL_PIXELFORMAT_BGRA64_FLOAT:  return "SDL_PIXELFORMAT_BGRA64_FLOAT";
+    case SDL_PIXELFORMAT_ABGR64_FLOAT:  return "SDL_PIXELFORMAT_ABGR64_FLOAT";
+    case SDL_PIXELFORMAT_RGB96_FLOAT:   return "SDL_PIXELFORMAT_RGB96_FLOAT";
+    case SDL_PIXELFORMAT_BGR96_FLOAT:   return "SDL_PIXELFORMAT_BGR96_FLOAT";
+    case SDL_PIXELFORMAT_RGBA128_FLOAT: return "SDL_PIXELFORMAT_RGBA128_FLOAT";
+    case SDL_PIXELFORMAT_ARGB128_FLOAT: return "SDL_PIXELFORMAT_ARGB128_FLOAT";
+    case SDL_PIXELFORMAT_BGRA128_FLOAT: return "SDL_PIXELFORMAT_BGRA128_FLOAT";
+    case SDL_PIXELFORMAT_ABGR128_FLOAT: return "SDL_PIXELFORMAT_ABGR128_FLOAT";
+    case SDL_PIXELFORMAT_YV12:          return "SDL_PIXELFORMAT_YV12";
+    case SDL_PIXELFORMAT_IYUV:          return "SDL_PIXELFORMAT_IYUV";
+    case SDL_PIXELFORMAT_YUY2:          return "SDL_PIXELFORMAT_YUY2";
+    case SDL_PIXELFORMAT_UYVY:          return "SDL_PIXELFORMAT_UYVY";
+    case SDL_PIXELFORMAT_YVYU:          return "SDL_PIXELFORMAT_YVYU";
+    case SDL_PIXELFORMAT_NV12:          return "SDL_PIXELFORMAT_NV12";
+    case SDL_PIXELFORMAT_NV21:          return "SDL_PIXELFORMAT_NV21";
+    case SDL_PIXELFORMAT_P010:          return "SDL_PIXELFORMAT_P010";
+    case SDL_PIXELFORMAT_EXTERNAL_OES:  return "SDL_PIXELFORMAT_EXTERNAL_OES";
+    case SDL_PIXELFORMAT_MJPG:          return "SDL_PIXELFORMAT_MJPG";
+    default:                            return "SDL_PIXELFORMAT_UNKNOWN";
+    }
+}
+
+const char* colorspaceName(SDL_Colorspace colorspace) {
+    switch(colorspace) {
+    case SDL_COLORSPACE_SRGB:           return "SDL_COLORSPACE_SRGB";
+    case SDL_COLORSPACE_SRGB_LINEAR:    return "SDL_COLORSPACE_SRGB_LINEAR";
+    case SDL_COLORSPACE_HDR10:          return "SDL_COLORSPACE_HDR10";
+    case SDL_COLORSPACE_JPEG:           return "SDL_COLORSPACE_JPEG";
+    case SDL_COLORSPACE_BT601_LIMITED:  return "SDL_COLORSPACE_BT601_LIMITED";
+    case SDL_COLORSPACE_BT601_FULL:     return "SDL_COLORSPACE_BT601_FULL";
+    case SDL_COLORSPACE_BT709_LIMITED:  return "SDL_COLORSPACE_BT709_LIMITED";
+    case SDL_COLORSPACE_BT709_FULL:     return "SDL_COLORSPACE_BT709_FULL";
+    case SDL_COLORSPACE_BT2020_LIMITED: return "SDL_COLORSPACE_BT2020_LIMITED";
+    case SDL_COLORSPACE_BT2020_FULL:    return "SDL_COLORSPACE_BT2020_FULL";
+    default:                            return "SDL_COLORSPACE_UNKNOWN";
+    }
+}
+
+SDL_PixelFormat pixelFormatFromName(const char* name) {
+    switch(hash(name)) {
+    case "SDL_PIXELFORMAT_UNKNOWN"_hash:       return SDL_PIXELFORMAT_UNKNOWN;
+    case "SDL_PIXELFORMAT_INDEX1LSB"_hash:     return SDL_PIXELFORMAT_INDEX1LSB;
+    case "SDL_PIXELFORMAT_INDEX1MSB"_hash:     return SDL_PIXELFORMAT_INDEX1MSB;
+    case "SDL_PIXELFORMAT_INDEX2LSB"_hash:     return SDL_PIXELFORMAT_INDEX2LSB;
+    case "SDL_PIXELFORMAT_INDEX2MSB"_hash:     return SDL_PIXELFORMAT_INDEX2MSB;
+    case "SDL_PIXELFORMAT_INDEX4LSB"_hash:     return SDL_PIXELFORMAT_INDEX4LSB;
+    case "SDL_PIXELFORMAT_INDEX4MSB"_hash:     return SDL_PIXELFORMAT_INDEX4MSB;
+    case "SDL_PIXELFORMAT_INDEX8"_hash:        return SDL_PIXELFORMAT_INDEX8;
+    case "SDL_PIXELFORMAT_RGB332"_hash:        return SDL_PIXELFORMAT_RGB332;
+    case "SDL_PIXELFORMAT_XRGB4444"_hash:      return SDL_PIXELFORMAT_XRGB4444;
+    case "SDL_PIXELFORMAT_XBGR4444"_hash:      return SDL_PIXELFORMAT_XBGR4444;
+    case "SDL_PIXELFORMAT_XRGB1555"_hash:      return SDL_PIXELFORMAT_XRGB1555;
+    case "SDL_PIXELFORMAT_XBGR1555"_hash:      return SDL_PIXELFORMAT_XBGR1555;
+    case "SDL_PIXELFORMAT_ARGB4444"_hash:      return SDL_PIXELFORMAT_ARGB4444;
+    case "SDL_PIXELFORMAT_RGBA4444"_hash:      return SDL_PIXELFORMAT_RGBA4444;
+    case "SDL_PIXELFORMAT_ABGR4444"_hash:      return SDL_PIXELFORMAT_ABGR4444;
+    case "SDL_PIXELFORMAT_BGRA4444"_hash:      return SDL_PIXELFORMAT_BGRA4444;
+    case "SDL_PIXELFORMAT_ARGB1555"_hash:      return SDL_PIXELFORMAT_ARGB1555;
+    case "SDL_PIXELFORMAT_RGBA5551"_hash:      return SDL_PIXELFORMAT_RGBA5551;
+    case "SDL_PIXELFORMAT_ABGR1555"_hash:      return SDL_PIXELFORMAT_ABGR1555;
+    case "SDL_PIXELFORMAT_BGRA5551"_hash:      return SDL_PIXELFORMAT_BGRA5551;
+    case "SDL_PIXELFORMAT_RGB565"_hash:        return SDL_PIXELFORMAT_RGB565;
+    case "SDL_PIXELFORMAT_BGR565"_hash:        return SDL_PIXELFORMAT_BGR565;
+    case "SDL_PIXELFORMAT_RGB24"_hash:         return SDL_PIXELFORMAT_RGB24;
+    case "SDL_PIXELFORMAT_BGR24"_hash:         return SDL_PIXELFORMAT_BGR24;
+    case "SDL_PIXELFORMAT_XRGB8888"_hash:      return SDL_PIXELFORMAT_XRGB8888;
+    case "SDL_PIXELFORMAT_RGBX8888"_hash:      return SDL_PIXELFORMAT_RGBX8888;
+    case "SDL_PIXELFORMAT_XBGR8888"_hash:      return SDL_PIXELFORMAT_XBGR8888;
+    case "SDL_PIXELFORMAT_BGRX8888"_hash:      return SDL_PIXELFORMAT_BGRX8888;
+    case "SDL_PIXELFORMAT_ARGB8888"_hash:      return SDL_PIXELFORMAT_ARGB8888;
+    case "SDL_PIXELFORMAT_RGBA8888"_hash:      return SDL_PIXELFORMAT_RGBA8888;
+    case "SDL_PIXELFORMAT_ABGR8888"_hash:      return SDL_PIXELFORMAT_ABGR8888;
+    case "SDL_PIXELFORMAT_BGRA8888"_hash:      return SDL_PIXELFORMAT_BGRA8888;
+    case "SDL_PIXELFORMAT_XRGB2101010"_hash:   return SDL_PIXELFORMAT_XRGB2101010;
+    case "SDL_PIXELFORMAT_XBGR2101010"_hash:   return SDL_PIXELFORMAT_XBGR2101010;
+    case "SDL_PIXELFORMAT_ARGB2101010"_hash:   return SDL_PIXELFORMAT_ARGB2101010;
+    case "SDL_PIXELFORMAT_ABGR2101010"_hash:   return SDL_PIXELFORMAT_ABGR2101010;
+    case "SDL_PIXELFORMAT_RGB48"_hash:         return SDL_PIXELFORMAT_RGB48;
+    case "SDL_PIXELFORMAT_BGR48"_hash:         return SDL_PIXELFORMAT_BGR48;
+    case "SDL_PIXELFORMAT_RGBA64"_hash:        return SDL_PIXELFORMAT_RGBA64;
+    case "SDL_PIXELFORMAT_ARGB64"_hash:        return SDL_PIXELFORMAT_ARGB64;
+    case "SDL_PIXELFORMAT_BGRA64"_hash:        return SDL_PIXELFORMAT_BGRA64;
+    case "SDL_PIXELFORMAT_ABGR64"_hash:        return SDL_PIXELFORMAT_ABGR64;
+    case "SDL_PIXELFORMAT_RGB48_FLOAT"_hash:   return SDL_PIXELFORMAT_RGB48_FLOAT;
+    case "SDL_PIXELFORMAT_BGR48_FLOAT"_hash:   return SDL_PIXELFORMAT_BGR48_FLOAT;
+    case "SDL_PIXELFORMAT_RGBA64_FLOAT"_hash:  return SDL_PIXELFORMAT_RGBA64_FLOAT;
+    case "SDL_PIXELFORMAT_ARGB64_FLOAT"_hash:  return SDL_PIXELFORMAT_ARGB64_FLOAT;
+    case "SDL_PIXELFORMAT_BGRA64_FLOAT"_hash:  return SDL_PIXELFORMAT_BGRA64_FLOAT;
+    case "SDL_PIXELFORMAT_ABGR64_FLOAT"_hash:  return SDL_PIXELFORMAT_ABGR64_FLOAT;
+    case "SDL_PIXELFORMAT_RGB96_FLOAT"_hash:   return SDL_PIXELFORMAT_RGB96_FLOAT;
+    case "SDL_PIXELFORMAT_BGR96_FLOAT"_hash:   return SDL_PIXELFORMAT_BGR96_FLOAT;
+    case "SDL_PIXELFORMAT_RGBA128_FLOAT"_hash: return SDL_PIXELFORMAT_RGBA128_FLOAT;
+    case "SDL_PIXELFORMAT_ARGB128_FLOAT"_hash: return SDL_PIXELFORMAT_ARGB128_FLOAT;
+    case "SDL_PIXELFORMAT_BGRA128_FLOAT"_hash: return SDL_PIXELFORMAT_BGRA128_FLOAT;
+    case "SDL_PIXELFORMAT_ABGR128_FLOAT"_hash: return SDL_PIXELFORMAT_ABGR128_FLOAT;
+    case "SDL_PIXELFORMAT_YV12"_hash:          return SDL_PIXELFORMAT_YV12;
+    case "SDL_PIXELFORMAT_IYUV"_hash:          return SDL_PIXELFORMAT_IYUV;
+    case "SDL_PIXELFORMAT_YUY2"_hash:          return SDL_PIXELFORMAT_YUY2;
+    case "SDL_PIXELFORMAT_UYVY"_hash:          return SDL_PIXELFORMAT_UYVY;
+    case "SDL_PIXELFORMAT_YVYU"_hash:          return SDL_PIXELFORMAT_YVYU;
+    case "SDL_PIXELFORMAT_NV12"_hash:          return SDL_PIXELFORMAT_NV12;
+    case "SDL_PIXELFORMAT_NV21"_hash:          return SDL_PIXELFORMAT_NV21;
+    case "SDL_PIXELFORMAT_P010"_hash:          return SDL_PIXELFORMAT_P010;
+    case "SDL_PIXELFORMAT_EXTERNAL_OES"_hash:  return SDL_PIXELFORMAT_EXTERNAL_OES;
+    case "SDL_PIXELFORMAT_MJPG"_hash:          return SDL_PIXELFORMAT_MJPG;
+    default:                                   return SDL_PIXELFORMAT_UNKNOWN;
+    }
+}
+
+SDL_Colorspace colorspaceFromName(const char* name) {
+    switch(hash(name)) {
+    case "SDL_COLORSPACE_SRGB"_hash:           return SDL_COLORSPACE_SRGB;
+    case "SDL_COLORSPACE_SRGB_LINEAR"_hash:    return SDL_COLORSPACE_SRGB_LINEAR;
+    case "SDL_COLORSPACE_HDR10"_hash:          return SDL_COLORSPACE_HDR10;
+    case "SDL_COLORSPACE_JPEG"_hash:           return SDL_COLORSPACE_JPEG;
+    case "SDL_COLORSPACE_BT601_LIMITED"_hash:  return SDL_COLORSPACE_BT601_LIMITED;
+    case "SDL_COLORSPACE_BT601_FULL"_hash:     return SDL_COLORSPACE_BT601_FULL;
+    case "SDL_COLORSPACE_BT709_LIMITED"_hash:  return SDL_COLORSPACE_BT709_LIMITED;
+    case "SDL_COLORSPACE_BT709_FULL"_hash:     return SDL_COLORSPACE_BT709_FULL;
+    case "SDL_COLORSPACE_BT2020_LIMITED"_hash: return SDL_COLORSPACE_BT2020_LIMITED;
+    case "SDL_COLORSPACE_BT2020_FULL"_hash:    return SDL_COLORSPACE_BT2020_FULL;
+    default:                                   return SDL_COLORSPACE_UNKNOWN;
+    }
+}
+
 std::string Settings::getSettingsPath() {
     std::string configPath;
 
@@ -292,6 +478,30 @@ void Settings::setVolume(int volume) {
 
     if(setValue("volume", std::to_string(volume))) {
         volumeChanged(volume);
+    }
+}
+
+bool Settings::canSetPreferredColorspace() const {
+    static bool canSet = !valueLocked("preferredColorspace");
+    return canSet;
+}
+
+SDL_Colorspace Settings::getPreferredColorspace() { return colorspaceFromName(getValue("preferredColorspace").value_or(colorspaceName(SDL_COLORSPACE_UNKNOWN)).c_str()); }
+void Settings::setPreferredColorspace(SDL_Colorspace colorspace) {
+    if(setValue("preferredColorspace", colorspaceName(colorspace))) {
+        preferredColorspaceChanged(colorspace);
+    }
+}
+
+bool Settings::canSetPreferredPixelFormat() const {
+    static bool canSet = !valueLocked("preferredPixelFormat");
+    return canSet;
+}
+
+SDL_PixelFormat Settings::getPreferredPixelFormat() { return pixelFormatFromName(getValue("preferredPixelFormat").value_or(pixelFormatName(SDL_PIXELFORMAT_UNKNOWN)).c_str()); }
+void Settings::setPreferredPixelFormat(SDL_PixelFormat format) {
+    if(setValue("preferredPixelFormat", pixelFormatName(format))) {
+        preferredPixelFormatChanged(format);
     }
 }
 
