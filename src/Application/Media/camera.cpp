@@ -42,6 +42,7 @@ uint16_t getColorScore(const SDL_Colorspace& color) {
     case SDL_COLORSPACE_BT709_FULL:     return 2;
     case SDL_COLORSPACE_BT2020_LIMITED: return 2;
     case SDL_COLORSPACE_BT2020_FULL:    return 3;
+    case SDL_COLORSPACE_UNKNOWN:
     default:                            return 0;
     };
 };
@@ -173,7 +174,7 @@ void Application::openCamera() {
         }
 
         if(getColorScore(a->colorspace) != getColorScore(b->colorspace)) {
-            return getFormatScore(a->format) > getFormatScore(b->format);
+            return getColorScore(a->colorspace) > getColorScore(b->colorspace);
         }
 
         if(getFormatScore(a->format) != getFormatScore(b->format)) {
