@@ -1,4 +1,4 @@
-project('capturecardrelay', 'cpp', 'c', version: '1.9', default_options: [ 'cpp_std=c++20', 'c_std=c99' ])
+project('capturecardrelay', 'cpp', 'c', version: '1.9.1', default_options: [ 'cpp_std=c++20', 'c_std=c99' ])
 
 if get_option('debug')
     add_project_arguments('-DDEBUG', language: 'cpp')
