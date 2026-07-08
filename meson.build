@@ -33,5 +33,29 @@ executable(
         dependency('sdl3'),
         dependency('sdl3-ttf'),
         dependency('sdl3-image')
+    ],
+    cpp_args: [
+        '-Wall',
+        '-Wextra',
+        '-Werror',
+        '-Wno-psabi',
+        '-pedantic-errors',
+        
+        '-Wcast-qual',
+        '-Wdisabled-optimization',
+        '-Wformat=2',
+        '-Winit-self',
+        '-Wlogical-op',
+        '-Wmissing-include-dirs',
+        '-Wredundant-decls',
+        '-Wshadow',
+        '-Wsign-conversion',
+        '-Wswitch-default',
+        '-Wundef',
+        '-Wtrampolines',
+        '-Wmaybe-uninitialized',
+
+        '-fstrict-flex-arrays=3',
+        '-Wno-missing-field-initializers',
     ]
 )

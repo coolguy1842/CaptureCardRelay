@@ -2,19 +2,20 @@
 #include <format>
 #include <vector>
 
-void Application::onRecordingCallback(void* userdata, SDL_AudioStream* stream, int additional_amount, int total_amount) { ((Application*)userdata)->recordingCallbackHandler(stream, additional_amount, total_amount); }
-void Application::recordingCallbackHandler(SDL_AudioStream* stream, int additional_amount, int total_amount) {
+void Application::onRecordingCallback(void* userdata, SDL_AudioStream* stream, int additionalAmount, int totalAmount) { ((Application*)userdata)->recordingCallbackHandler(stream, additionalAmount, totalAmount); }
+void Application::recordingCallbackHandler(SDL_AudioStream* stream, int additionalAmount, int) {
     auto lock = std::unique_lock(m_audioMutex);
 
-    while(SDL_GetAudioStreamAvailable(stream) >= (int)(audioBufferSize * sizeof(Uint16))) {
-        std::array<Uint16, audioBufferSize> buffer;
-        SDL_GetAudioStreamData(stream, buffer.data(), buffer.size() * sizeof(Uint16));
+    while(additionalAmount >= static_cast<int>(m_audioBufferSize * sizeof(Uint16))) {
+        std::vector<Uint16> buffer(m_audioBufferSize);
+        SDL_GetAudioStreamData(stream, buffer.data(), buffer.size() * sizeof(buffer[0]));
 
         m_audioBuffers.push_back(buffer);
-
-        while(m_audioBuffers.size() > maxAudioBuffers) {
+        while(m_audioBuffers.size() >= maxAudioBuffers) {
             m_audioBuffers.pop_front();
         }
+
+        additionalAmount -= static_cast<int>(m_audioBufferSize * sizeof(buffer[0]));
     }
 }
 
@@ -79,7 +80,7 @@ void Application::openAudioRecordingDevice() {
     m_audioRecording.stream = SDL_CreateAudioStream(&m_audioRecording.spec, &m_audioSpec);
     SDL_BindAudioStream(m_audioRecording.device, m_audioRecording.stream);
 
-    m_audioRecording.buffer = (Uint8*)malloc(m_audioRecording.bufferSize);
+    m_audioRecording.buffer = reinterpret_cast<Uint8*>(malloc(static_cast<size_t>(m_audioRecording.bufferSize)));
 
     SDL_SetAudioStreamPutCallback(m_audioRecording.stream, &Application::onRecordingCallback, this);
 

@@ -12,26 +12,21 @@ constexpr auto make_array(T value) -> std::array<T, N> {
     return a;
 }
 
-void Application::onPlaybackCallback(void* userdata, SDL_AudioStream* stream, int additional_amount, int total_amount) { ((Application*)userdata)->playbackCallbackHandler(stream, additional_amount, total_amount); }
-void Application::playbackCallbackHandler(SDL_AudioStream* stream, int additional_amount, int total_amount) {
-    int totalBuffers = additional_amount / (audioBufferSize * sizeof(Uint16));
-    if(m_audioBuffers.size() > maxAudioBuffers) {
-        totalBuffers += (m_audioBuffers.size() - maxAudioBuffers) + 5;
-    }
-
-    const static auto emptyBuffer = make_array<Uint16, audioBufferSize>(0);
-
+void Application::onPlaybackCallback(void* userdata, SDL_AudioStream* stream, int additionalAmount, int totalAmount) { ((Application*)userdata)->playbackCallbackHandler(stream, additionalAmount, totalAmount); }
+void Application::playbackCallbackHandler(SDL_AudioStream* stream, int additionalAmount, int) {
     auto lock = std::unique_lock(m_audioMutex);
-    for(int i = 0; i <= totalBuffers; i++) {
+
+    size_t totalBuffers = static_cast<size_t>(additionalAmount) / (m_audioBufferSize * sizeof(m_emptyAudioBuffer[0]));
+    for(size_t i = 0; i <= totalBuffers; i++) {
         if(m_audioBuffers.empty()) {
-            SDL_PutAudioStreamData(stream, emptyBuffer.data(), audioBufferSize * sizeof(Uint16));
+            SDL_PutAudioStreamData(stream, m_emptyAudioBuffer.data(), m_emptyAudioBuffer.size() * sizeof(m_emptyAudioBuffer[0]));
             continue;
         }
 
-        std::array<Uint16, audioBufferSize> buffer = m_audioBuffers.front();
+        std::vector<Uint16> buffer = m_audioBuffers.front();
         m_audioBuffers.pop_front();
 
-        SDL_PutAudioStreamData(stream, buffer.data(), audioBufferSize * sizeof(Uint16));
+        SDL_PutAudioStreamData(stream, buffer.data(), buffer.size() * sizeof(buffer[0]));
     }
 }
 
@@ -71,6 +66,9 @@ void Application::openAudioPlaybackDevice() {
     SDL_Log("Opened playback device: %s", SDL_GetAudioDeviceName(m_audioPlayback.device));
     SDL_GetAudioDeviceFormat(m_audioPlayback.device, &m_audioPlayback.spec, &m_audioPlayback.bufferSize);
 
+    m_audioBufferSize  = static_cast<size_t>(m_audioPlayback.bufferSize / 8);
+    m_emptyAudioBuffer = std::vector<Uint16>(m_audioBufferSize, 0);
+
     auto lock = std::unique_lock(m_streamMutex);
 
     m_audioPlayback.stream = SDL_CreateAudioStream(&m_audioSpec, &m_audioPlayback.spec);
@@ -78,7 +76,7 @@ void Application::openAudioPlaybackDevice() {
 
     updateVolume(false);
 
-    m_audioPlayback.buffer = (Uint8*)malloc(m_audioPlayback.bufferSize);
+    m_audioPlayback.buffer = reinterpret_cast<Uint8*>(malloc(static_cast<size_t>(m_audioPlayback.bufferSize)));
     SDL_SetAudioStreamGetCallback(m_audioPlayback.stream, &Application::onPlaybackCallback, this);
 }
 

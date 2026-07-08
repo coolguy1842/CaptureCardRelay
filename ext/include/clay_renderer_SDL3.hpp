@@ -44,7 +44,7 @@ struct CameraData {
     // internal
     void* __pixels;
     size_t __pixelsSize;
-    int __pitch;
+    size_t __pitch;
 
     SDL_FRect __prevRect;
     CameraDisplayMode __prevDisplayMode = static_cast<CameraDisplayMode>(-1);

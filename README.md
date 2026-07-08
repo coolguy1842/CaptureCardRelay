@@ -1,12 +1,12 @@
 # Capture Card Relay
 #### Tested on NixOS, ArchLinux, Windows
 
-While this is meant for viewing and listening to a capture cards output, it is, essentially, a webcam viewer and a microphone relay.
+While this is meant for viewing and listening to a capture cards output, it is essentially, a camera viewer and a microphone relay.
 
 <br>
 
 <strong>This program is feature complete.</strong><br>
-I will try fix any bugs reported or that I find, if a feature request is given, I may implement it. 
+I will try fix any bugs reported, or that I find. If a feature request is given, I may implement it. 
 
 ### Controls
 | Key | Action                       |
@@ -26,7 +26,7 @@ Currently, there are settings for:
   - Fullscreen
   - Volume
 
-#### There are also hidden settings (not in gui settings) for:
+#### There are also hidden settings (not in GUI) for:
 | Setting | Description | Example |
 | ------- | ----------- | ------- |
 | preferredColorspace  | Valid options are found [here](https://wiki.libsdl.org/SDL3/SDL_Colorspace) | SDL_COLORSPACE_SRGB |

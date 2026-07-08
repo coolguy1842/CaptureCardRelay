@@ -3,21 +3,6 @@
 #include <chrono>
 
 void Application::handleEvent(SDL_Event* event) {
-    auto it = m_eventHandlers.find((SDL_EventType)event->type);
-    if(it != m_eventHandlers.end()) {
-        std::vector<std::pair<EventHandler, void*>> handlers = it->second;
-
-        for(auto it = handlers.begin(); it != handlers.end();) {
-            std::pair<EventHandler, void*> handler = *it;
-            if(!(handler.first(event, handler.second))) {
-                it = handlers.erase(it);
-                continue;
-            }
-
-            it++;
-        }
-    }
-
     switch(event->type) {
     case SDL_EVENT_QUIT:
         setShouldQuit(true);
@@ -104,6 +89,7 @@ void Application::handleEvent(SDL_Event* event) {
         openAudioPlaybackDevice();
         openAudioRecordingDevice();
 
+        // fall through
     case SDL_EVENT_AUDIO_DEVICE_FORMAT_CHANGED: {
         auto lock = std::unique_lock(m_streamMutex);
         if(m_audioRecording.stream != nullptr) {
@@ -233,12 +219,4 @@ void Application::handleEvent(SDL_Event* event) {
         break;
     default: break;
     }
-}
-
-void Application::registerEventHandler(SDL_EventType type, const Application::EventHandler& handler, void* extraData) {
-    if(m_eventHandlers.find(type) == m_eventHandlers.end()) {
-        m_eventHandlers[type] = {};
-    }
-
-    m_eventHandlers[type].push_back(std::make_pair(handler, extraData));
 }

@@ -1,27 +1,21 @@
 #ifndef __APPLICATION_HPP__
 #define __APPLICATION_HPP__
-#include <SDL3/SDL_rect.h>
 #define SDL_MAIN_NOIMPL
 
 #include <clay.h>
 
 #include <clay_renderer_SDL3.hpp>
 #include <frame_limiter.hpp>
-#include <functional>
 #include <list>
 #include <memory>
 #include <mutex>
 #include <optional>
 #include <settings.hpp>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
 class Application {
 public:
-    // if true, keep event handler, else remove from handlers
-    using EventHandler = std::function<bool(SDL_Event* event, void* extraData)>;
-
     Application(const char* settingsFile = nullptr);
     virtual ~Application();
 
@@ -35,7 +29,6 @@ protected:
     virtual void render();
 
     void handleEvent(SDL_Event* event);
-    void registerEventHandler(SDL_EventType type, const EventHandler& handler, void* extraData = nullptr);
 
 private:
     struct CameraInfo {
@@ -150,12 +143,12 @@ private:
     void setVolume(int volume, bool showStatus = true, bool save = true);
     void updateVolume(bool showStatus = true);
 
-    void playbackCallbackHandler(SDL_AudioStream* stream, int additional_amount, int total_amount);
-    void recordingCallbackHandler(SDL_AudioStream* stream, int additional_amount, int total_amount);
+    void playbackCallbackHandler(SDL_AudioStream* stream, int additionalAmount, int totalAmount);
+    void recordingCallbackHandler(SDL_AudioStream* stream, int additionalAmount, int totalAmount);
 
 private:
-    static void onPlaybackCallback(void* userdata, SDL_AudioStream* stream, int additional_amount, int total_amount);
-    static void onRecordingCallback(void* userdata, SDL_AudioStream* stream, int additional_amount, int total_amount);
+    static void onPlaybackCallback(void* userdata, SDL_AudioStream* stream, int additionalAmount, int totalAmount);
+    static void onRecordingCallback(void* userdata, SDL_AudioStream* stream, int additionalAmount, int totalAmount);
 
 private:
     Settings m_settings;
@@ -199,10 +192,13 @@ private:
     std::mutex m_audioMutex;
 
     static constexpr SDL_AudioSpec m_audioSpec = { SDL_AUDIO_S16, 2, 48000 };
-    static constexpr size_t audioBufferSize    = 64;
-    static constexpr size_t maxAudioBuffers    = 64;
 
-    std::list<std::array<Uint16, audioBufferSize>> m_audioBuffers;
+    size_t m_audioBufferSize;
+    std::vector<Uint16> m_emptyAudioBuffer;
+
+    static constexpr size_t maxAudioBuffers = 32;
+
+    std::list<std::vector<Uint16>> m_audioBuffers;
 
     struct {
         std::string text = "";
@@ -239,8 +235,6 @@ private:
 
     CameraInfo m_currentCamera                   = { .id = 0, .name = "(null)" };
     RecordingDeviceInfo m_currentRecordingDevice = { .id = 0, .name = "(null)" };
-
-    std::unordered_map<SDL_EventType, std::vector<std::pair<EventHandler, void*>>> m_eventHandlers;
 };
 
 #endif

@@ -4,7 +4,12 @@
 #include <settings.hpp>
 
 void usage(int argc, char** argv) {
-    SDL_Log("Usage: %s [FILE]\n\nWith no FILE get options from default config file.\n  -h, --help  display this help and exit", argv[0]);
+    const char* programName = "CaptureCardRelay";
+    if(argc > 0) {
+        programName = argv[0];
+    }
+
+    SDL_Log("Usage: %s [FILE]\n\nWith no FILE get options from default config file.\n  -h, --help  display this help and exit", programName);
 }
 
 int main(int argc, char** argv) {

@@ -14,7 +14,7 @@ Clay_Dimensions SDL_MeasureText(Clay_StringSlice text, Clay_TextElementConfig* c
     int width, height;
 
     TTF_SetFontSize(font, config->fontSize);
-    if(!TTF_GetStringSize(font, text.chars, text.length, &width, &height)) {
+    if(!TTF_GetStringSize(font, text.chars, static_cast<size_t>(text.length), &width, &height)) {
         SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to measure text: %s", SDL_GetError());
     }
 
@@ -26,7 +26,7 @@ Clay_Dimensions SDL_MeasureText(Clay_StringSlice text, Clay_TextElementConfig* c
 
 /* Global for convenience. Even in 4K this is enough for smooth curves (low radius or rect size coupled with
  * no AA or low resolution might make it appear as jagged curves) */
-static int NUM_CIRCLE_SEGMENTS = 16;
+static size_t NUM_CIRCLE_SEGMENTS = 16;
 
 void SDL_Clay_RenderArc(Clay_SDL3RendererData* rendererData, const SDL_FPoint center, const float radius, const float startAngle, const float endAngle, const float thickness, const Clay_Color color) {
     SDL_SetRenderDrawColor(rendererData->renderer, color.r, color.g, color.b, color.a);
@@ -34,18 +34,18 @@ void SDL_Clay_RenderArc(Clay_SDL3RendererData* rendererData, const SDL_FPoint ce
     const float radStart = startAngle * (SDL_PI_F / 180.0f);
     const float radEnd   = endAngle * (SDL_PI_F / 180.0f);
 
-    const int numCircleSegments = SDL_max(NUM_CIRCLE_SEGMENTS, (int)(radius * 1.5f)); // increase circle segments for larger circles, 1.5 is arbitrary.
+    const size_t numCircleSegments = SDL_max(NUM_CIRCLE_SEGMENTS, (radius * 1.5f)); // increase circle segments for larger circles, 1.5 is arbitrary.
 
-    const float angleStep     = (radEnd - radStart) / (float)numCircleSegments;
+    const float angleStep     = (radEnd - radStart) / static_cast<float>(numCircleSegments);
     const float thicknessStep = 0.4f; // arbitrary value to avoid overlapping lines. Changing THICKNESS_STEP or numCircleSegments might cause artifacts.
 
     for(float t = thicknessStep; t < thickness - thicknessStep; t += thicknessStep) {
         std::vector<SDL_FPoint> points(numCircleSegments + 1);
         const float clampedRadius = SDL_max(radius - t, 1.0f);
 
-        for(int i = 0; i <= numCircleSegments; i++) {
+        for(size_t i = 0; i <= numCircleSegments; i++) {
             const float angle = radStart + i * angleStep;
-            points[i]         = (SDL_FPoint){
+            points[i]         = SDL_FPoint{
                 SDL_roundf(center.x + SDL_cosf(angle) * clampedRadius),
                 SDL_roundf(center.y + SDL_sinf(angle) * clampedRadius)
             };
@@ -57,17 +57,17 @@ void SDL_Clay_RenderArc(Clay_SDL3RendererData* rendererData, const SDL_FPoint ce
 
 void SDL_Clay_RenderFilledArc(Clay_SDL3RendererData* rendererData, const SDL_FPoint center, const float radius, const float startAngle, const float endAngle, const Clay_Color _color) {
     const SDL_FColor color = { _color.r / 255, _color.g / 255, _color.b / 255, _color.a / 255 };
-    int indexCount = 0, vertexCount = 0;
+    size_t indexCount = 0, vertexCount = 0;
 
     const float radStart = startAngle * (SDL_PI_F / 180.0f);
     const float radEnd   = endAngle * (SDL_PI_F / 180.0f);
 
-    const int numCircleSegments = SDL_max(NUM_CIRCLE_SEGMENTS, (int)(radius * 1.5f));
+    const size_t numCircleSegments = SDL_max(NUM_CIRCLE_SEGMENTS, (radius * 1.5f));
 
     const float angleStep = (radEnd - radStart) / (float)numCircleSegments;
 
-    const int totalVertices = 2 + numCircleSegments;
-    const int totalIndices  = 3 + (numCircleSegments * 3);
+    const size_t totalVertices = 2 + numCircleSegments;
+    const size_t totalIndices  = 3 + (numCircleSegments * 3);
 
     std::vector<SDL_Vertex> vertices(totalVertices);
     std::vector<int> indices(totalIndices);
@@ -75,7 +75,7 @@ void SDL_Clay_RenderFilledArc(Clay_SDL3RendererData* rendererData, const SDL_FPo
     const float clampedRadius = SDL_max(radius, 1.0f);
     vertices[vertexCount++]   = { .position = { center.x, center.y }, .color = color, .tex_coord = { 0, 0 } };
 
-    for(int i = 0; i <= numCircleSegments; i++) {
+    for(size_t i = 0; i <= numCircleSegments; i++) {
         const float angle = radStart + i * angleStep;
         float x           = center.x + SDL_cosf(angle) * clampedRadius;
         float y           = center.y + SDL_sinf(angle) * clampedRadius;
@@ -189,7 +189,7 @@ void SDL_Clay_RenderClayCommands(Clay_SDL3RendererData* rendererData, Clay_Rende
 
             auto it = s_textMap.find(rcmd->id);
             if(it == s_textMap.end()) {
-                TTF_Text* text = TTF_CreateText(rendererData->textEngine, font, config->stringContents.chars, config->stringContents.length);
+                TTF_Text* text = TTF_CreateText(rendererData->textEngine, font, config->stringContents.chars, static_cast<size_t>(config->stringContents.length));
                 TTF_SetTextColor(text, config->textColor.r, config->textColor.g, config->textColor.b, config->textColor.a);
 
                 it = s_textMap.emplace(rcmd->id, text).first;
@@ -197,7 +197,7 @@ void SDL_Clay_RenderClayCommands(Clay_SDL3RendererData* rendererData, Clay_Rende
             else {
                 TTF_Text* text = it->second;
                 TTF_SetTextColor(text, config->textColor.r, config->textColor.g, config->textColor.b, config->textColor.a);
-                TTF_SetTextString(it->second, config->stringContents.chars, config->stringContents.length);
+                TTF_SetTextString(it->second, config->stringContents.chars, static_cast<size_t>(config->stringContents.length));
             }
 
             TTF_DrawRendererText(it->second, rect.x, rect.y);
@@ -252,25 +252,25 @@ void SDL_Clay_RenderClayCommands(Clay_SDL3RendererData* rendererData, Clay_Rende
             if(config->cornerRadius.topLeft > 0) {
                 const float centerX = rect.x + clampedRadii.topLeft - 0.5f;
                 const float centerY = rect.y + clampedRadii.topLeft - 0.5f;
-                SDL_Clay_RenderArc(rendererData, (SDL_FPoint){ centerX, centerY }, clampedRadii.topLeft, 180.0f, 270.0f, config->width.top, config->color);
+                SDL_Clay_RenderArc(rendererData, { centerX, centerY }, clampedRadii.topLeft, 180.0f, 270.0f, config->width.top, config->color);
             }
 
             if(config->cornerRadius.topRight > 0) {
                 const float centerX = rect.x + rect.w - clampedRadii.topRight - 1.5f;
                 const float centerY = rect.y + clampedRadii.topRight - 0.5f;
-                SDL_Clay_RenderArc(rendererData, (SDL_FPoint){ centerX, centerY }, clampedRadii.topRight, 270.0f, 360.0f, config->width.top, config->color);
+                SDL_Clay_RenderArc(rendererData, { centerX, centerY }, clampedRadii.topRight, 270.0f, 360.0f, config->width.top, config->color);
             }
 
             if(config->cornerRadius.bottomLeft > 0) {
                 const float centerX = rect.x + clampedRadii.bottomLeft - 0.5f;
                 const float centerY = rect.y + rect.h - clampedRadii.bottomLeft - 0.5f;
-                SDL_Clay_RenderArc(rendererData, (SDL_FPoint){ centerX, centerY }, clampedRadii.bottomLeft, 90.0f, 180.0f, config->width.bottom, config->color);
+                SDL_Clay_RenderArc(rendererData, { centerX, centerY }, clampedRadii.bottomLeft, 90.0f, 180.0f, config->width.bottom, config->color);
             }
 
             if(config->cornerRadius.bottomRight > 0) {
                 const float centerX = rect.x + rect.w - clampedRadii.bottomRight - 1.5f;
                 const float centerY = rect.y + rect.h - clampedRadii.bottomRight - 0.5f;
-                SDL_Clay_RenderArc(rendererData, (SDL_FPoint){ centerX, centerY }, clampedRadii.bottomRight, 0.0f, 90.0f, config->width.bottom, config->color);
+                SDL_Clay_RenderArc(rendererData, { centerX, centerY }, clampedRadii.bottomRight, 0.0f, 90.0f, config->width.bottom, config->color);
             }
 
             break;
@@ -396,6 +396,7 @@ void SDL_Clay_RenderClayCommands(Clay_SDL3RendererData* rendererData, Clay_Rende
                     SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_COLORSPACE_NUMBER, spec.colorspace);
 
                     SDL_PixelFormat format = camera.textureFormat;
+                    // use cameras pixel format
                     if(format == SDL_PIXELFORMAT_UNKNOWN) {
                         format = spec.format;
                     }
@@ -408,11 +409,14 @@ void SDL_Clay_RenderClayCommands(Clay_SDL3RendererData* rendererData, Clay_Rende
                         goto cleanupCamera;
                     }
 
-                    camera.__pitch      = (((tex->w * SDL_BYTESPERPIXEL(tex->format)) + 3) & ~3);
-                    camera.__pixelsSize = (size_t)tex->h * camera.__pitch;
+                    SDL_DestroyProperties(props);
+                    camera.__pitch      = static_cast<size_t>(((tex->w * SDL_BYTESPERPIXEL(tex->format)) + 3) & ~3);
+                    camera.__pixelsSize = static_cast<size_t>(tex->h) * camera.__pitch;
                     camera.__pixels     = SDL_malloc(camera.__pixelsSize);
 
-                    SDL_DestroyProperties(props);
+                    if(camera.__pixels == nullptr) {
+                        goto cleanupCamera;
+                    }
                 }
 
                 SDL_Surface* surface = SDL_AcquireCameraFrame(camera.device, NULL);

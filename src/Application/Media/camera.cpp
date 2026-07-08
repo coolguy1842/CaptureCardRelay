@@ -207,8 +207,8 @@ void Application::openCamera() {
     m_currentCamera               = { camID, name };
 
     m_cameraData->camera.device = SDL_OpenCamera(camID, spec);
-
     if(m_cameraData->camera.device == nullptr) {
+        closeCamera(false);
         SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Opening camera: %s", SDL_GetError());
     }
 }

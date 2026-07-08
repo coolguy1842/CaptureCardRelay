@@ -1,4 +1,8 @@
-#include <SDL3/SDL_pixels.h>
+#ifdef _WIN32
+#include <shlobj.h>
+#include <windows.h>
+#endif
+
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
@@ -17,7 +21,7 @@ const PixelFormat DEFAULT_PIXEL_FORMAT = PIXEL_FORMAT_RGB24;
 constexpr uint64_t hash(std::string_view str) {
     uint64_t hash = 0;
     for(char c : str) {
-        hash = (hash * 131) + c;
+        hash = (hash * 131) + static_cast<uint64_t>(c);
     }
     return hash;
 }
@@ -204,13 +208,25 @@ std::string Settings::getSettingsPath() {
     std::string configPath;
 
 #ifdef _WIN32
-    if(std::getenv("XDG_CONFIG_HOME") == nullptr) {
-        configPath = std::getenv("AppData");
-    }
-    else {
-        SDL_Log("Couldn't get appdata directory.");
+    // https://stackoverflow.com/a/62314965
+    PWSTR tmpPath;
+    HRESULT ret = SHGetKnownFolderPath(FOLDERID_RoamingAppData, 0, nullptr, &tmpPath);
+
+    if(ret != S_OK) {
+        CoTaskMemFree(tmpPath);
+        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't get AppData directory.");
+
         exit(1);
     }
+
+    // https://stackoverflow.com/a/3999597
+    size_t tmpPathSize = wcslen(tmpPath);
+
+    int pathSize = WideCharToMultiByte(CP_UTF8, 0, tmpPath, (int)tmpPathSize, NULL, 0, NULL, NULL);
+    configPath   = std::string(pathSize, 0);
+
+    WideCharToMultiByte(CP_UTF8, 0, tmpPath, (int)tmpPathSize, configPath.data(), pathSize, NULL, NULL);
+    CoTaskMemFree(tmpPath);
 #else
     if(std::getenv("XDG_CONFIG_HOME") != nullptr) {
         configPath = std::getenv("XDG_CONFIG_HOME");
@@ -219,7 +235,7 @@ std::string Settings::getSettingsPath() {
         configPath = std::string(std::getenv("HOME")) + "/.config";
     }
     else {
-        SDL_Log("Couldn't get home config directory.");
+        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't get home config directory.");
 
         exit(1);
     }
