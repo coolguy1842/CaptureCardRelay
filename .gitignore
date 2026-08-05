@@ -3,6 +3,9 @@
 .vscode
 .tmp
 
+subprojects/*
+!subprojects/*.wrap
+
 result
 build*
 debug.sh

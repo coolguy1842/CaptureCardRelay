@@ -386,7 +386,7 @@ void SDL_Clay_RenderClayCommands(Clay_SDL3RendererData* rendererData, Clay_Rende
 
                     SDL_PropertiesID props = SDL_CreateProperties();
                     if(props == 0) {
-                        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to create properties for texture: %s\n", SDL_GetError());
+                        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to create properties for texture: %s", SDL_GetError());
                         goto cleanupCamera;
                     }
 
@@ -403,7 +403,7 @@ void SDL_Clay_RenderClayCommands(Clay_SDL3RendererData* rendererData, Clay_Rende
 
                     SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_FORMAT_NUMBER, format);
                     if((tex = SDL_CreateTextureWithProperties(rendererData->renderer, props)) == nullptr) {
-                        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to create texture: %s\n", SDL_GetError());
+                        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to create texture: %s", SDL_GetError());
                         SDL_DestroyProperties(props);
 
                         goto cleanupCamera;
@@ -428,7 +428,7 @@ void SDL_Clay_RenderClayCommands(Clay_SDL3RendererData* rendererData, Clay_Rende
                                surface->format, surface->pixels, surface->pitch,
                                tex->format, camera.__pixels, camera.__pitch
                            )) {
-                            SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Error converting pixels: %s\n", SDL_GetError());
+                            SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Error converting pixels: %s", SDL_GetError());
                         }
 
                         SDL_ReleaseCameraFrame(camera.device, surface);

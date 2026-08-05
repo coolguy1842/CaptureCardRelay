@@ -113,7 +113,7 @@ uint16_t getFormatScore(const SDL_PixelFormat& format) {
     case SDL_PIXELFORMAT_YVYU:          return 6;
     case SDL_PIXELFORMAT_NV12:          return 6;
     case SDL_PIXELFORMAT_NV21:          return 6;
-    case SDL_PIXELFORMAT_P010:          return 6;
+    case SDL_PIXELFORMAT_P010:          return 7;
     case SDL_PIXELFORMAT_UNKNOWN:
     default:                            return 0;
     };
@@ -200,7 +200,8 @@ void Application::openCamera() {
         name = "(null)";
     }
 
-    SDL_Log("\nOpening camera: %s\n", name);
+    SDL_Log("\n");
+    SDL_Log("Opening camera: %s", name);
     auto lock = std::unique_lock(m_cameraData->camera.mutex);
 
     m_cameraData->camera.approved = false;

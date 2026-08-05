@@ -23,6 +23,7 @@ constexpr uint64_t hash(std::string_view str) {
     for(char c : str) {
         hash = (hash * 131) + static_cast<uint64_t>(c);
     }
+
     return hash;
 }
 
@@ -254,6 +255,7 @@ std::string Settings::getSettingsPath() {
     return configPath;
 }
 
+Settings::~Settings() { save(); }
 Settings::Settings(const char* manualFile) {
     if(manualFile != nullptr) {
         loadLocked(manualFile);
@@ -261,8 +263,6 @@ Settings::Settings(const char* manualFile) {
 
     load();
 }
-
-Settings::~Settings() { save(); }
 
 bool Settings::canSetSelectedCamera() const {
     static bool canSet = !valueLocked("camera");
@@ -277,15 +277,13 @@ SDL_CameraID Settings::getSelectedCamera() {
         return 0;
     }
 
+    SDL_CameraID camera                     = cameras[0];
     std::optional<std::string> selectedName = getValue("camera");
-    if(!selectedName.has_value()) {
-        SDL_CameraID camera = cameras[0];
-        SDL_free(cameras);
 
-        return camera;
+    if(!selectedName.has_value()) {
+        goto exit;
     }
 
-    SDL_CameraID camera = 0;
     for(int i = 0; i < cameraCount; i++) {
         camera = cameras[i];
 
@@ -295,6 +293,7 @@ SDL_CameraID Settings::getSelectedCamera() {
         }
     }
 
+exit:
     SDL_free(cameras);
     return camera;
 }
@@ -335,26 +334,24 @@ SDL_AudioDeviceID Settings::getSelectedRecordingDevice() {
         return 0;
     }
 
+    SDL_AudioDeviceID device                = devices[0];
     std::optional<std::string> selectedName = getValue("recordingDevice");
+
     if(!selectedName.has_value()) {
-        SDL_free(devices);
-        return 0;
+        goto exit;
     }
 
-    SDL_AudioDeviceID device;
     for(int i = 0; i < recordingDeviceCount; i++) {
         device = devices[i];
 
         const char* name = SDL_GetAudioDeviceName(device);
         if(name != nullptr && strcmp(name, selectedName.value().c_str()) == 0) {
-            SDL_free(devices);
-            return device;
+            break;
         }
     }
 
-    device = devices[0];
+exit:
     SDL_free(devices);
-
     return device;
 }
 

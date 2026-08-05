@@ -1,4 +1,10 @@
+#ifndef PROJECT_VERSION
+// fallback if not defined
+#define PROJECT_VERSION "1.0.0"
+#endif
+
 #include <application.hpp>
+#include <clay_renderer_SDL3.hpp>
 #include <cstring>
 #include <memory>
 #include <settings.hpp>
@@ -9,10 +15,15 @@ void usage(int argc, char** argv) {
         programName = argv[0];
     }
 
-    SDL_Log("Usage: %s [FILE]\n\nWith no FILE get options from default config file.\n  -h, --help  display this help and exit", programName);
+    SDL_Log("Usage: %s [FILE]", programName);
+    SDL_Log("\n");
+    SDL_Log("With no FILE get options from default config file.");
+    SDL_Log("  -h, --help  display this help and exit");
 }
 
 int main(int argc, char** argv) {
+    SDL_Log("Version %s", PROJECT_VERSION);
+
     {
         const char* settingsPath = nullptr;
 
@@ -32,8 +43,10 @@ int main(int argc, char** argv) {
         }
 
         std::shared_ptr<Application> app = std::make_shared<Application>(settingsPath);
-        while(app->loop());
+        while(app->loop())
+            ;
     }
 
+    SDL_Clay_Exit();
     return 0;
 }

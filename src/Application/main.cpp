@@ -11,7 +11,7 @@
 #include <clay.h>
 
 void HandleClayErrors(Clay_ErrorData errorData) {
-    SDL_LogError(SDL_LOG_CATEGORY_ERROR, "%s\n", errorData.errorText.chars);
+    SDL_LogError(SDL_LOG_CATEGORY_ERROR, "%s", errorData.errorText.chars);
 }
 
 Application::Application(const char* settingsPath)
@@ -28,14 +28,14 @@ Application::Application(const char* settingsPath)
           },
       }) {
     if(!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_CAMERA)) {
-        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't initialize SDL: %s\n", SDL_GetError());
+        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't initialize SDL: %s", SDL_GetError());
         setShouldQuit();
 
         return;
     }
 
     if((m_window = SDL_CreateWindow("Capture Card Relay", m_width, m_height, SDL_WINDOW_RESIZABLE)) == nullptr) {
-        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't create window: %s\n", SDL_GetError());
+        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't create window: %s", SDL_GetError());
         setShouldQuit();
 
         return;
@@ -54,10 +54,11 @@ Application::Application(const char* settingsPath)
         SDL_PropertiesID props = SDL_GetGPUDeviceProperties(gpu);
         if(props != 0) {
             const char* name = SDL_GetStringProperty(props, SDL_PROP_GPU_DEVICE_NAME_STRING, "");
-            SDL_Log("Created renderer with GPU: %s\n\n", name);
+            SDL_Log("Created renderer with GPU: %s", name);
+            SDL_Log("\n");
         }
         else {
-            SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to get GPU name: %s\n", SDL_GetError());
+            SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to get GPU name: %s", SDL_GetError());
         }
     }
     else {
@@ -73,7 +74,7 @@ Application::Application(const char* settingsPath)
     }
 
     if(!TTF_Init()) {
-        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't initialise SDL_ttf: %s\n", SDL_GetError());
+        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't initialise SDL_ttf: %s", SDL_GetError());
         setShouldQuit();
 
         return;

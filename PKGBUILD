@@ -1,9 +1,9 @@
 pkgname=capture-card-relay
 pkgver=1.9
-pkgrel=2
+pkgrel=3
 arch=('any')
 pkgdesc="Displays capture card output"
-depends=('meson' 'ninja' 'sdl3-git' 'sdl3_ttf-git' 'sdl3_image-git')
+depends=('meson' 'ninja')
 license=('GPL')
 url="https://github.com/coolguy1842/CaptureCardRelay"
 source=("https://github.com/coolguy1842/CaptureCardRelay/archive/refs/heads/master.zip")

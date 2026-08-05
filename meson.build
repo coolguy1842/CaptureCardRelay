@@ -1,8 +1,21 @@
-project('capturecardrelay', 'cpp', 'c', version: '1.9.2', default_options: [ 'cpp_std=c++20', 'c_std=c99' ])
+project('capturecardrelay', 'cpp', 'c', version: '1.9.3', default_options: [ 'cpp_std=c++20', 'c_std=c99' ])
 
 if get_option('debug')
     add_project_arguments('-DDEBUG', language: 'cpp')
 endif
+
+add_project_arguments('-DPROJECT_VERSION="' + meson.project_version() + '"', language: 'cpp')
+
+sdl3_image_lib = dependency('sdl3-image', required: false)
+if not sdl3_image_lib.found()
+  sdl3_image_lib = dependency('sdl3_image', required: true)
+endif
+
+sdl3_ttf_lib = dependency('sdl3-ttf', required: false)
+if not sdl3_ttf_lib.found()
+  sdl3_ttf_lib = dependency('sdl3_ttf', required: true)
+endif
+
 
 executable(
     'CaptureCardRelay',
@@ -31,8 +44,8 @@ executable(
     ],
     dependencies: [
         dependency('sdl3'),
-        dependency('sdl3-ttf'),
-        dependency('sdl3-image')
+        sdl3_image_lib,
+        sdl3_ttf_lib,
     ],
     cpp_args: [
         '-Wall',
@@ -57,5 +70,6 @@ executable(
 
         '-fstrict-flex-arrays=3',
         '-Wno-missing-field-initializers',
-    ]
+    ],
+    win_subsystem: 'windows'
 )
