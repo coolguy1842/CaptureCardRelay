@@ -21,6 +21,7 @@ Currently, there are settings for:
   - Camera
   - Microphone
   - Display Mode (Letterbox/Cover etc)
+  - Scale Mode (Texture filtering)
   - Pixel Format (For compatibility, Camera is fastest, but less compatible)
   - Frame Limiting (Camera is likely to be best, and is default)
   - Fullscreen

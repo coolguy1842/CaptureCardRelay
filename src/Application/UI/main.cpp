@@ -26,13 +26,7 @@ Clay_RenderCommandArray Application::buildUI() {
     Clay_BeginLayout();
     m_nextCursor = m_defaultCursor;
 
-    CLAY(
-        CLAY_ID("Body"),
-        {
-            .layout = { .sizing = { CLAY_SIZING_PERCENT(1.0), CLAY_SIZING_PERCENT(1.0) } },
-            .custom = { .customData = m_cameraData.get() },
-        }
-    ) {
+    CLAY(CLAY_ID("Body"), { .layout = { .sizing = { CLAY_SIZING_PERCENT(1.0), CLAY_SIZING_PERCENT(1.0) } } }) {
 #ifdef DEBUG
         if(m_showFrametime) {
             CLAY_AUTO_ID({

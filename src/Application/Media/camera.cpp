@@ -202,35 +202,42 @@ void Application::openCamera() {
 
     SDL_Log("\n");
     SDL_Log("Opening camera: %s", name);
-    auto lock = std::unique_lock(m_cameraData->camera.mutex);
+    auto lock = std::unique_lock(m_camera.mutex);
 
-    m_cameraData->camera.approved = false;
-    m_currentCamera               = { camID, name };
+    m_camera.approved = false;
+    m_currentCamera   = { camID, name };
 
-    m_cameraData->camera.device = SDL_OpenCamera(camID, spec);
-    if(m_cameraData->camera.device == nullptr) {
+    m_camera.device = SDL_OpenCamera(camID, spec);
+    if(m_camera.device == nullptr) {
         closeCamera(false);
         SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Opening camera: %s", SDL_GetError());
     }
+
+    updateCameraTexture(false);
 }
 
 void Application::closeCamera(bool shouldLock) {
     std::unique_lock<std::mutex> lock;
     if(shouldLock) {
-        lock = std::unique_lock(m_cameraData->camera.mutex);
+        lock = std::unique_lock(m_camera.mutex);
     }
 
-    m_cameraData->camera.approved = false;
-    m_currentCamera               = { .id = 0, .name = "(null)" };
+    m_camera.approved = false;
+    m_currentCamera   = { .id = 0, .name = "(null)" };
 
-    if(m_cameraData->camera.device != nullptr) {
-        SDL_CloseCamera(m_cameraData->camera.device);
-        m_cameraData->camera.device = nullptr;
+    if(m_camera.device != nullptr) {
+        SDL_CloseCamera(m_camera.device);
+        m_camera.device = nullptr;
     }
 
-    if(m_cameraData->camera.texture != nullptr) {
-        SDL_DestroyTexture(m_cameraData->camera.texture);
-        m_cameraData->camera.texture = nullptr;
+    if(m_camera.texture != nullptr) {
+        SDL_DestroyTexture(m_camera.texture);
+        m_camera.texture = nullptr;
+    }
+
+    if(m_camera.pixels != nullptr) {
+        SDL_free(m_camera.pixels);
+        m_camera.pixels = nullptr;
     }
 }
 
@@ -252,4 +259,166 @@ void Application::setCamera(Application::CameraInfo info) {
     }
 
     changeStatus(std::format("Camera: {}", cameraName), std::chrono::milliseconds(1500));
+}
+
+void Application::updateCameraDisplayRect() {
+    SDL_FRect rect       = { 0, 0, static_cast<float>(m_width), static_cast<float>(m_height) };
+    m_camera.displayRect = rect;
+
+    if(m_camera.texture == nullptr) {
+        return;
+    }
+
+    const CameraDisplayMode mode = m_settings.getDisplayMode();
+    switch(mode) {
+    case DISPLAY_MODE_CONTAIN:
+    case DISPLAY_MODE_COVER:   {
+        // most logic here from: https://github.com/nrkn/object-fit-math/blob/master/src/fitter.ts
+        float widthRatio  = rect.w / m_camera.texture->w;
+        float heightRatio = rect.h / m_camera.texture->h;
+
+        // min of width vs height ratios
+        float ratio = mode == DISPLAY_MODE_CONTAIN
+                          ? CLAY__MIN(widthRatio, heightRatio)
+                          : CLAY__MAX((rect.w / m_camera.texture->w), (rect.h / m_camera.texture->h));
+
+        SDL_FRect newRect;
+        newRect.w = m_camera.texture->w * ratio;
+        newRect.h = m_camera.texture->h * ratio;
+        newRect.x = (rect.w - newRect.w) / 2.0f;
+        newRect.y = (rect.h - newRect.h) / 2.0f;
+
+        m_camera.displayRect = newRect;
+        break;
+    }
+    case DISPLAY_MODE_FILL: break;
+    case DISPLAY_MODE_NONE:
+        m_camera.displayRect = {
+            .x = 0,
+            .y = 0,
+            .w = static_cast<float>(m_camera.texture->w),
+            .h = static_cast<float>(m_camera.texture->h),
+        };
+
+        break;
+    default: break;
+    }
+}
+
+void Application::updateCameraTexture(bool shouldLock) {
+    std::unique_lock lock = std::unique_lock(m_camera.mutex, std::defer_lock);
+    if(shouldLock) {
+        lock.lock();
+    }
+
+    if(m_camera.device == nullptr || !m_camera.approved) {
+    cleanupCamera:
+        if(m_camera.texture != nullptr) {
+            SDL_DestroyTexture(m_camera.texture);
+            m_camera.texture = nullptr;
+        }
+
+        if(m_camera.pixels != nullptr) {
+            SDL_free(m_camera.pixels);
+            m_camera.pixels = nullptr;
+        }
+
+        return;
+    }
+
+    if(m_camera.texture != nullptr) {
+        SDL_DestroyTexture(m_camera.texture);
+        m_camera.texture = nullptr;
+    }
+
+    if(m_camera.pixels != nullptr) {
+        SDL_free(m_camera.pixels);
+        m_camera.pixels = nullptr;
+    }
+
+    SDL_PropertiesID props = SDL_CreateProperties();
+    if(props == 0) {
+        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to create properties for texture: %s", SDL_GetError());
+        goto cleanupCamera;
+    }
+
+    SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_WIDTH_NUMBER, m_camera.spec.width);
+    SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_HEIGHT_NUMBER, m_camera.spec.height);
+    SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_ACCESS_NUMBER, SDL_TEXTUREACCESS_STREAMING);
+    SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_COLORSPACE_NUMBER, m_camera.spec.colorspace);
+
+    SDL_PixelFormat format = static_cast<SDL_PixelFormat>(m_settings.getPixelFormat());
+    if(format == SDL_PIXELFORMAT_UNKNOWN) {
+        // use cameras pixel format
+        format = m_camera.spec.format;
+    }
+
+    SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_FORMAT_NUMBER, format);
+    if((m_camera.texture = SDL_CreateTextureWithProperties(m_renderData.renderer, props)) == nullptr) {
+        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to create texture: %s", SDL_GetError());
+        SDL_DestroyProperties(props);
+
+        goto cleanupCamera;
+    }
+
+    SDL_DestroyProperties(props);
+    SDL_SetTextureScaleMode(m_camera.texture, m_settings.getScaleMode());
+
+    // make sure texture starts blank, doesnt work on mjpeg but dont care too much
+    SDL_Surface* surface;
+    if(SDL_LockTextureToSurface(m_camera.texture, NULL, &surface)) {
+        SDL_ClearSurface(surface, 0.0, 0.0, 0.0, 1.0);
+        SDL_UnlockTexture(m_camera.texture);
+    }
+
+    if(format != m_camera.spec.format) {
+        // for some reason writing to a temporary buffer first is faster when using SDL_ConvertPixels
+        m_camera.pitch      = static_cast<size_t>(((m_camera.texture->w * SDL_BYTESPERPIXEL(m_camera.texture->format)) + 3) & ~3);
+        m_camera.pixelsSize = static_cast<size_t>(m_camera.texture->h) * m_camera.pitch;
+        m_camera.pixels     = SDL_malloc(m_camera.pixelsSize);
+    }
+
+    lock.unlock();
+
+    updateCameraDisplayRect();
+    updateFrameLimiter(m_frameLimitInfo);
+}
+
+void Application::renderCameraToTexture() {
+    if(!m_camera.approved) {
+        return;
+    }
+
+    auto lock            = std::unique_lock(m_camera.mutex);
+    SDL_Surface* surface = SDL_AcquireCameraFrame(m_camera.device, NULL);
+    if(surface != nullptr) {
+        switch(m_camera.texture->format) {
+        case SDL_PIXELFORMAT_RGB24: {
+            if(!SDL_ConvertPixels(
+                   m_camera.texture->w, m_camera.texture->h,
+                   surface->format, surface->pixels, surface->pitch,
+                   m_camera.texture->format, m_camera.pixels, m_camera.pitch
+               )) {
+                SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Error converting pixels: %s", SDL_GetError());
+            }
+
+            SDL_ReleaseCameraFrame(m_camera.device, surface);
+
+            void* pixels;
+            int pitch;
+
+            SDL_LockTexture(m_camera.texture, NULL, &pixels, &pitch);
+            SDL_memmove(pixels, m_camera.pixels, m_camera.pixelsSize);
+            SDL_UnlockTexture(m_camera.texture);
+
+            break;
+        }
+        default:
+            SDL_UpdateTexture(m_camera.texture, NULL, surface->pixels, surface->pitch);
+            SDL_ReleaseCameraFrame(m_camera.device, surface);
+            break;
+        }
+    }
+
+    lock.unlock();
 }

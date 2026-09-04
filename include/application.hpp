@@ -7,7 +7,6 @@
 #include <clay_renderer_SDL3.hpp>
 #include <frame_limiter.hpp>
 #include <list>
-#include <memory>
 #include <mutex>
 #include <optional>
 #include <settings.hpp>
@@ -75,6 +74,15 @@ private:
         .fontSize  = static_cast<uint16_t>(defaultTextConfig.fontSize + 1),
     });
 
+    bool m_showFrametime = false;
+
+    bool m_slidingFPS    = false;
+    bool m_slidingVolume = false;
+
+    bool m_volumeSnapped        = false;
+    bool m_volumeFreeDuringSnap = false;
+    bool m_volumeInSnapRange    = false;
+
     bool Clay_MouseClicked();
     bool Clay_MouseHeld();
     // only if current element itself is clicked, not including children
@@ -102,6 +110,9 @@ private:
     void BuildDisplayModeLabel(const CameraDisplayMode& displayMode);
     void BuildDisplayModeSettings();
 
+    void BuildScaleModeLabel(const SDL_ScaleMode& scaleMode);
+    void BuildScaleModeSettings();
+
     void BuildFrameLimitTypeLabel(const FrameLimitType& type);
     void BuildFrameLimiterSettings();
 
@@ -122,7 +133,13 @@ private:
     void setCamera(CameraInfo info);
     void setRecordingDevice(RecordingDeviceInfo info);
 
+    void updateCameraDisplayRect();
+    void updateCameraTexture(bool shouldLockMutex = true);
+    // should be called every frame
+    void renderCameraToTexture();
+
     void updateCameraDisplayMode(CameraDisplayMode mode);
+    void updateCameraScaleMode(SDL_ScaleMode mode);
     void updateCameraPixelFormat(PixelFormat format);
     void updateFrameLimiter(FrameLimitInfo info);
 
@@ -162,11 +179,6 @@ private:
     bool m_isFullscreen = false;
     bool m_shiftHeld    = false;
 
-    bool m_slidingVolume = false;
-    bool m_slidingFPS    = false;
-
-    bool m_showFrametime = false;
-
     std::string m_frameTimeText;
     std::chrono::time_point<std::chrono::system_clock> m_showCursorExpire;
 
@@ -192,11 +204,10 @@ private:
     std::mutex m_audioMutex;
 
     static constexpr SDL_AudioSpec m_audioSpec = { SDL_AUDIO_S16, 2, 48000 };
+    static constexpr size_t maxAudioBuffers    = 32;
 
     size_t m_audioBufferSize;
     std::vector<Uint16> m_emptyAudioBuffer;
-
-    static constexpr size_t maxAudioBuffers = 32;
 
     std::list<std::vector<Uint16>> m_audioBuffers;
 
@@ -214,24 +225,29 @@ private:
     int m_volume = 100;
     std::string m_volumeText;
 
-    bool m_volumeSnapped        = false;
-    bool m_volumeFreeDuringSnap = false;
-    bool m_volumeInSnapRange    = false;
-
+    FrameLimiter m_frameLimiter;
     FrameLimitInfo m_frameLimitInfo;
     float m_fpsSliderPosition = 0.0f;
-
     std::string m_fpsText;
 
-    FrameLimiter m_frameLimiter;
-
     std::vector<CameraInfo> m_cameras;
-
     std::vector<SDL_AudioDeviceID> m_playbackDevices;
     std::vector<RecordingDeviceInfo> m_recordingDevices;
 
-    PixelFormat m_pixelFormat;
-    std::shared_ptr<CustomElementData> m_cameraData;
+    struct {
+        SDL_Camera* device;
+        SDL_Texture* texture;
+        SDL_CameraSpec spec;
+
+        bool approved;
+        SDL_FRect displayRect;
+
+        void* pixels;
+        size_t pitch;
+        size_t pixelsSize;
+
+        std::mutex mutex;
+    } m_camera;
 
     CameraInfo m_currentCamera                   = { .id = 0, .name = "(null)" };
     RecordingDeviceInfo m_currentRecordingDevice = { .id = 0, .name = "(null)" };

@@ -45,7 +45,7 @@ float FrameLimiter::frameTime() {
         for(size_t i = 0; i <= maxFrameTimes; i++) {
             const float& time = m_frameTimes[i];
 
-            frameTime += time;
+            totalFrameTime += time;
             m_frameTimeMin = SDL_min(time, m_frameTimeMin);
             m_frameTimeMax = SDL_max(time, m_frameTimeMax);
         }

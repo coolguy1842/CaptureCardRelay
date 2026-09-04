@@ -1,4 +1,3 @@
-#include <SDL3/SDL_camera.h>
 #include <application.hpp>
 #include <chrono>
 
@@ -11,6 +10,7 @@ void Application::handleEvent(SDL_Event* event) {
         m_width  = event->window.data1;
         m_height = event->window.data2;
 
+        updateCameraDisplayRect();
         Clay_SetLayoutDimensions(Clay_Dimensions{
             static_cast<float>(m_width),
             static_cast<float>(m_height),
@@ -47,7 +47,6 @@ void Application::handleEvent(SDL_Event* event) {
 
     cursorMain:
         m_showCursorExpire = std::chrono::system_clock::now() + std::chrono::milliseconds(1000);
-
         SDL_ShowCursor();
 
         break;
@@ -65,20 +64,21 @@ void Application::handleEvent(SDL_Event* event) {
         SDL_Log("Opened camera: %s", m_currentCamera.name);
 
         SDL_CameraSpec spec;
-        if(!SDL_GetCameraFormat(m_cameraData->camera.device, &spec)) {
-            m_cameraData->camera.spec = {};
+        if(!SDL_GetCameraFormat(m_camera.device, &spec)) {
+            m_camera.spec = {};
             SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Camera approved but failed to get format");
             break;
         }
 
-        m_cameraData->camera.spec = spec;
+        m_camera.spec = spec;
         SDL_Log("Camera spec: %dx%d@%0.2f - Format: %s - Colorspace: %s", spec.width, spec.height, spec.framerate_numerator / static_cast<float>(spec.framerate_denominator), pixelFormatName(spec.format), colorspaceName(spec.colorspace));
 
-        m_cameraData->camera.approved = true;
-        updateFrameLimiter(m_frameLimitInfo);
+        m_camera.approved = true;
+        updateCameraTexture();
+
         break;
     case SDL_EVENT_CAMERA_DEVICE_DENIED:
-        SDL_Log("Camera %s was rejected", SDL_GetCameraName(SDL_GetCameraID(m_cameraData->camera.device)));
+        SDL_Log("Camera %s was rejected", SDL_GetCameraName(SDL_GetCameraID(m_camera.device)));
 
         closeCamera();
         updateFrameLimiter(m_frameLimitInfo);
@@ -106,16 +106,15 @@ void Application::handleEvent(SDL_Event* event) {
             }
 
             {
-                auto lock = std::unique_lock(m_cameraData->camera.mutex);
-                if(!m_cameraData->camera.approved && m_cameraData->camera.device != nullptr) {
+                auto lock = std::unique_lock(m_camera.mutex);
+                if(!m_camera.approved && m_camera.device != nullptr) {
                     closeCamera(false);
                 }
             }
 
             initCameras();
-
-            if(m_cameraData->camera.device != nullptr) {
-                SDL_CameraID currentCamera = SDL_GetCameraID(m_cameraData->camera.device);
+            if(m_camera.device != nullptr) {
+                SDL_CameraID currentCamera = SDL_GetCameraID(m_camera.device);
 
                 auto it = std::find_if(m_cameras.begin(), m_cameras.end(), [currentCamera](const auto& info) { return info.id == currentCamera; });
                 if(it == m_cameras.end()) {

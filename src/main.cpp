@@ -43,8 +43,7 @@ int main(int argc, char** argv) {
         }
 
         std::shared_ptr<Application> app = std::make_shared<Application>(settingsPath);
-        while(app->loop())
-            ;
+        while(app->loop());
     }
 
     SDL_Clay_Exit();

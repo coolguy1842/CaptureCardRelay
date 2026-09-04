@@ -12,6 +12,7 @@
 #include <unordered_map>
 
 const CameraDisplayMode DEFAULT_DISPLAY_MODE = DISPLAY_MODE_CONTAIN;
+const SDL_ScaleMode DEFAULT_SCALE_MODE       = SDL_SCALEMODE_LINEAR;
 
 const FrameLimitType DEFAULT_FRAME_LIMIT_TYPE = FRAME_LIMIT_CAMERA;
 const float DEFAULT_FRAME_LIMIT_FPS           = 0.0f;
@@ -401,6 +402,31 @@ CameraDisplayMode Settings::getDisplayMode() {
 void Settings::setDisplayMode(CameraDisplayMode mode) {
     if(setValue("displayMode", std::to_string(mode))) {
         displayModeChanged(mode);
+    }
+}
+
+bool Settings::canSetScaleMode() const {
+    static bool canSet = !valueLocked("scaleMode");
+    return canSet;
+}
+
+SDL_ScaleMode Settings::getScaleMode() {
+    int mode = std::atoi(getValue("scaleMode").value_or(std::to_string(DEFAULT_SCALE_MODE)).c_str());
+
+    switch(mode) {
+    case SDL_SCALEMODE_NEAREST:
+    case SDL_SCALEMODE_LINEAR:
+    case SDL_SCALEMODE_PIXELART:
+        return static_cast<SDL_ScaleMode>(mode);
+    default:
+        setScaleMode(DEFAULT_SCALE_MODE);
+        return DEFAULT_SCALE_MODE;
+    }
+}
+
+void Settings::setScaleMode(SDL_ScaleMode mode) {
+    if(setValue("scaleMode", std::to_string(mode))) {
+        scaleModeChanged(mode);
     }
 }
 

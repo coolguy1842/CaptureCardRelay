@@ -1,5 +1,3 @@
-#include <SDL3/SDL_render.h>
-#include <SDL3_ttf/SDL_ttf.h>
 #include <application.hpp>
 #include <cmath>
 #include <cstddef>
@@ -18,15 +16,7 @@ Application::Application(const char* settingsPath)
     : m_settings(settingsPath)
     , m_width(800)
     , m_height(600)
-    , m_frameLimiter(true)
-    , m_pixelFormat(m_settings.getPixelFormat())
-    , m_cameraData(new CustomElementData{
-          .type   = CUSTOM_ELEMENT_TYPE_CAMERA,
-          .camera = CameraData{
-              .textureFormat = static_cast<SDL_PixelFormat>(m_pixelFormat),
-              .displayMode   = m_settings.getDisplayMode(),
-          },
-      }) {
+    , m_frameLimiter(true) {
     if(!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_CAMERA)) {
         SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't initialize SDL: %s", SDL_GetError());
         setShouldQuit();
@@ -119,8 +109,9 @@ Application::Application(const char* settingsPath)
     Clay_SetMeasureTextFunction(SDL_MeasureText, &m_renderData.fonts);
 
     m_settings.displayModeChanged.connect<&Application::updateCameraDisplayMode>(this);
-    m_settings.frameLimitInfoChanged.connect<&Application::updateFrameLimiter>(this);
+    m_settings.scaleModeChanged.connect<&Application::updateCameraScaleMode>(this);
     m_settings.pixelFormatChanged.connect<&Application::updateCameraPixelFormat>(this);
+    m_settings.frameLimitInfoChanged.connect<&Application::updateFrameLimiter>(this);
 
     updateFrameLimiter(m_settings.getFrameLimitInfo());
 
@@ -154,22 +145,9 @@ Application::~Application() {
     SDL_Quit();
 }
 
-void Application::updateCameraDisplayMode(CameraDisplayMode mode) {
-    if(m_cameraData == nullptr) {
-        return;
-    }
-
-    m_cameraData->camera.displayMode = mode;
-}
-
-void Application::updateCameraPixelFormat(PixelFormat format) {
-    if(m_cameraData == nullptr) {
-        return;
-    }
-
-    m_pixelFormat                      = format;
-    m_cameraData->camera.textureFormat = static_cast<SDL_PixelFormat>(format);
-}
+void Application::updateCameraDisplayMode(CameraDisplayMode) { updateCameraDisplayRect(); }
+void Application::updateCameraScaleMode(SDL_ScaleMode) { updateCameraTexture(); }
+void Application::updateCameraPixelFormat(PixelFormat) { updateCameraTexture(); }
 
 void Application::updateFrameLimiter(FrameLimitInfo info) {
     m_frameLimitInfo = info;
@@ -177,12 +155,16 @@ void Application::updateFrameLimiter(FrameLimitInfo info) {
 
     switch(info.type) {
     case FRAME_LIMIT_CAMERA:
-        if(m_cameraData == nullptr) {
+        if(m_camera.device == nullptr) {
+            // set to vsync as fallback
+            m_frameLimiter.setFPSLimit(0);
+            SDL_SetRenderVSync(m_renderData.renderer, 1);
+
             break;
         }
 
         SDL_SetRenderVSync(m_renderData.renderer, SDL_RENDERER_VSYNC_DISABLED);
-        m_frameLimiter.setFPSLimit(m_cameraData->camera.spec.framerate_numerator / static_cast<float>(m_cameraData->camera.spec.framerate_denominator));
+        m_frameLimiter.setFPSLimit(m_camera.spec.framerate_numerator / static_cast<float>(m_camera.spec.framerate_denominator));
 
         break;
     case FRAME_LIMIT_VSYNC:
@@ -237,8 +219,15 @@ void Application::render() {
     SDL_SetRenderDrawColor(m_renderData.renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
     SDL_RenderClear(m_renderData.renderer);
 
-    Clay_RenderCommandArray commands = buildUI();
-    SDL_Clay_RenderClayCommands(&m_renderData, &commands);
+    if(m_camera.approved) {
+        renderCameraToTexture();
+        SDL_RenderTexture(m_renderData.renderer, m_camera.texture, NULL, &m_camera.displayRect);
+    }
+
+    if(m_settingsActive || m_showFrametime) {
+        Clay_RenderCommandArray commands = buildUI();
+        SDL_Clay_RenderClayCommands(&m_renderData, &commands);
+    }
 
     m_frameLimiter.limit(true);
     SDL_RenderPresent(m_renderData.renderer);

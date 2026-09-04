@@ -38,7 +38,7 @@ private:
     SDL_Time m_frameTimeStart = 0;
     size_t m_frameTimeNum     = 0;
 
-    const static size_t maxFrameTimes = 200;
+    const static size_t maxFrameTimes = 60;
     float m_frameTimes[maxFrameTimes];
 
     // prevent div by 0

@@ -2,8 +2,6 @@
 #define __SETTINGS_HPP__
 
 #include <SDL3/SDL.h>
-#include <SDL3/SDL_pixels.h>
-#include <clay_renderer_SDL3.hpp>
 #include <rocket.hpp>
 #include <string>
 #include <unordered_map>
@@ -13,6 +11,13 @@
 
 #define MAX_FPS 250.0f
 #define MIN_FPS 0.0f
+
+enum CameraDisplayMode {
+    DISPLAY_MODE_CONTAIN, // letterboxing or pillarboxing
+    DISPLAY_MODE_COVER,   // covers the image to the display while maintaining aspect ratio, will hide content if needed
+    DISPLAY_MODE_FILL,    // stretches to the display size
+    DISPLAY_MODE_NONE     // nothing is done to the image
+};
 
 enum FrameLimitType {
     // limits to the cameras refresh rate
@@ -56,6 +61,10 @@ public:
     CameraDisplayMode getDisplayMode();
     void setDisplayMode(CameraDisplayMode mode);
 
+    bool canSetScaleMode() const;
+    SDL_ScaleMode getScaleMode();
+    void setScaleMode(SDL_ScaleMode mode);
+
     // display format, camera is fastest, but may have issues, defaults to RGB24
     bool canSetPixelFormat() const;
     PixelFormat getPixelFormat();
@@ -93,6 +102,7 @@ public:
     rocket::thread_safe_signal<void(int)> volumeChanged;
     rocket::thread_safe_signal<void(bool)> fullscreenChanged;
     rocket::thread_safe_signal<void(CameraDisplayMode)> displayModeChanged;
+    rocket::thread_safe_signal<void(SDL_ScaleMode)> scaleModeChanged;
     rocket::thread_safe_signal<void(FrameLimitInfo)> frameLimitInfoChanged;
     rocket::thread_safe_signal<void(PixelFormat)> pixelFormatChanged;
     rocket::thread_safe_signal<void(SDL_Colorspace)> preferredColorspaceChanged;

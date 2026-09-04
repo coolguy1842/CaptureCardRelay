@@ -5,9 +5,6 @@
 #include <stack>
 #include <unordered_map>
 
-// for windows compiling
-CustomElementData::~CustomElementData() {}
-
 Clay_Dimensions SDL_MeasureText(Clay_StringSlice text, Clay_TextElementConfig* config, void* userData) {
     std::vector<TTF_Font*>& fonts = *reinterpret_cast<std::vector<TTF_Font*>*>(userData);
     TTF_Font* font                = fonts[config->fontId];
@@ -156,6 +153,7 @@ void SDL_Clay_Exit() {
 
     s_textMap.clear();
 }
+
 void SDL_Clay_RenderClayCommands(Clay_SDL3RendererData* rendererData, Clay_RenderCommandArray* rcommands) {
     for(int32_t i = 0; i < rcommands->length; i++) {
         Clay_RenderCommand* rcmd            = Clay_RenderCommandArray_Get(rcommands, i);
@@ -329,173 +327,6 @@ void SDL_Clay_RenderClayCommands(Clay_SDL3RendererData* rendererData, Clay_Rende
 
             const SDL_FRect dest = { rect.x, rect.y, rect.w, rect.h };
             SDL_RenderTexture(rendererData->renderer, texture, NULL, &dest);
-
-            break;
-        }
-        case CLAY_RENDER_COMMAND_TYPE_CUSTOM: {
-            CustomElementData* data = reinterpret_cast<CustomElementData*>(rcmd->renderData.custom.customData);
-            if(data == nullptr) {
-                continue;
-            }
-
-            switch(data->type) {
-            case CUSTOM_ELEMENT_TYPE_CAMERA: {
-                SDL_SetRenderDrawColor(rendererData->renderer, rcmd->renderData.custom.backgroundColor.r, rcmd->renderData.custom.backgroundColor.g, rcmd->renderData.custom.backgroundColor.b, rcmd->renderData.custom.backgroundColor.a);
-                SDL_RenderFillRect(rendererData->renderer, &rect);
-
-                CameraData& camera   = data->camera;
-                SDL_Texture*& tex    = camera.texture;
-                SDL_CameraSpec& spec = camera.spec;
-
-                auto lock = std::unique_lock(camera.mutex);
-                if(camera.device == nullptr || !camera.approved) {
-                cleanupCamera:
-                    camera.__prevDisplayMode = static_cast<CameraDisplayMode>(-1);
-                    camera.__prevRect        = { 0, 0, 0, 0 };
-                    camera.__displayRect     = { 0, 0, 0, 0 };
-
-                    if(camera.__pixels != nullptr) {
-                        SDL_free(camera.__pixels);
-                        camera.__pixels = nullptr;
-                    }
-
-                    if(tex != nullptr) {
-                        SDL_DestroyTexture(tex);
-                        tex = nullptr;
-                    }
-
-                    break;
-                }
-
-                if(
-                    tex == nullptr || tex->w != spec.width || tex->h != spec.height ||
-                    (camera.textureFormat == SDL_PIXELFORMAT_UNKNOWN && tex->format != spec.format) ||
-                    (camera.textureFormat != SDL_PIXELFORMAT_UNKNOWN && tex->format != camera.textureFormat)
-                ) {
-                    camera.__prevDisplayMode = static_cast<CameraDisplayMode>(-1);
-
-                    if(camera.__pixels != nullptr) {
-                        SDL_free(camera.__pixels);
-                        camera.__pixels = nullptr;
-                    }
-
-                    if(tex != nullptr) {
-                        SDL_DestroyTexture(tex);
-                        tex = nullptr;
-                    }
-
-                    SDL_PropertiesID props = SDL_CreateProperties();
-                    if(props == 0) {
-                        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to create properties for texture: %s", SDL_GetError());
-                        goto cleanupCamera;
-                    }
-
-                    SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_WIDTH_NUMBER, spec.width);
-                    SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_HEIGHT_NUMBER, spec.height);
-                    SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_ACCESS_NUMBER, SDL_TEXTUREACCESS_STREAMING);
-                    SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_COLORSPACE_NUMBER, spec.colorspace);
-
-                    SDL_PixelFormat format = camera.textureFormat;
-                    // use cameras pixel format
-                    if(format == SDL_PIXELFORMAT_UNKNOWN) {
-                        format = spec.format;
-                    }
-
-                    SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_FORMAT_NUMBER, format);
-                    if((tex = SDL_CreateTextureWithProperties(rendererData->renderer, props)) == nullptr) {
-                        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to create texture: %s", SDL_GetError());
-                        SDL_DestroyProperties(props);
-
-                        goto cleanupCamera;
-                    }
-
-                    SDL_DestroyProperties(props);
-                    camera.__pitch      = static_cast<size_t>(((tex->w * SDL_BYTESPERPIXEL(tex->format)) + 3) & ~3);
-                    camera.__pixelsSize = static_cast<size_t>(tex->h) * camera.__pitch;
-                    camera.__pixels     = SDL_malloc(camera.__pixelsSize);
-
-                    if(camera.__pixels == nullptr) {
-                        goto cleanupCamera;
-                    }
-                }
-
-                SDL_Surface* surface = SDL_AcquireCameraFrame(camera.device, NULL);
-                if(surface != nullptr) {
-                    switch(tex->format) {
-                    case SDL_PIXELFORMAT_RGB24: {
-                        if(!SDL_ConvertPixels(
-                               tex->w, tex->h,
-                               surface->format, surface->pixels, surface->pitch,
-                               tex->format, camera.__pixels, camera.__pitch
-                           )) {
-                            SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Error converting pixels: %s", SDL_GetError());
-                        }
-
-                        SDL_ReleaseCameraFrame(camera.device, surface);
-
-                        void* pixels;
-                        int pitch;
-
-                        SDL_LockTexture(tex, NULL, &pixels, &pitch);
-                        SDL_memmove(pixels, camera.__pixels, camera.__pixelsSize);
-                        SDL_UnlockTexture(tex);
-                        break;
-                    }
-                    default:
-                        SDL_UpdateTexture(tex, NULL, surface->pixels, surface->pitch);
-                        SDL_ReleaseCameraFrame(camera.device, surface);
-                        break;
-                    }
-                }
-
-                lock.unlock();
-                if(!SDL_Clay_FRectEqual(camera.__prevRect, rect) || camera.__prevDisplayMode != camera.displayMode) {
-                    SDL_FRect displayRect = rect;
-
-                    switch(camera.displayMode) {
-                    case DISPLAY_MODE_CONTAIN:
-                    case DISPLAY_MODE_COVER:   {
-                        // most logic here from: https://github.com/nrkn/object-fit-math/blob/master/src/fitter.ts
-                        float widthRatio  = rect.w / tex->w;
-                        float heightRatio = rect.h / tex->h;
-
-                        // min of width vs height ratios
-                        float ratio = camera.displayMode == DISPLAY_MODE_CONTAIN
-                                          ? CLAY__MIN(widthRatio, heightRatio)
-                                          : CLAY__MAX((rect.w / tex->w), (rect.h / tex->h));
-
-                        displayRect.w = tex->w * ratio;
-                        displayRect.h = tex->h * ratio;
-                        displayRect.x = (rect.w - displayRect.w) / 2.0f;
-                        displayRect.y = (rect.h - displayRect.h) / 2.0f;
-
-                        break;
-                    }
-                    case DISPLAY_MODE_FILL: break;
-                    case DISPLAY_MODE_NONE:
-                        displayRect = {
-                            .x = 0,
-                            .y = 0,
-                            .w = static_cast<float>(tex->w),
-                            .h = static_cast<float>(tex->h),
-                        };
-
-                        break;
-                    default: break;
-                    }
-
-                    camera.__prevRect        = rect;
-                    camera.__prevDisplayMode = camera.displayMode;
-                    camera.__displayRect     = displayRect;
-                }
-
-                SDL_RenderTexture(rendererData->renderer, tex, NULL, &camera.__displayRect);
-                break;
-            }
-            default:
-                SDL_Log("Unknown custom render command type: %d", rcmd->commandType);
-                break;
-            }
 
             break;
         }

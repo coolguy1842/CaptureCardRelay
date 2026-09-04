@@ -2,12 +2,9 @@
 #define __CLAY_RENDERER_SDL3_HPP__
 
 #include <SDL3/SDL.h>
-#include <SDL3/SDL_pixels.h>
-#include <SDL3_image/SDL_image.h>
 #include <SDL3_ttf/SDL_ttf.h>
 #include <clay.h>
 
-#include <mutex>
 #include <vector>
 
 struct Clay_Color;
@@ -19,49 +16,7 @@ struct Clay_SDL3RendererData {
     std::vector<TTF_Font*> fonts;
 };
 
-typedef enum {
-    CUSTOM_ELEMENT_TYPE_CAMERA
-} CustomElementType;
-
-enum CameraDisplayMode {
-    DISPLAY_MODE_CONTAIN, // letterboxing or pillarboxing
-    DISPLAY_MODE_COVER,   // covers the image to the display while maintaining aspect ratio, will hide content if needed
-    DISPLAY_MODE_FILL,    // stretches to the display size
-    DISPLAY_MODE_NONE     // nothing is done to the image
-};
-
-struct CameraData {
-    SDL_Camera* device;
-    SDL_Texture* texture;
-    SDL_PixelFormat textureFormat;
-
-    bool approved;
-    SDL_CameraSpec spec;
-
-    CameraDisplayMode displayMode;
-    std::mutex mutex;
-
-    // internal
-    void* __pixels;
-    size_t __pixelsSize;
-    size_t __pitch;
-
-    SDL_FRect __prevRect;
-    CameraDisplayMode __prevDisplayMode = static_cast<CameraDisplayMode>(-1);
-    SDL_FRect __displayRect;
-};
-
-struct CustomElementData {
-    ~CustomElementData();
-
-    CustomElementType type;
-    union {
-        CameraData camera;
-    };
-};
-
 void SDL_Clay_Exit();
-
 Clay_Dimensions SDL_MeasureText(Clay_StringSlice text, Clay_TextElementConfig* config, void* userData);
 
 void SDL_Clay_RenderFillRoundedRect(Clay_SDL3RendererData* rendererData, const SDL_FRect rect, const float cornerRadius, const Clay_Color _color);

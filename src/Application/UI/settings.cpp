@@ -1,7 +1,7 @@
-#include "settings.hpp"
 #include <algorithm>
 #include <application.hpp>
 #include <clay_renderer_SDL3.hpp>
+#include <settings.hpp>
 
 #define SEPARATOR CLAY_AUTO_ID({                                                                      \
     .layout          = { .sizing = { .width = CLAY_SIZING_GROW(), .height = CLAY_SIZING_FIXED(2) } }, \
@@ -22,6 +22,7 @@ static const Clay_ElementId camerasContainerID          = CLAY_ID("CamerasContai
 static const Clay_ElementId pixelFormatContainerID      = CLAY_ID("PixelFormatContainer");
 static const Clay_ElementId recordingDevicesContainerID = CLAY_ID("RecordingDevicesContainer");
 static const Clay_ElementId displayModeContainerID      = CLAY_ID("DisplayModeContainer");
+static const Clay_ElementId scaleModeContainerID        = CLAY_ID("ScaleModeContainer");
 static const Clay_ElementId frameLimitTypeContainerID   = CLAY_ID("FrameLimitTypeContainer");
 
 const Clay_String toClayString(const char* str) {
@@ -47,6 +48,15 @@ Clay_String displayModeStr(CameraDisplayMode mode) {
     case DISPLAY_MODE_FILL:    return toClayString("Fill");
     case DISPLAY_MODE_NONE:    return toClayString("None");
     default:                   return toClayString("Unknown");
+    }
+}
+
+Clay_String scaleModeStr(SDL_ScaleMode mode) {
+    switch(mode) {
+    case SDL_SCALEMODE_NEAREST:  return toClayString("Nearest");
+    case SDL_SCALEMODE_LINEAR:   return toClayString("Linear");
+    case SDL_SCALEMODE_PIXELART: return toClayString("Pixel Art");
+    default:                     return toClayString("Unknown");
     }
 }
 
@@ -226,7 +236,7 @@ void Application::BuildPixelFormatLabel(const PixelFormat& format) {
                 }
             }
 
-            if(m_cameraData->camera.textureFormat == static_cast<SDL_PixelFormat>(format)) {
+            if(m_settings.getPixelFormat() == format) {
                 textConfig = selectedTextConfig;
             }
         }
@@ -247,7 +257,7 @@ void Application::BuildPixelFormatSettings() {
             continue;
         }
 
-        BuildPixelFormatLabel(m_pixelFormat);
+        BuildPixelFormatLabel(m_settings.getPixelFormat());
         if(m_settings.canSetPixelFormat() && Clay_Hovered()) {
             m_nextCursor = m_pointerCursor;
 
@@ -329,7 +339,7 @@ void Application::BuildDisplayModeLabel(const CameraDisplayMode& displayMode) {
                 }
             }
 
-            if(m_cameraData->camera.displayMode == displayMode) {
+            if(m_settings.getDisplayMode() == displayMode) {
                 textConfig = selectedTextConfig;
             }
         }
@@ -352,7 +362,7 @@ void Application::BuildDisplayModeSettings() {
             continue;
         }
 
-        BuildDisplayModeLabel(m_cameraData->camera.displayMode);
+        BuildDisplayModeLabel(m_settings.getDisplayMode());
         if(m_settings.canSetDisplayMode() && Clay_Hovered()) {
             m_nextCursor = m_pointerCursor;
 
@@ -363,6 +373,58 @@ void Application::BuildDisplayModeSettings() {
     }
 
     Build_ScrollBar(displayModeContainerID);
+}
+
+void Application::BuildScaleModeLabel(const SDL_ScaleMode& scaleMode) {
+    CLAY_AUTO_ID() {
+        Clay_TextElementConfig textConfig = defaultTextConfig;
+        if(!m_settings.canSetScaleMode()) {
+            textConfig = lockedTextConfig;
+        }
+        else if(m_activeDropdown.id == scaleModeContainerID.id) {
+            if(Clay_Hovered()) {
+                m_nextCursor = m_pointerCursor;
+                textConfig   = hoveredTextConfig;
+
+                if(Clay_MouseClicked()) {
+                    m_settings.setScaleMode(scaleMode);
+                    m_activeDropdown = m_invalidDropdown;
+                }
+            }
+
+            if(m_settings.getScaleMode() == scaleMode) {
+                textConfig = selectedTextConfig;
+            }
+        }
+
+        CLAY_TEXT(scaleModeStr(scaleMode), textConfig);
+    }
+}
+
+void Application::BuildScaleModeSettings() {
+    SettingContainer(scaleModeContainerID, CLAY_SIZING_FIT(), true) {
+        CONTAINER_TITLE("Scale Mode");
+        SEPARATOR;
+
+        if(m_activeDropdown.id == scaleModeContainerID.id) {
+            BuildScaleModeLabel(SDL_SCALEMODE_NEAREST);
+            BuildScaleModeLabel(SDL_SCALEMODE_LINEAR);
+            BuildScaleModeLabel(SDL_SCALEMODE_PIXELART);
+
+            continue;
+        }
+
+        BuildScaleModeLabel(m_settings.getScaleMode());
+        if(m_settings.canSetScaleMode() && Clay_Hovered()) {
+            m_nextCursor = m_pointerCursor;
+
+            if(Clay_MouseClicked()) {
+                m_activeDropdown = scaleModeContainerID;
+            }
+        }
+    }
+
+    Build_ScrollBar(scaleModeContainerID);
 }
 
 void Application::BuildFrameLimitTypeLabel(const FrameLimitType& type) {
@@ -692,6 +754,7 @@ void Application::BuildSettingsMenu() {
                     BuildCameraSettings();
                     BuildRecordingDeviceSettings();
                     BuildDisplayModeSettings();
+                    BuildScaleModeSettings();
                     BuildPixelFormatSettings();
 
                     BuildFrameLimiterSettings();
@@ -700,7 +763,7 @@ void Application::BuildSettingsMenu() {
                     BuildVolumeSettings();
                 }
 
-                // Build_ScrollBar(settingsContainerID, true);
+                Build_ScrollBar(settingsContainerID, true);
                 Build_ScrollBar(settingsContainerID, false);
             }
         }
