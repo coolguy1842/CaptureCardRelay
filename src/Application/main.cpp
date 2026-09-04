@@ -224,10 +224,8 @@ void Application::render() {
         SDL_RenderTexture(m_renderData.renderer, m_camera.texture, NULL, &m_camera.displayRect);
     }
 
-    if(m_settingsActive || m_showFrametime) {
-        Clay_RenderCommandArray commands = buildUI();
-        SDL_Clay_RenderClayCommands(&m_renderData, &commands);
-    }
+    Clay_RenderCommandArray commands = buildUI();
+    SDL_Clay_RenderClayCommands(&m_renderData, &commands);
 
     m_frameLimiter.limit(true);
     SDL_RenderPresent(m_renderData.renderer);
