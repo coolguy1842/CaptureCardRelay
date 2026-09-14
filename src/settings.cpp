@@ -225,7 +225,7 @@ std::string Settings::getSettingsPath() {
     size_t tmpPathSize = wcslen(tmpPath);
 
     int pathSize = WideCharToMultiByte(CP_UTF8, 0, tmpPath, (int)tmpPathSize, NULL, 0, NULL, NULL);
-    configPath   = std::string(pathSize, 0);
+    configPath   = std::string(static_cast<size_t>(pathSize), 0);
 
     WideCharToMultiByte(CP_UTF8, 0, tmpPath, (int)tmpPathSize, configPath.data(), pathSize, NULL, NULL);
     CoTaskMemFree(tmpPath);
