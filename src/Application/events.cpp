@@ -93,11 +93,11 @@ void Application::handleEvent(SDL_Event* event) {
     case SDL_EVENT_AUDIO_DEVICE_FORMAT_CHANGED: {
         auto lock = std::unique_lock(m_streamMutex);
         if(m_audioRecording.stream != nullptr) {
-            SDL_SetAudioStreamFormat(m_audioRecording.stream, &m_audioRecording.spec, &m_audioPlayback.spec);
+            SDL_SetAudioStreamFormat(m_audioRecording.stream, &m_audioRecording.spec, &m_audioSpec);
         }
 
         if(m_audioPlayback.stream != nullptr) {
-            SDL_SetAudioStreamFormat(m_audioPlayback.stream, &m_audioPlayback.spec, &m_audioPlayback.spec);
+            SDL_SetAudioStreamFormat(m_audioPlayback.stream, &m_audioSpec, &m_audioPlayback.spec);
         }
 
         break;

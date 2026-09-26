@@ -1,27 +1,28 @@
 #include <application.hpp>
+#include <cstddef>
 #include <format>
 
 void Application::onRecordingCallback(void* userdata, SDL_AudioStream* stream, int additionalAmount, int totalAmount) { ((Application*)userdata)->recordingCallbackHandler(stream, additionalAmount, totalAmount); }
 void Application::recordingCallbackHandler(SDL_AudioStream* stream, int available, int) {
-    if(m_audioBuffers.empty()) {
-        return;
-    }
-
 #ifndef __EMSCRIPTEN__
     auto lock = std::unique_lock(m_audioMutex);
 #endif
+    while(available >= m_audioBufferSizeBytes) {
+        AudioFrame frame;
 
-    while(available != 0) {
-        std::unique_ptr<AudioType[]> buffer = std::move(m_audioBuffers.back());
-        m_audioBuffers.pop_back();
-
-        SDL_GetAudioStreamData(stream, buffer.get(), std::min(m_audioBufferSizeBytes, available));
-
-        if(m_currentBuffers < maxAudioBuffers) {
-            m_currentBuffers++;
+        if(!m_freeAudioBuffers.empty()) {
+            frame = m_freeAudioBuffers.front();
+            m_freeAudioBuffers.pop_front();
+        }
+        else {
+            // take oldest from audio buffers
+            frame = m_audioBuffers.front();
+            m_audioBuffers.pop_front();
         }
 
-        m_audioBuffers.push_front(std::move(buffer));
+        SDL_GetAudioStreamData(stream, frame.get(), m_audioBufferSizeBytes);
+
+        m_audioBuffers.push_back(frame);
         available -= m_audioBufferSizeBytes;
     }
 }
@@ -85,7 +86,7 @@ void Application::openAudioRecordingDevice() {
     auto lock                = std::unique_lock(m_streamMutex);
     m_currentRecordingDevice = { .id = deviceID, .name = name };
 
-    m_audioRecording.stream = SDL_CreateAudioStream(&m_audioRecording.spec, &m_audioPlayback.spec);
+    m_audioRecording.stream = SDL_CreateAudioStream(&m_audioRecording.spec, &m_audioSpec);
     SDL_BindAudioStream(m_audioRecording.device, m_audioRecording.stream);
 
     SDL_SetAudioStreamPutCallback(m_audioRecording.stream, &Application::onRecordingCallback, this);

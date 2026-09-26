@@ -199,15 +199,16 @@ private:
     std::mutex m_streamMutex;
     std::mutex m_audioMutex;
 
-    using AudioType = float;
+    using AudioType  = float;
+    using AudioFrame = std::shared_ptr<AudioType[]>;
 
     static constexpr SDL_AudioSpec m_audioSpec = { SDL_AUDIO_F32, 2, 48000 };
-    static constexpr size_t maxAudioBuffers    = 64;
+    static constexpr size_t maxAudioBuffers    = 32;
 
-    std::list<std::unique_ptr<AudioType[]>> m_audioBuffers;
-    std::unique_ptr<AudioType[]> m_emptyBuffer;
+    std::list<AudioFrame> m_audioBuffers;
+    std::list<AudioFrame> m_freeAudioBuffers;
 
-    size_t m_currentBuffers;
+    AudioFrame m_emptyAudioBuffer;
     int m_audioBufferSizeBytes;
 
     struct {
