@@ -1,34 +1,6 @@
 #include <application.hpp>
 #include <format>
-#include <mutex>
 #include <set>
-#include <vector>
-
-void Application::initCameras() {
-    m_cameras.clear();
-
-    int cameraCount       = 0;
-    SDL_CameraID* cameras = SDL_GetCameras(&cameraCount);
-
-    if(cameras == nullptr) {
-        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't enumerate camera devices: %s", SDL_GetError());
-        setShouldQuit(true);
-
-        return;
-    }
-
-    for(int i = 0; i < cameraCount; i++) {
-        SDL_CameraID id = cameras[i];
-
-        const char* name = SDL_GetCameraName(id);
-        if(name == nullptr) {
-            SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to get name of camera with id: %d: %s", id, SDL_GetError());
-            name = "";
-        }
-
-        m_cameras.push_back({ id, name });
-    }
-}
 
 uint16_t getColorScore(const SDL_Colorspace& color) {
     switch(color) {
@@ -119,6 +91,32 @@ uint16_t getFormatScore(const SDL_PixelFormat& format) {
     };
 };
 
+void Application::initCameras() {
+    m_cameras.clear();
+
+    int cameraCount       = 0;
+    SDL_CameraID* cameras = SDL_GetCameras(&cameraCount);
+
+    if(cameras == nullptr) {
+        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't enumerate camera devices: %s", SDL_GetError());
+        setShouldQuit(true);
+
+        return;
+    }
+
+    for(int i = 0; i < cameraCount; i++) {
+        SDL_CameraID id  = cameras[i];
+        const char* name = SDL_GetCameraName(id);
+
+        if(name == nullptr) {
+            SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to get name of camera with id: %d: %s", id, SDL_GetError());
+            name = "";
+        }
+
+        m_cameras.push_back({ id, name });
+    }
+}
+
 void Application::openCamera() {
     // cleanup old data
     closeCamera();
@@ -135,7 +133,13 @@ void Application::openCamera() {
 
     int numFormats           = 0;
     SDL_CameraSpec** formats = SDL_GetCameraSupportedFormats(camID, &numFormats);
-    if(numFormats <= 0 || formats == nullptr) {
+
+    if(
+#ifndef __EMSCRIPTEN__
+        numFormats <= 0 ||
+#endif
+        formats == nullptr
+    ) {
         return;
     }
 
@@ -237,7 +241,10 @@ void Application::closeCamera(bool shouldLock) {
 
     if(m_camera.pixels != nullptr) {
         SDL_free(m_camera.pixels);
-        m_camera.pixels = nullptr;
+
+        m_camera.pixels     = nullptr;
+        m_camera.pitch      = 0;
+        m_camera.pixelsSize = 0;
     }
 }
 
@@ -373,15 +380,15 @@ void Application::updateCameraTexture(bool shouldLock) {
 
     if(format != m_camera.spec.format) {
         // for some reason writing to a temporary buffer first is faster when using SDL_ConvertPixels
-        m_camera.pitch      = static_cast<size_t>(((m_camera.texture->w * SDL_BYTESPERPIXEL(m_camera.texture->format)) + 3) & ~3);
-        m_camera.pixelsSize = static_cast<size_t>(m_camera.texture->h) * m_camera.pitch;
+        m_camera.pitch      = ((m_camera.texture->w * SDL_BYTESPERPIXEL(m_camera.texture->format)) + 3) & ~3;
+        m_camera.pixelsSize = static_cast<size_t>(m_camera.texture->h) * static_cast<size_t>(m_camera.pitch);
         m_camera.pixels     = SDL_malloc(m_camera.pixelsSize);
     }
 
-    lock.unlock();
-
     updateCameraDisplayRect();
     updateFrameLimiter(m_frameLimitInfo);
+
+    lock.unlock();
 }
 
 void Application::renderCameraToTexture() {
@@ -419,6 +426,4 @@ void Application::renderCameraToTexture() {
             break;
         }
     }
-
-    lock.unlock();
 }

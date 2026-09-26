@@ -6,10 +6,8 @@
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
-#include <optional>
 #include <settings.hpp>
 #include <string>
-#include <unordered_map>
 
 const CameraDisplayMode DEFAULT_DISPLAY_MODE = DISPLAY_MODE_CONTAIN;
 const SDL_ScaleMode DEFAULT_SCALE_MODE       = SDL_SCALEMODE_LINEAR;
@@ -208,6 +206,10 @@ SDL_Colorspace colorspaceFromName(const char* name) {
 
 std::string Settings::getSettingsPath() {
     std::string configPath;
+
+#ifdef __EMSCRIPTEN__
+    return "";
+#endif
 
 #ifdef _WIN32
     // https://stackoverflow.com/a/62314965
@@ -591,6 +593,10 @@ bool Settings::clearValue(std::string key) {
 }
 
 void _load(std::unordered_map<std::string, std::string>& cache, std::string path) {
+#ifdef __EMSCRIPTEN__
+    return;
+#endif
+
     std::ifstream file(path);
     if(!file.is_open()) {
         return;
@@ -612,6 +618,10 @@ void Settings::loadLocked(std::string path) { _load(m_lockedCache, path); }
 void Settings::load() { _load(m_cache, getSettingsPath()); }
 
 void Settings::save() {
+#ifdef __EMSCRIPTEN__
+    return;
+#endif
+
     std::ofstream file(getSettingsPath(), std::ios_base::out | std::ios_base::trunc);
 
     for(const auto& pair : m_cache) {

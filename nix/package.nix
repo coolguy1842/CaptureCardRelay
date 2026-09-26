@@ -1,6 +1,6 @@
 { pkgs, lib, commandLineArgs ? "", ... }: pkgs.stdenv.mkDerivation {
     name = "CaptureCardRelay";
-    version = "1.10.2";
+    version = "1.11.0";
     src = ../.;
 
     nativeBuildInputs = with pkgs; [
@@ -16,8 +16,6 @@
     buildInputs = with pkgs; [
         sdl3
         sdl3-ttf
-        sdl3-image
-        imgui
     ];
 
     configurePhase = ''

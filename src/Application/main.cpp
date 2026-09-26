@@ -1,6 +1,5 @@
 #include <application.hpp>
 #include <cmath>
-#include <cstddef>
 #include <damase_ttf.hpp>
 #include <format>
 #include <settings.hpp>
@@ -95,15 +94,18 @@ Application::Application(const char* settingsPath)
     openCamera();
     openAudioPlaybackDevice();
     openAudioRecordingDevice();
+
     if(getShouldQuit()) {
         return;
     }
 
-    uint64_t totalMemorySize = Clay_MinMemorySize();
+    uint32_t totalMemorySize = Clay_MinMemorySize();
     Clay_Arena clayMemory    = Clay_Arena{
-           .capacity = totalMemorySize,
-           .memory   = (char*)malloc(totalMemorySize)
+        .capacity = static_cast<size_t>(totalMemorySize),
+        .memory   = (char*)malloc(totalMemorySize)
     };
+
+    SDL_GetWindowSize(m_window, &m_width, &m_height);
 
     Clay_Initialize(clayMemory, Clay_Dimensions(m_width, m_height), Clay_ErrorHandler(HandleClayErrors));
     Clay_SetMeasureTextFunction(SDL_MeasureText, &m_renderData.fonts);

@@ -1,21 +1,28 @@
 #include <application.hpp>
 #include <format>
-#include <vector>
 
 void Application::onRecordingCallback(void* userdata, SDL_AudioStream* stream, int additionalAmount, int totalAmount) { ((Application*)userdata)->recordingCallbackHandler(stream, additionalAmount, totalAmount); }
-void Application::recordingCallbackHandler(SDL_AudioStream* stream, int additionalAmount, int) {
+void Application::recordingCallbackHandler(SDL_AudioStream* stream, int available, int) {
+    if(m_audioBuffers.empty()) {
+        return;
+    }
+
+#ifndef __EMSCRIPTEN__
     auto lock = std::unique_lock(m_audioMutex);
+#endif
 
-    while(additionalAmount >= static_cast<int>(m_audioBufferSize * sizeof(Uint16))) {
-        std::vector<Uint16> buffer(m_audioBufferSize);
-        SDL_GetAudioStreamData(stream, buffer.data(), buffer.size() * sizeof(buffer[0]));
+    while(available != 0) {
+        std::unique_ptr<AudioType[]> buffer = std::move(m_audioBuffers.back());
+        m_audioBuffers.pop_back();
 
-        m_audioBuffers.push_back(buffer);
-        while(m_audioBuffers.size() >= maxAudioBuffers) {
-            m_audioBuffers.pop_front();
+        SDL_GetAudioStreamData(stream, buffer.get(), std::min(m_audioBufferSizeBytes, available));
+
+        if(m_currentBuffers < maxAudioBuffers) {
+            m_currentBuffers++;
         }
 
-        additionalAmount -= static_cast<int>(m_audioBufferSize * sizeof(buffer[0]));
+        m_audioBuffers.push_front(std::move(buffer));
+        available -= m_audioBufferSizeBytes;
     }
 }
 
@@ -35,6 +42,7 @@ void Application::initAudioRecordingDevices() {
     for(int i = 0; i < recordingDeviceCount; i++) {
         SDL_AudioDeviceID id = recordingDevices[i];
         const char* name     = SDL_GetAudioDeviceName(id);
+
         if(name == nullptr) {
             SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to get name of recording device with id: %d: %s", id, SDL_GetError());
             name = "";
@@ -72,20 +80,15 @@ void Application::openAudioRecordingDevice() {
     }
 
     SDL_Log("Opened recording device: %s", name);
-    SDL_GetAudioDeviceFormat(m_audioRecording.device, &m_audioRecording.spec, &m_audioRecording.bufferSize);
+    SDL_GetAudioDeviceFormat(m_audioRecording.device, &m_audioRecording.spec, NULL);
 
     auto lock                = std::unique_lock(m_streamMutex);
     m_currentRecordingDevice = { .id = deviceID, .name = name };
 
-    m_audioRecording.stream = SDL_CreateAudioStream(&m_audioRecording.spec, &m_audioSpec);
+    m_audioRecording.stream = SDL_CreateAudioStream(&m_audioRecording.spec, &m_audioPlayback.spec);
     SDL_BindAudioStream(m_audioRecording.device, m_audioRecording.stream);
 
-    m_audioRecording.buffer = reinterpret_cast<Uint8*>(malloc(static_cast<size_t>(m_audioRecording.bufferSize)));
-
     SDL_SetAudioStreamPutCallback(m_audioRecording.stream, &Application::onRecordingCallback, this);
-
-    auto lock2 = std::unique_lock(m_audioMutex);
-    m_audioBuffers.clear();
 }
 
 void Application::closeAudioRecordingDevice() {
@@ -101,13 +104,6 @@ void Application::closeAudioRecordingDevice() {
         SDL_CloseAudioDevice(m_audioRecording.device);
         m_audioRecording.device = 0;
     }
-
-    if(m_audioRecording.buffer != nullptr) {
-        free(m_audioRecording.buffer);
-        m_audioRecording.buffer = nullptr;
-    }
-
-    m_audioRecording.bufferSize = 0;
 }
 
 void Application::setRecordingDevice(Application::RecordingDeviceInfo info) {

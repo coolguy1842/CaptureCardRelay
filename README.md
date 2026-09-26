@@ -8,6 +8,10 @@ While this is meant for viewing and listening to a capture cards output, it is e
 <strong>This program is feature complete.</strong><br>
 I will try fix any bugs reported, or that I find. If a feature request is given, I may implement it. 
 
+##  Demo
+You can test the program here: https://coolguy1842.github.io/CaptureCardRelay/
+#### NOTE: this demo is very laggy, especially in audio, the camera quality cannot be changed due to limitations too. The full application is a lot better.
+
 ### Controls
 | Key | Action                       |
 | --- | ---------------------------- |

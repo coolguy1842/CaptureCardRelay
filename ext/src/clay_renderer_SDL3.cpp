@@ -48,7 +48,7 @@ void SDL_Clay_RenderArc(Clay_SDL3RendererData* rendererData, const SDL_FPoint ce
             };
         }
 
-        SDL_RenderLines(rendererData->renderer, points.data(), points.size());
+        SDL_RenderLines(rendererData->renderer, points.data(), static_cast<int>(points.size()));
     }
 }
 
@@ -80,12 +80,12 @@ void SDL_Clay_RenderFilledArc(Clay_SDL3RendererData* rendererData, const SDL_FPo
         vertices[vertexCount++] = { .position = { x, y }, .color = color, .tex_coord = { 0, 0 } };
         if(vertexCount > 1) {
             indices[indexCount++] = 0;
-            indices[indexCount++] = vertexCount - 1;
-            indices[indexCount++] = vertexCount - 2;
+            indices[indexCount++] = static_cast<int>(vertexCount - 1);
+            indices[indexCount++] = static_cast<int>(vertexCount - 2);
         }
     }
 
-    SDL_RenderGeometry(rendererData->renderer, NULL, vertices.data(), vertexCount, indices.data(), indexCount);
+    SDL_RenderGeometry(rendererData->renderer, NULL, vertices.data(), static_cast<int>(vertexCount), indices.data(), static_cast<int>(indexCount));
 }
 
 void SDL_Clay_RenderFillRoundedRect(Clay_SDL3RendererData* rendererData, const SDL_FRect rect, const Clay_CornerRadius radius, const Clay_Color color) {

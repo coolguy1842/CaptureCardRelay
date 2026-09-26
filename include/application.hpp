@@ -7,11 +7,10 @@
 #include <clay_renderer_SDL3.hpp>
 #include <frame_limiter.hpp>
 #include <list>
+#include <memory>
 #include <mutex>
-#include <optional>
 #include <settings.hpp>
 #include <string>
-#include <vector>
 
 class Application {
 public:
@@ -45,9 +44,6 @@ private:
         SDL_AudioSpec spec;
 
         SDL_AudioStream* stream = nullptr;
-
-        int bufferSize;
-        Uint8* buffer;
     };
 
 private:
@@ -203,13 +199,16 @@ private:
     std::mutex m_streamMutex;
     std::mutex m_audioMutex;
 
-    static constexpr SDL_AudioSpec m_audioSpec = { SDL_AUDIO_S16, 2, 48000 };
-    static constexpr size_t maxAudioBuffers    = 32;
+    using AudioType = float;
 
-    size_t m_audioBufferSize;
-    std::vector<Uint16> m_emptyAudioBuffer;
+    static constexpr SDL_AudioSpec m_audioSpec = { SDL_AUDIO_F32, 2, 48000 };
+    static constexpr size_t maxAudioBuffers    = 64;
 
-    std::list<std::vector<Uint16>> m_audioBuffers;
+    std::list<std::unique_ptr<AudioType[]>> m_audioBuffers;
+    std::unique_ptr<AudioType[]> m_emptyBuffer;
+
+    size_t m_currentBuffers;
+    int m_audioBufferSizeBytes;
 
     struct {
         std::string text = "";
@@ -243,7 +242,7 @@ private:
         SDL_FRect displayRect;
 
         void* pixels;
-        size_t pitch;
+        int pitch;
         size_t pixelsSize;
 
         std::mutex mutex;

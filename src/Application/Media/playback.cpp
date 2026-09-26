@@ -1,32 +1,30 @@
 #include <application.hpp>
 
-// https://stackoverflow.com/a/57796299
-template<typename T, size_t N>
-constexpr auto make_array(T value) -> std::array<T, N> {
-    std::array<T, N> a;
-
-    for(auto& x : a) {
-        x = value;
+void Application::onPlaybackCallback(void* userdata, SDL_AudioStream* stream, int additionalAmount, int totalAmount) { ((Application*)userdata)->playbackCallbackHandler(stream, additionalAmount, totalAmount); }
+void Application::playbackCallbackHandler(SDL_AudioStream* stream, int needed, int) {
+    if(m_audioBuffers.empty()) {
+        return;
     }
 
-    return a;
-}
-
-void Application::onPlaybackCallback(void* userdata, SDL_AudioStream* stream, int additionalAmount, int totalAmount) { ((Application*)userdata)->playbackCallbackHandler(stream, additionalAmount, totalAmount); }
-void Application::playbackCallbackHandler(SDL_AudioStream* stream, int additionalAmount, int) {
+#ifndef __EMSCRIPTEN__
     auto lock = std::unique_lock(m_audioMutex);
+#endif
 
-    size_t totalBuffers = static_cast<size_t>(additionalAmount) / (m_audioBufferSize * sizeof(m_emptyAudioBuffer[0]));
-    for(size_t i = 0; i <= totalBuffers; i++) {
-        if(m_audioBuffers.empty()) {
-            SDL_PutAudioStreamData(stream, m_emptyAudioBuffer.data(), m_emptyAudioBuffer.size() * sizeof(m_emptyAudioBuffer[0]));
-            continue;
+    while(needed > 0) {
+        const int bytes = std::min(needed, m_audioBufferSizeBytes);
+        if(m_currentBuffers == 0) {
+            SDL_PutAudioStreamDataNoCopy(stream, m_emptyBuffer.get(), bytes, NULL, NULL);
+        }
+        else {
+            std::unique_ptr<AudioType[]> buffer = std::move(m_audioBuffers.front());
+            m_audioBuffers.pop_front();
+            m_currentBuffers--;
+
+            SDL_PutAudioStreamDataNoCopy(stream, buffer.get(), bytes, NULL, NULL);
+            m_audioBuffers.push_back(std::move(buffer));
         }
 
-        std::vector<Uint16> buffer = m_audioBuffers.front();
-        m_audioBuffers.pop_front();
-
-        SDL_PutAudioStreamData(stream, buffer.data(), buffer.size() * sizeof(buffer[0]));
+        needed -= bytes;
     }
 }
 
@@ -64,19 +62,32 @@ void Application::openAudioPlaybackDevice() {
     }
 
     SDL_Log("Opened playback device: %s", SDL_GetAudioDeviceName(m_audioPlayback.device));
-    SDL_GetAudioDeviceFormat(m_audioPlayback.device, &m_audioPlayback.spec, &m_audioPlayback.bufferSize);
 
-    m_audioBufferSize  = static_cast<size_t>(m_audioPlayback.bufferSize / 8);
-    m_emptyAudioBuffer = std::vector<Uint16>(m_audioBufferSize, 0);
+    int playbackBufferSize = 0;
+    SDL_GetAudioDeviceFormat(m_audioPlayback.device, &m_audioPlayback.spec, &playbackBufferSize);
 
-    auto lock = std::unique_lock(m_streamMutex);
+    auto lock  = std::unique_lock(m_streamMutex);
+    auto lock2 = std::unique_lock(m_audioMutex);
 
-    m_audioPlayback.stream = SDL_CreateAudioStream(&m_audioSpec, &m_audioPlayback.spec);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+    m_audioBufferSizeBytes = static_cast<int>(SDL_AUDIO_FRAMESIZE(m_audioPlayback.spec)) * playbackBufferSize;
+#pragma GCC diagnostic pop
+
+    m_audioBuffers.clear();
+    m_currentBuffers = 0;
+
+    for(size_t i = 0; i < maxAudioBuffers; i++) {
+        m_audioBuffers.push_back(std::unique_ptr<AudioType[]>(new AudioType[static_cast<size_t>(m_audioBufferSizeBytes)]));
+    }
+
+    m_emptyBuffer = std::unique_ptr<AudioType[]>(new AudioType[static_cast<size_t>(m_audioBufferSizeBytes)]);
+    memset(m_emptyBuffer.get(), 0, static_cast<size_t>(m_audioBufferSizeBytes));
+
+    m_audioPlayback.stream = SDL_CreateAudioStream(&m_audioPlayback.spec, &m_audioPlayback.spec);
     SDL_BindAudioStream(m_audioPlayback.device, m_audioPlayback.stream);
 
     updateVolume(false);
-
-    m_audioPlayback.buffer = reinterpret_cast<Uint8*>(malloc(static_cast<size_t>(m_audioPlayback.bufferSize)));
     SDL_SetAudioStreamGetCallback(m_audioPlayback.stream, &Application::onPlaybackCallback, this);
 }
 
@@ -93,10 +104,6 @@ void Application::closeAudioPlaybackDevice() {
         m_audioPlayback.device = 0;
     }
 
-    if(m_audioPlayback.buffer != nullptr) {
-        free(m_audioPlayback.buffer);
-        m_audioPlayback.buffer = nullptr;
-    }
-
-    m_audioPlayback.bufferSize = 0;
+    auto lock2 = std::unique_lock(m_audioMutex);
+    m_audioBuffers.clear();
 }

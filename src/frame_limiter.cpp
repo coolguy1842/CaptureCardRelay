@@ -1,4 +1,3 @@
-#include <SDL3/SDL_stdinc.h>
 #include <chrono>
 #include <frame_limiter.hpp>
 #include <thread>

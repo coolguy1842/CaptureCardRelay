@@ -36,7 +36,9 @@ private:
     SDL_Time m_frameEnd   = 0;
 
     SDL_Time m_frameTimeStart = 0;
-    size_t m_frameTimeNum     = 0;
+
+#ifdef DEBUG
+    size_t m_frameTimeNum = 0;
 
     const static size_t maxFrameTimes = 60;
     float m_frameTimes[maxFrameTimes];
@@ -45,6 +47,7 @@ private:
     float m_frameTimeStable = 1.0f;
     float m_frameTimeMin    = 0.0f;
     float m_frameTimeMax    = 0.0f;
+#endif
 
     SDL_Time calculateSleepTime(SDL_Time start, SDL_Time end);
     void doSleep(SDL_Time sleepTime);

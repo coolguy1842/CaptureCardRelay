@@ -2,6 +2,13 @@
     hardeningDisable = [ "all" ];
 
     nativeBuildInputs = with pkgs; [
+        # uncomment to use emscripten with clangd
+        # (lib.hiPrio (
+        #     writeShellScriptBin "clangd" ''
+        #         ${llvmPackages_latest.clang-unwrapped}/bin/clangd --query-driver="${emscripten}/bin/*" "$@"
+        #     ''
+        # ))
+
         clang-tools
         
         llvmPackages_latest.lldb
@@ -16,8 +23,9 @@
     ];
 
     buildInputs = with pkgs; [
+        emscripten
+
         sdl3
         sdl3-ttf
-        sdl3-image
     ];
 }

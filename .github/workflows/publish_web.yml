@@ -1,0 +1,50 @@
+name: "publish web"
+on:
+  push:
+    branches: [ master ]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      
+      - name: Install Meson and Ninja
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y meson ninja-build
+
+      - name: Setup Emscripten SDK
+        uses: emscripten-core/setup-emsdk@v15
+        with:
+          version: 'latest'
+          actions-cache-folder: 'emsdk-cache'
+
+      - name: Configure Meson
+        run: |
+          meson setup build \
+            --cross-file="emscripten.cross" \
+            --buildtype=release
+
+      - name: Compile Meson
+        run: meson compile -C build
+
+      - name: Copy built files
+        run: |
+          mkdir public
+          cp build/index.* public/
+
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public/
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,4 +1,4 @@
-project('capturecardrelay', 'cpp', 'c', version: '1.10.2', default_options: [ 'cpp_std=c++20', 'c_std=c99' ])
+project('capturecardrelay', 'cpp', 'c', version: '1.11.0', default_options: [ 'cpp_std=c++20', 'c_std=c99' ])
 
 if get_option('debug')
     add_project_arguments('-DDEBUG', language: 'cpp')
@@ -6,14 +6,34 @@ endif
 
 add_project_arguments('-DPROJECT_VERSION="' + meson.project_version() + '"', language: 'cpp')
 
-sdl3_image_lib = dependency('sdl3-image', required: false)
-if not sdl3_image_lib.found()
-  sdl3_image_lib = dependency('sdl3_image', required: true)
-endif
+dependencies = []
+link_args = []
 
-sdl3_ttf_lib = dependency('sdl3-ttf', required: false)
-if not sdl3_ttf_lib.found()
-  sdl3_ttf_lib = dependency('sdl3_ttf', required: true)
+if host_machine.system() != 'emscripten'
+    # systems distribute with underscore or dash, cater to both
+    sdl3_ttf_lib = dependency('sdl3-ttf', required: false)
+    if not sdl3_ttf_lib.found()
+        sdl3_ttf_lib = dependency('sdl3_ttf', required: true)
+    endif
+
+    dependencies = [
+        dependency('sdl3'),
+        sdl3_ttf_lib
+    ]
+else
+    link_args = [
+        '--shell-file', join_paths(meson.current_source_dir(), 'dist/shell.html'),
+        '-o', 'index.html',
+
+        '-s', 'ALLOW_MEMORY_GROWTH',
+    ]
+
+    dependencies = [
+        declare_dependency(
+            compile_args: [ '-sUSE_SDL=3', '--use-port=sdl3_ttf' ],
+            link_args: [ '-sUSE_SDL=3', '--use-port=sdl3_ttf' ]
+        )
+    ]
 endif
 
 
@@ -42,16 +62,14 @@ executable(
         # ignore warnings from clay
         include_directories('ext/include', is_system: true)
     ],
-    dependencies: [
-        dependency('sdl3'),
-        sdl3_image_lib,
-        sdl3_ttf_lib,
-    ],
+    dependencies: dependencies,
+    link_args: link_args,
     cpp_args: [
         '-Wall',
         '-Wextra',
         '-Werror',
         '-Wno-psabi',
+        '-Wno-unknown-warning-option',
         '-pedantic-errors',
         
         '-Wcast-qual',
@@ -70,6 +88,8 @@ executable(
 
         '-fstrict-flex-arrays=3',
         '-Wno-missing-field-initializers',
+
+        '-Wno-experimental'
     ],
     win_subsystem: 'windows'
 )
