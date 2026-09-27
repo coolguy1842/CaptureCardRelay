@@ -6,9 +6,9 @@
 
 #include <clay_renderer_SDL3.hpp>
 #include <frame_limiter.hpp>
-#include <list>
 #include <memory>
 #include <mutex>
+#include <queue>
 #include <settings.hpp>
 #include <string>
 
@@ -205,8 +205,8 @@ private:
     static constexpr SDL_AudioSpec m_audioSpec = { SDL_AUDIO_F32, 2, 48000 };
     static constexpr size_t maxAudioBuffers    = 32;
 
-    std::list<AudioFrame> m_audioBuffers;
-    std::list<AudioFrame> m_freeAudioBuffers;
+    std::queue<AudioFrame> m_audioBuffers;
+    std::queue<AudioFrame> m_freeAudioBuffers;
 
     AudioFrame m_emptyAudioBuffer;
     int m_audioBufferSizeBytes;

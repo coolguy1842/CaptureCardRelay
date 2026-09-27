@@ -4,10 +4,6 @@
 
 void Application::onPlaybackCallback(void* userdata, SDL_AudioStream* stream, int additionalAmount, int totalAmount) { ((Application*)userdata)->playbackCallbackHandler(stream, additionalAmount, totalAmount); }
 void Application::playbackCallbackHandler(SDL_AudioStream* stream, int needed, int) {
-#ifndef __EMSCRIPTEN__
-    auto lock = std::unique_lock(m_audioMutex);
-#endif
-
     while(needed >= m_audioBufferSizeBytes) {
         needed -= m_audioBufferSizeBytes;
 
@@ -17,11 +13,11 @@ void Application::playbackCallbackHandler(SDL_AudioStream* stream, int needed, i
         }
 
         AudioFrame buffer = m_audioBuffers.front();
-        m_audioBuffers.pop_front();
+        m_audioBuffers.pop();
 
         SDL_PutAudioStreamData(stream, buffer.get(), m_audioBufferSizeBytes);
 
-        m_freeAudioBuffers.push_back(buffer);
+        m_freeAudioBuffers.push(buffer);
     }
 }
 
@@ -72,11 +68,17 @@ void Application::openAudioPlaybackDevice() {
     m_audioBufferSizeBytes = frameSize * (playbackBufferSize / 8);
 #pragma GCC diagnostic pop
 
-    m_audioBuffers.clear();
-    m_freeAudioBuffers.clear();
+    while(!m_audioBuffers.empty()) {
+        m_audioBuffers.pop();
+    }
+
+    while(!m_freeAudioBuffers.empty()) {
+        m_freeAudioBuffers.pop();
+    }
+
     m_emptyAudioBuffer = std::shared_ptr<AudioType[]>(new AudioType[static_cast<size_t>(m_audioBufferSizeBytes)]{});
     for(size_t i = 0; i < maxAudioBuffers; i++) {
-        m_freeAudioBuffers.push_back(std::shared_ptr<AudioType[]>(new AudioType[static_cast<size_t>(m_audioBufferSizeBytes)]));
+        m_freeAudioBuffers.push(std::shared_ptr<AudioType[]>(new AudioType[static_cast<size_t>(m_audioBufferSizeBytes)]));
     }
 
     m_audioPlayback.stream = SDL_CreateAudioStream(&m_audioSpec, &m_audioPlayback.spec);
@@ -102,6 +104,11 @@ void Application::closeAudioPlaybackDevice() {
     auto lock2 = std::unique_lock(m_audioMutex);
 
     m_emptyAudioBuffer = {};
-    m_audioBuffers.clear();
-    m_freeAudioBuffers.clear();
+    while(!m_audioBuffers.empty()) {
+        m_audioBuffers.pop();
+    }
+
+    while(!m_freeAudioBuffers.empty()) {
+        m_freeAudioBuffers.pop();
+    }
 }

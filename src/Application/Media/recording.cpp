@@ -4,25 +4,22 @@
 
 void Application::onRecordingCallback(void* userdata, SDL_AudioStream* stream, int additionalAmount, int totalAmount) { ((Application*)userdata)->recordingCallbackHandler(stream, additionalAmount, totalAmount); }
 void Application::recordingCallbackHandler(SDL_AudioStream* stream, int available, int) {
-#ifndef __EMSCRIPTEN__
-    auto lock = std::unique_lock(m_audioMutex);
-#endif
     while(available >= m_audioBufferSizeBytes) {
         AudioFrame frame;
 
         if(!m_freeAudioBuffers.empty()) {
             frame = m_freeAudioBuffers.front();
-            m_freeAudioBuffers.pop_front();
+            m_freeAudioBuffers.pop();
         }
         else {
             // take oldest from audio buffers
             frame = m_audioBuffers.front();
-            m_audioBuffers.pop_front();
+            m_audioBuffers.pop();
         }
 
         SDL_GetAudioStreamData(stream, frame.get(), m_audioBufferSizeBytes);
 
-        m_audioBuffers.push_back(frame);
+        m_audioBuffers.push(frame);
         available -= m_audioBufferSizeBytes;
     }
 }
