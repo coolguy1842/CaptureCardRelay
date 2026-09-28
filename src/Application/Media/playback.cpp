@@ -8,7 +8,7 @@ void Application::playbackCallbackHandler(SDL_AudioStream* stream, int needed, i
         needed -= m_audioBufferSizeBytes;
 
         if(m_audioBuffers.empty()) {
-            SDL_PutAudioStreamData(stream, m_emptyAudioBuffer.get(), m_audioBufferSizeBytes);
+            SDL_PutAudioStreamDataNoCopy(stream, m_emptyAudioBuffer.get(), m_audioBufferSizeBytes, NULL, NULL);
             continue;
         }
 
@@ -21,32 +21,10 @@ void Application::playbackCallbackHandler(SDL_AudioStream* stream, int needed, i
     }
 }
 
-void Application::initAudioPlaybackDevices() {
-    m_playbackDevices.clear();
-
-    int playbackDeviceCount            = 0;
-    SDL_AudioDeviceID* playbackDevices = SDL_GetAudioPlaybackDevices(&playbackDeviceCount);
-
-    if(playbackDevices == nullptr) {
-        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't enumerate playback devices: %s", SDL_GetError());
-
-        setShouldQuit(true);
-        return;
-    }
-
-    for(int i = 0; i < playbackDeviceCount; i++) {
-        m_playbackDevices.push_back(playbackDevices[i]);
-    }
-
-    SDL_free(playbackDevices);
-}
-
 void Application::openAudioPlaybackDevice() {
     if(m_audioPlayback.device != 0) {
         closeAudioPlaybackDevice();
     }
-
-    initAudioPlaybackDevices();
 
     m_audioPlayback.device = SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &m_audioSpec);
     if(m_audioPlayback.device == 0) {
@@ -68,13 +46,8 @@ void Application::openAudioPlaybackDevice() {
     m_audioBufferSizeBytes = frameSize * (playbackBufferSize / 8);
 #pragma GCC diagnostic pop
 
-    while(!m_audioBuffers.empty()) {
-        m_audioBuffers.pop();
-    }
-
-    while(!m_freeAudioBuffers.empty()) {
-        m_freeAudioBuffers.pop();
-    }
+    m_audioBuffers     = {};
+    m_freeAudioBuffers = {};
 
     m_emptyAudioBuffer = std::shared_ptr<AudioType[]>(new AudioType[static_cast<size_t>(m_audioBufferSizeBytes)]{});
     for(size_t i = 0; i < maxAudioBuffers; i++) {
@@ -104,11 +77,6 @@ void Application::closeAudioPlaybackDevice() {
     auto lock2 = std::unique_lock(m_audioMutex);
 
     m_emptyAudioBuffer = {};
-    while(!m_audioBuffers.empty()) {
-        m_audioBuffers.pop();
-    }
-
-    while(!m_freeAudioBuffers.empty()) {
-        m_freeAudioBuffers.pop();
-    }
+    m_audioBuffers     = {};
+    m_freeAudioBuffers = {};
 }

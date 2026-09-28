@@ -139,8 +139,6 @@ private:
     void updateCameraPixelFormat(PixelFormat format);
     void updateFrameLimiter(FrameLimitInfo info);
 
-    void initAudioPlaybackDevices();
-
     void openAudioPlaybackDevice();
     void closeAudioPlaybackDevice();
 
