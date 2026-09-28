@@ -27,20 +27,24 @@ void usage(int argc, char** argv) {
 }
 
 const char* settingsPath = nullptr;
-std::shared_ptr<Application> app;
+std::unique_ptr<Application> app;
 
 void loop() {
     if(app == nullptr) {
-        app = std::make_shared<Application>(settingsPath);
+        app = std::make_unique<Application>(settingsPath);
     }
 
 #ifdef __EMSCRIPTEN__
     if(!app->loop()) {
+        app.reset();
+
         throw std::runtime_error("user quit");
     }
 #else
     while(app->loop()) {}
 #endif
+
+    app.reset();
 }
 
 int main(int argc, char** argv) {
@@ -69,5 +73,6 @@ int main(int argc, char** argv) {
 #endif
 
     SDL_Clay_Exit();
+
     return 0;
 }
