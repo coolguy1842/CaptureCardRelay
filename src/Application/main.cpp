@@ -235,10 +235,6 @@ void Application::render() {
         SDL_RenderTexture(m_renderData.renderer, m_camera.texture, NULL, &m_camera.displayRect);
     }
 
-    if(m_frameLimiter.willFrameTimeRollover()) {
-        printf("fps: %ld\n", static_cast<Uint64>(1000 / m_frameLimiter.stableFrameTime()));
-    }
-
     if(m_shouldRenderClay) {
         Clay_RenderCommandArray commands = buildUI();
         SDL_Clay_RenderClayCommands(&m_renderData, &commands);
