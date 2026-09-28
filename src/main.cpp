@@ -26,8 +26,8 @@ void usage(int argc, char** argv) {
     SDL_Log("  -h, --help  display this help and exit");
 }
 
-const char* settingsPath = nullptr;
-std::unique_ptr<Application> app;
+const char* settingsPath         = nullptr;
+std::unique_ptr<Application> app = nullptr;
 
 void loop() {
     if(app == nullptr) {
@@ -42,9 +42,8 @@ void loop() {
     }
 #else
     while(app->loop()) {}
-#endif
-
     app.reset();
+#endif
 }
 
 int main(int argc, char** argv) {

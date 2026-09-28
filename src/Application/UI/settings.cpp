@@ -167,6 +167,8 @@ void Application::Build_ScrollBar(Clay_ElementId id, bool vertical) {
     }
 }
 
+#ifndef __EMSCRIPTEN__
+
 void Application::BuildCameraLabel(const Application::CameraInfo& info) {
     CLAY_AUTO_ID() {
         Clay_TextElementConfig textConfig = defaultTextConfig;
@@ -219,57 +221,6 @@ void Application::BuildCameraSettings() {
     Build_ScrollBar(camerasContainerID);
 }
 
-void Application::BuildPixelFormatLabel(const PixelFormat& format) {
-    CLAY_AUTO_ID() {
-        Clay_TextElementConfig textConfig = defaultTextConfig;
-        if(!m_settings.canSetPixelFormat()) {
-            textConfig = lockedTextConfig;
-        }
-        else if(m_activeDropdown.id == pixelFormatContainerID.id) {
-            if(Clay_Hovered()) {
-                m_nextCursor = m_pointerCursor;
-                textConfig   = hoveredTextConfig;
-
-                if(Clay_MouseClicked()) {
-                    m_settings.setPixelFormat(format);
-                    m_activeDropdown = m_invalidDropdown;
-                }
-            }
-
-            if(m_settings.getPixelFormat() == format) {
-                textConfig = selectedTextConfig;
-            }
-        }
-
-        CLAY_TEXT(cameraPixelFormatStr(format), textConfig);
-    }
-}
-
-void Application::BuildPixelFormatSettings() {
-    SettingContainer(pixelFormatContainerID, CLAY_SIZING_FIXED(200), true) {
-        CONTAINER_TITLE("Pixel Format");
-        SEPARATOR;
-
-        if(m_activeDropdown.id == pixelFormatContainerID.id) {
-            BuildPixelFormatLabel(PIXEL_FORMAT_RGB24);
-            BuildPixelFormatLabel(PIXEL_FORMAT_CAMERA);
-
-            continue;
-        }
-
-        BuildPixelFormatLabel(m_settings.getPixelFormat());
-        if(m_settings.canSetPixelFormat() && Clay_Hovered()) {
-            m_nextCursor = m_pointerCursor;
-
-            if(Clay_MouseClicked()) {
-                m_activeDropdown = pixelFormatContainerID;
-            }
-        }
-    }
-
-    Build_ScrollBar(pixelFormatContainerID);
-}
-
 void Application::BuildRecordingDeviceLabel(const RecordingDeviceInfo& info) {
     CLAY_AUTO_ID() {
         Clay_TextElementConfig textConfig = defaultTextConfig;
@@ -320,6 +271,59 @@ void Application::BuildRecordingDeviceSettings() {
     }
 
     Build_ScrollBar(recordingDevicesContainerID);
+}
+
+#endif
+
+void Application::BuildPixelFormatLabel(const PixelFormat& format) {
+    CLAY_AUTO_ID() {
+        Clay_TextElementConfig textConfig = defaultTextConfig;
+        if(!m_settings.canSetPixelFormat()) {
+            textConfig = lockedTextConfig;
+        }
+        else if(m_activeDropdown.id == pixelFormatContainerID.id) {
+            if(Clay_Hovered()) {
+                m_nextCursor = m_pointerCursor;
+                textConfig   = hoveredTextConfig;
+
+                if(Clay_MouseClicked()) {
+                    m_settings.setPixelFormat(format);
+                    m_activeDropdown = m_invalidDropdown;
+                }
+            }
+
+            if(m_settings.getPixelFormat() == format) {
+                textConfig = selectedTextConfig;
+            }
+        }
+
+        CLAY_TEXT(cameraPixelFormatStr(format), textConfig);
+    }
+}
+
+void Application::BuildPixelFormatSettings() {
+    SettingContainer(pixelFormatContainerID, CLAY_SIZING_FIXED(200), true) {
+        CONTAINER_TITLE("Pixel Format");
+        SEPARATOR;
+
+        if(m_activeDropdown.id == pixelFormatContainerID.id) {
+            BuildPixelFormatLabel(PIXEL_FORMAT_RGB24);
+            BuildPixelFormatLabel(PIXEL_FORMAT_CAMERA);
+
+            continue;
+        }
+
+        BuildPixelFormatLabel(m_settings.getPixelFormat());
+        if(m_settings.canSetPixelFormat() && Clay_Hovered()) {
+            m_nextCursor = m_pointerCursor;
+
+            if(Clay_MouseClicked()) {
+                m_activeDropdown = pixelFormatContainerID;
+            }
+        }
+    }
+
+    Build_ScrollBar(pixelFormatContainerID);
 }
 
 void Application::BuildDisplayModeLabel(const CameraDisplayMode& displayMode) {
@@ -751,8 +755,11 @@ void Application::BuildSettingsMenu() {
                         m_activeDropdown = m_invalidDropdown;
                     }
 
+#ifndef __EMSCRIPTEN__
                     BuildCameraSettings();
                     BuildRecordingDeviceSettings();
+#endif
+
                     BuildDisplayModeSettings();
                     BuildScaleModeSettings();
                     BuildPixelFormatSettings();

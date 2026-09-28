@@ -1,6 +1,6 @@
 pkgname=capture-card-relay
 pkgver=1.11
-pkgrel=4
+pkgrel=5
 arch=('any')
 pkgdesc="Displays capture card output"
 depends=('meson' 'ninja' 'sdl3' 'sdl3_ttf')

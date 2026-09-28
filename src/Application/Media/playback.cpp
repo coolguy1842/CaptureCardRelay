@@ -1,4 +1,3 @@
-#include <SDL3/SDL_audio.h>
 #include <application.hpp>
 #include <memory>
 

@@ -8,6 +8,6 @@ subprojects/*
 
 result
 build*
-debug.sh
-run.sh
+debug*.sh
+run*.sh
 compile_commands.json

@@ -8,7 +8,7 @@
         pkgs = nixpkgs.legacyPackages.${system};
     in {
         devShells = {
-            default = pkgs.callPackage ./nix/devShell.nix {};
+            default = import ./nix/devShell.nix { inherit pkgs; };
         };
 
         packages = rec {

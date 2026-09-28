@@ -104,6 +104,7 @@ void Application::handleEvent(SDL_Event* event) {
     }
     case SDL_EVENT_KEY_DOWN:
         switch(event->key.key) {
+#ifndef __EMSCRIPTEN__
         case SDLK_LEFT: {
             if(m_cameras.empty() || !m_settings.canSetSelectedCamera()) {
                 break;
@@ -167,6 +168,7 @@ void Application::handleEvent(SDL_Event* event) {
 
             break;
         }
+#endif
         case SDLK_UP:
             if(!m_settings.canSetVolume()) {
                 break;

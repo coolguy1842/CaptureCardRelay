@@ -1,5 +1,4 @@
 #include <application.hpp>
-#include <cstddef>
 #include <format>
 
 void Application::onRecordingCallback(void* userdata, SDL_AudioStream* stream, int additionalAmount, int totalAmount) { ((Application*)userdata)->recordingCallbackHandler(stream, additionalAmount, totalAmount); }

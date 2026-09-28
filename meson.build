@@ -1,4 +1,4 @@
-project('capturecardrelay', 'cpp', 'c', version: '1.11.4', default_options: [ 'cpp_std=c++20', 'c_std=c99' ])
+project('capturecardrelay', 'cpp', 'c', version: '1.11.5', default_options: [ 'cpp_std=c++20', 'c_std=c99' ])
 
 if get_option('debug')
     add_project_arguments('-DDEBUG', language: 'cpp')
@@ -41,6 +41,7 @@ executable(
     'CaptureCardRelay',
     sources: [
         'ext/src/clay_renderer_SDL3.cpp',
+        
         'src/settings.cpp',
         'src/frame_limiter.cpp',
 

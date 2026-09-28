@@ -1,0 +1,4 @@
+CompileFlags:
+  Remove: 
+    - -sUSE_SDL=3
+    - --use-port=sdl3_ttf
