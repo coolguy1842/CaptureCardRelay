@@ -36,12 +36,15 @@ void loop() {
 #ifdef __EMSCRIPTEN__
     if(!app->loop()) {
         app.reset();
+        SDL_Clay_Exit();
 
-        throw std::runtime_error("user quit");
+        emscripten_cancel_main_loop();
     }
 #else
     while(app->loop()) {}
+
     app.reset();
+    SDL_Clay_Exit();
 #endif
 }
 
@@ -68,8 +71,6 @@ int main(int argc, char** argv) {
 #else
     loop();
 #endif
-
-    SDL_Clay_Exit();
 
     return 0;
 }

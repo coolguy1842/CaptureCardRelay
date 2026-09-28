@@ -12,7 +12,7 @@
 const CameraDisplayMode DEFAULT_DISPLAY_MODE = DISPLAY_MODE_CONTAIN;
 const SDL_ScaleMode DEFAULT_SCALE_MODE       = SDL_SCALEMODE_LINEAR;
 
-const FrameLimitType DEFAULT_FRAME_LIMIT_TYPE = FRAME_LIMIT_CAMERA;
+const FrameLimitType DEFAULT_FRAME_LIMIT_TYPE = FRAME_LIMIT_CAMERA_X_1_5;
 const float DEFAULT_FRAME_LIMIT_FPS           = 0.0f;
 
 const PixelFormat DEFAULT_PIXEL_FORMAT = PIXEL_FORMAT_RGB24;
@@ -471,6 +471,8 @@ FrameLimitInfo Settings::getFrameLimitInfo() {
 
     switch(std::atoi(getValue("frameLimitType").value_or(std::to_string(DEFAULT_FRAME_LIMIT_TYPE)).c_str())) {
     case FRAME_LIMIT_CAMERA:         info.type = FRAME_LIMIT_CAMERA; break;
+    case FRAME_LIMIT_CAMERA_X_1_5:   info.type = FRAME_LIMIT_CAMERA_X_1_5; break;
+    case FRAME_LIMIT_CAMERA_X_2_0:   info.type = FRAME_LIMIT_CAMERA_X_2_0; break;
     case FRAME_LIMIT_VSYNC:          info.type = FRAME_LIMIT_VSYNC; break;
     case FRAME_LIMIT_VSYNC_ADAPTIVE: info.type = FRAME_LIMIT_VSYNC_ADAPTIVE; break;
     case FRAME_LIMIT_FPS:            info.type = FRAME_LIMIT_FPS; break;

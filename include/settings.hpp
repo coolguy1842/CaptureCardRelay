@@ -23,6 +23,8 @@ enum CameraDisplayMode {
 enum FrameLimitType {
     // limits to the cameras refresh rate
     FRAME_LIMIT_CAMERA,
+    FRAME_LIMIT_CAMERA_X_1_5,
+    FRAME_LIMIT_CAMERA_X_2_0,
     FRAME_LIMIT_VSYNC,
     FRAME_LIMIT_VSYNC_ADAPTIVE,
     // limits to user specified frame rate, 0 is unlimited

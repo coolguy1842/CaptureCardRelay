@@ -62,6 +62,10 @@ Application::Application(const char* settingsPath)
         SDL_Log("Created renderer.");
     }
 
+#ifdef __EMSCRIPTEN__
+    SDL_SetRenderVSync(m_renderData.renderer, 1);
+#endif
+
     if(!TTF_Init()) {
         SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't initialise SDL_ttf: %s", SDL_GetError());
         setShouldQuit();
@@ -113,9 +117,10 @@ Application::Application(const char* settingsPath)
     m_settings.displayModeChanged.connect<&Application::updateCameraDisplayMode>(this);
     m_settings.scaleModeChanged.connect<&Application::updateCameraScaleMode>(this);
     m_settings.pixelFormatChanged.connect<&Application::updateCameraPixelFormat>(this);
+#ifndef __EMSCRIPTEN__
     m_settings.frameLimitInfoChanged.connect<&Application::updateFrameLimiter>(this);
-
     updateFrameLimiter(m_settings.getFrameLimitInfo());
+#endif
 
     m_pointerCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_POINTER);
     m_defaultCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_DEFAULT);
@@ -154,6 +159,7 @@ void Application::updateCameraDisplayMode(CameraDisplayMode) { updateCameraDispl
 void Application::updateCameraScaleMode(SDL_ScaleMode) { updateCameraTexture(); }
 void Application::updateCameraPixelFormat(PixelFormat) { updateCameraTexture(); }
 
+#ifndef __EMSCRIPTEN__
 void Application::updateFrameLimiter(FrameLimitInfo info) {
     m_frameLimitInfo = info;
     m_fpsText        = std::format("{} FPS", info.fps);
@@ -161,6 +167,7 @@ void Application::updateFrameLimiter(FrameLimitInfo info) {
     switch(info.type) {
     case FRAME_LIMIT_CAMERA:
         if(m_camera.device == nullptr) {
+        cameraFPSFallback:
             // set to vsync as fallback
             m_frameLimiter.setFPSLimit(0);
             SDL_SetRenderVSync(m_renderData.renderer, 1);
@@ -170,6 +177,20 @@ void Application::updateFrameLimiter(FrameLimitInfo info) {
 
         SDL_SetRenderVSync(m_renderData.renderer, SDL_RENDERER_VSYNC_DISABLED);
         m_frameLimiter.setFPSLimit(m_camera.spec.framerate_numerator / static_cast<float>(m_camera.spec.framerate_denominator));
+
+        break;
+    case FRAME_LIMIT_CAMERA_X_1_5:
+        if(m_camera.device == nullptr) goto cameraFPSFallback;
+
+        SDL_SetRenderVSync(m_renderData.renderer, SDL_RENDERER_VSYNC_DISABLED);
+        m_frameLimiter.setFPSLimit((m_camera.spec.framerate_numerator / static_cast<float>(m_camera.spec.framerate_denominator)) * 1.5f);
+
+        break;
+    case FRAME_LIMIT_CAMERA_X_2_0:
+        if(m_camera.device == nullptr) goto cameraFPSFallback;
+
+        SDL_SetRenderVSync(m_renderData.renderer, SDL_RENDERER_VSYNC_DISABLED);
+        m_frameLimiter.setFPSLimit((m_camera.spec.framerate_numerator / static_cast<float>(m_camera.spec.framerate_denominator)) * 2.0f);
 
         break;
     case FRAME_LIMIT_VSYNC:
@@ -195,6 +216,7 @@ void Application::updateFrameLimiter(FrameLimitInfo info) {
         break;
     }
 }
+#endif
 
 bool Application::loop() {
     if(getShouldQuit()) {

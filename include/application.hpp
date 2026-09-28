@@ -139,7 +139,10 @@ private:
     void updateCameraDisplayMode(CameraDisplayMode mode);
     void updateCameraScaleMode(SDL_ScaleMode mode);
     void updateCameraPixelFormat(PixelFormat format);
+
+#ifndef __EMSCRIPTEN__
     void updateFrameLimiter(FrameLimitInfo info);
+#endif
 
     void openAudioPlaybackDevice();
     void closeAudioPlaybackDevice();
@@ -226,7 +229,10 @@ private:
     std::string m_volumeText;
 
     FrameLimiter m_frameLimiter;
+#ifndef __EMSCRIPTEN__
     FrameLimitInfo m_frameLimitInfo;
+#endif
+
     float m_fpsSliderPosition = 0.0f;
     std::string m_fpsText;
 

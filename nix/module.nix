@@ -2,7 +2,7 @@
     cfg = config.programs.CaptureCardRelay;
     defaultPackage = pkgs.callPackage ./package.nix {};
 
-    frameLimitModes = [ "camera" "vsync" "vsyncadaptive" "fps" "none" ];
+    frameLimitModes = [ "camera" "camerax1.5" "camerax2" "vsync" "vsyncadaptive" "fps" "none" ];
     displayModes = [ "contain" "cover" "fill" "none" ];
     pixelFormats = [ "camera" "rgb24" ];
     scaleModes = [ "nearest" "linear" "pixelart" ];

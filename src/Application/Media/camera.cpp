@@ -375,7 +375,10 @@ void Application::updateCameraTexture() {
     }
 
     updateCameraDisplayRect();
+
+#ifndef __EMSCRIPTEN__
     updateFrameLimiter(m_frameLimitInfo);
+#endif
 }
 
 void Application::renderCameraToTexture() {

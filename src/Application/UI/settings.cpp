@@ -63,6 +63,8 @@ Clay_String scaleModeStr(SDL_ScaleMode mode) {
 Clay_String frameLimitTypeStr(FrameLimitType type) {
     switch(type) {
     case FrameLimitType::FRAME_LIMIT_CAMERA:         return toClayString("Camera");
+    case FrameLimitType::FRAME_LIMIT_CAMERA_X_1_5:   return toClayString("Camera x1.5");
+    case FrameLimitType::FRAME_LIMIT_CAMERA_X_2_0:   return toClayString("Camera x2");
     case FrameLimitType::FRAME_LIMIT_VSYNC:          return toClayString("VSync");
     case FrameLimitType::FRAME_LIMIT_VSYNC_ADAPTIVE: return toClayString("VSync Adaptive");
     case FrameLimitType::FRAME_LIMIT_FPS:            return toClayString("FPS");
@@ -431,6 +433,8 @@ void Application::BuildScaleModeSettings() {
     Build_ScrollBar(scaleModeContainerID);
 }
 
+#ifndef __EMSCRIPTEN__
+
 void Application::BuildFrameLimitTypeLabel(const FrameLimitType& type) {
     CLAY_AUTO_ID() {
         Clay_TextElementConfig textConfig = defaultTextConfig;
@@ -492,6 +496,8 @@ void Application::BuildFrameLimiterSettings() {
         ) {
             if(m_activeDropdown.id == frameLimitTypeContainerID.id) {
                 BuildFrameLimitTypeLabel(FRAME_LIMIT_CAMERA);
+                BuildFrameLimitTypeLabel(FRAME_LIMIT_CAMERA_X_1_5);
+                BuildFrameLimitTypeLabel(FRAME_LIMIT_CAMERA_X_2_0);
                 BuildFrameLimitTypeLabel(FRAME_LIMIT_VSYNC);
                 BuildFrameLimitTypeLabel(FRAME_LIMIT_VSYNC_ADAPTIVE);
                 BuildFrameLimitTypeLabel(FRAME_LIMIT_FPS);
@@ -566,6 +572,8 @@ void Application::BuildFrameLimiterSettings() {
         }
     }
 }
+
+#endif
 
 void Application::BuildFullscreenSettings() {
     const bool canSetFullscreen = m_settings.canSetFullscreen();
@@ -764,7 +772,9 @@ void Application::BuildSettingsMenu() {
                     BuildScaleModeSettings();
                     BuildPixelFormatSettings();
 
+#ifndef __EMSCRIPTEN__
                     BuildFrameLimiterSettings();
+#endif
 
                     BuildFullscreenSettings();
                     BuildVolumeSettings();
@@ -785,10 +795,12 @@ void Application::updateSettingsUI() {
     const static int VOLUME_SNAP_RANGE_KEEP = 12;
 
     if(Clay_MouseReleasedNow()) {
+#ifndef __EMSCRIPTEN__
         if(m_slidingFPS) {
             m_slidingFPS = false;
             m_settings.setFrameLimitInfo(m_frameLimitInfo);
         }
+#endif
 
         if(m_slidingVolume) {
             m_slidingVolume        = false;
@@ -803,6 +815,8 @@ void Application::updateSettingsUI() {
     }
 
     static float prevCursorX = 0.0f;
+
+#ifndef __EMSCRIPTEN__
     if(m_slidingFPS) {
         Clay_ElementData data = Clay_GetElementData(fpsSliderTrackID);
         if(data.found && prevCursorX != m_cursorX) {
@@ -820,6 +834,7 @@ void Application::updateSettingsUI() {
             updateFrameLimiter({ .type = m_frameLimitInfo.type, .fps = static_cast<float>(fps) });
         }
     }
+#endif
 
     if(m_slidingVolume) {
         // snap volume to 100, if it goes within a range outside of the snap range then dont snap to 100
