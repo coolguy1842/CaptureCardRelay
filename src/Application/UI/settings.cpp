@@ -556,7 +556,7 @@ void Application::BuildFrameLimiterSettings() {
             CLAY_AUTO_ID({ .layout = { .sizing = { .width = CLAY_SIZING_GROW() }, .padding = { 0, 0, 6, 0 }, .childAlignment = { .x = CLAY_ALIGN_X_CENTER } } }) {
                 CLAY_TEXT(
                     toClayString(m_fpsText.c_str()),
-                    CLAY_TEXT_CONFIG({ .textColor = canSetFPS ? defaultTextConfig.textColor : lockedTextConfig.textColor, .fontSize = static_cast<uint16_t>(defaultTextConfig.fontSize - 4) })
+                    CLAY_TEXT_CONFIG({ .textColor = canSetFPS ? defaultTextConfig.textColor : lockedTextConfig.textColor, .fontSize = defaultTextConfig.fontSize })
                 );
             }
         }
@@ -698,7 +698,7 @@ void Application::BuildVolumeSettings() {
         CLAY_AUTO_ID({ .layout = { .sizing = { .width = CLAY_SIZING_GROW() }, .padding = { 0, 0, 6, 0 }, .childAlignment = { .x = CLAY_ALIGN_X_CENTER } } }) {
             CLAY_TEXT(
                 toClayString(m_volumeText.c_str()),
-                CLAY_TEXT_CONFIG({ .textColor = canSetVolume ? defaultTextConfig.textColor : lockedTextConfig.textColor, .fontSize = static_cast<uint16_t>(defaultTextConfig.fontSize - 4) })
+                CLAY_TEXT_CONFIG({ .textColor = canSetVolume ? defaultTextConfig.textColor : lockedTextConfig.textColor, .fontSize = defaultTextConfig.fontSize })
             );
         }
     }

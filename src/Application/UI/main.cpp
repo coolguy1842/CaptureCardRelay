@@ -66,16 +66,16 @@ Clay_RenderCommandArray Application::buildUI() {
         BuildStatus();
     }
 
+    if(m_currentCursor != m_nextCursor) {
+        m_currentCursor = m_nextCursor;
+        SDL_SetCursor(m_currentCursor);
+    }
+
     static uint64_t prev = SDL_GetPerformanceCounter();
     uint64_t now         = SDL_GetPerformanceCounter();
 
     float deltaTime = (now - prev) / static_cast<float>(SDL_GetPerformanceFrequency());
     prev            = now;
-
-    if(m_currentCursor != m_nextCursor) {
-        m_currentCursor = m_nextCursor;
-        SDL_SetCursor(m_currentCursor);
-    }
 
     return Clay_EndLayout(deltaTime);
 }

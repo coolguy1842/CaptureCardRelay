@@ -101,8 +101,8 @@ Application::Application(const char* settingsPath)
 
     uint32_t totalMemorySize = Clay_MinMemorySize();
     Clay_Arena clayMemory    = Clay_Arena{
-        .capacity = static_cast<size_t>(totalMemorySize),
-        .memory   = (char*)malloc(totalMemorySize)
+           .capacity = static_cast<size_t>(totalMemorySize),
+           .memory   = (char*)malloc(totalMemorySize)
     };
 
     SDL_GetWindowSize(m_window, &m_width, &m_height);
@@ -119,6 +119,9 @@ Application::Application(const char* settingsPath)
 
     m_pointerCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_POINTER);
     m_defaultCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_DEFAULT);
+
+    // init status position for animations as clay wont be called every frame
+    buildUI();
 }
 
 Application::~Application() {
@@ -210,11 +213,17 @@ bool Application::loop() {
 }
 
 void Application::update() {
-    if(m_shouldHideCursor && SDL_CursorVisible() && std::chrono::system_clock::now() >= m_showCursorExpire) {
+    if(!m_settingsActive && m_shouldHideCursor && SDL_CursorVisible() && std::chrono::system_clock::now() >= m_showCursorExpire) {
         SDL_HideCursor();
     }
 
-    updateUI();
+    if(m_shouldRenderClay) {
+        updateUI();
+    }
+}
+
+void Application::checkShouldRenderClay() {
+    m_shouldRenderClay = m_statusActive || m_settingsActive || m_showFrametime || Clay_IsDebugModeEnabled();
 }
 
 void Application::render() {
@@ -226,8 +235,21 @@ void Application::render() {
         SDL_RenderTexture(m_renderData.renderer, m_camera.texture, NULL, &m_camera.displayRect);
     }
 
-    Clay_RenderCommandArray commands = buildUI();
-    SDL_Clay_RenderClayCommands(&m_renderData, &commands);
+    if(m_frameLimiter.willFrameTimeRollover()) {
+        printf("fps: %ld\n", static_cast<Uint64>(1000 / m_frameLimiter.stableFrameTime()));
+    }
+
+    if(m_shouldRenderClay) {
+        Clay_RenderCommandArray commands = buildUI();
+        SDL_Clay_RenderClayCommands(&m_renderData, &commands);
+
+        checkShouldRenderClay();
+    }
+#ifdef DEBUG
+    else {
+        m_frameLimiter.frameTime();
+    }
+#endif
 
     m_frameLimiter.limit(true);
     SDL_RenderPresent(m_renderData.renderer);
@@ -237,6 +259,9 @@ void Application::render() {
 void Application::changeStatus(std::string text, std::chrono::milliseconds timeToExpire) {
     m_status.text   = text;
     m_status.expire = std::chrono::system_clock::now() + timeToExpire;
+
+    m_statusActive = true;
+    checkShouldRenderClay();
 }
 
 void Application::setFullscreen(bool fullscreen) {

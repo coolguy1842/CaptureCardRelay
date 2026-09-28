@@ -195,7 +195,6 @@ void Application::handleEvent(SDL_Event* event) {
 #ifdef DEBUG
         case SDLK_F12:
             Clay_SetDebugModeEnabled(!Clay_IsDebugModeEnabled());
-            m_showFrametime = Clay_IsDebugModeEnabled();
 
             break;
         case SDLK_F3:
@@ -204,7 +203,10 @@ void Application::handleEvent(SDL_Event* event) {
             break;
 #endif
         case SDLK_O:
-            m_settingsActive = !m_settingsActive;
+            if((m_settingsActive = !m_settingsActive) == true) {
+                SDL_ShowCursor();
+            }
+
             m_activeDropdown = m_invalidDropdown;
 
             break;
@@ -214,6 +216,8 @@ void Application::handleEvent(SDL_Event* event) {
             break;
         default: break;
         }
+
+        checkShouldRenderClay();
         break;
     case SDL_EVENT_KEY_UP:
     case SDLK_LSHIFT:

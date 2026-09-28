@@ -8,6 +8,7 @@
 #include <frame_limiter.hpp>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <queue>
 #include <settings.hpp>
 #include <string>
@@ -62,12 +63,12 @@ private:
 
     const Clay_TextElementConfig selectedTextConfig = CLAY_TEXT_CONFIG({
         .textColor = { 0x9F, 0x9F, 0x9F, 0xFF },
-        .fontSize  = static_cast<uint16_t>(defaultTextConfig.fontSize + 2),
+        .fontSize  = defaultTextConfig.fontSize,
     });
 
     const Clay_TextElementConfig hoveredTextConfig = CLAY_TEXT_CONFIG({
         .textColor = { 0xBF, 0xBF, 0xBF, 0xFF },
-        .fontSize  = static_cast<uint16_t>(defaultTextConfig.fontSize + 1),
+        .fontSize  = defaultTextConfig.fontSize,
     });
 
     bool m_showFrametime = false;
@@ -120,6 +121,8 @@ private:
     void BuildStatus();
     Clay_RenderCommandArray buildUI();
 
+    void checkShouldRenderClay();
+
 private:
     void initCameras();
 
@@ -166,12 +169,15 @@ private:
 
     bool m_shouldQuit     = false;
     bool m_settingsActive = false;
+    bool m_statusActive   = false;
 
     bool m_shouldHideCursor = true;
     bool m_mouseHeld        = false;
 
     bool m_isFullscreen = false;
     bool m_shiftHeld    = false;
+
+    bool m_shouldRenderClay = false;
 
     std::string m_frameTimeText;
     std::chrono::time_point<std::chrono::system_clock> m_showCursorExpire;

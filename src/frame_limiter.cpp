@@ -33,7 +33,7 @@ float FrameLimiter::frameTime() {
     SDL_Time frameTimeEnd = getNanoseconds();
     SDL_Time frameTime    = frameTimeEnd - m_frameTimeStart;
 
-    m_frameTimeStart = getNanoseconds();
+    m_frameTimeStart = frameTimeEnd;
     float ms         = frameTime / 1e+6;
 
     if(++m_frameTimeNum >= maxFrameTimes) {

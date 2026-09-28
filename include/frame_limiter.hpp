@@ -40,7 +40,7 @@ private:
 #ifdef DEBUG
     size_t m_frameTimeNum = 0;
 
-    const static size_t maxFrameTimes = 60;
+    const static size_t maxFrameTimes = 100;
     float m_frameTimes[maxFrameTimes];
 
     // prevent div by 0

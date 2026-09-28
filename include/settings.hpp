@@ -2,6 +2,7 @@
 #define __SETTINGS_HPP__
 
 #include <SDL3/SDL.h>
+#include <optional>
 #include <rocket.hpp>
 #include <string>
 #include <unordered_map>
