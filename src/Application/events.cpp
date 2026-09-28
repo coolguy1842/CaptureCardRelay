@@ -91,7 +91,6 @@ void Application::handleEvent(SDL_Event* event) {
 
         // fall through
     case SDL_EVENT_AUDIO_DEVICE_FORMAT_CHANGED: {
-        auto lock = std::unique_lock(m_streamMutex);
         if(m_audioRecording.stream != nullptr) {
             SDL_SetAudioStreamFormat(m_audioRecording.stream, &m_audioRecording.spec, &m_audioSpec);
         }
@@ -110,11 +109,8 @@ void Application::handleEvent(SDL_Event* event) {
                 break;
             }
 
-            {
-                auto lock = std::unique_lock(m_camera.mutex);
-                if(!m_camera.approved && m_camera.device != nullptr) {
-                    closeCamera(false);
-                }
+            if(!m_camera.approved && m_camera.device != nullptr) {
+                closeCamera();
             }
 
             initCameras();

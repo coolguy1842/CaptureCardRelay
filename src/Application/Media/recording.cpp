@@ -79,7 +79,6 @@ void Application::openAudioRecordingDevice() {
     SDL_Log("Opened recording device: %s", name);
     SDL_GetAudioDeviceFormat(m_audioRecording.device, &m_audioRecording.spec, NULL);
 
-    auto lock                = std::unique_lock(m_streamMutex);
     m_currentRecordingDevice = { .id = deviceID, .name = name };
 
     m_audioRecording.stream = SDL_CreateAudioStream(&m_audioRecording.spec, &m_audioSpec);
@@ -89,7 +88,6 @@ void Application::openAudioRecordingDevice() {
 }
 
 void Application::closeAudioRecordingDevice() {
-    auto lock                = std::unique_lock(m_streamMutex);
     m_currentRecordingDevice = { .id = 0, .name = "(null)" };
 
     if(m_audioRecording.stream != nullptr) {

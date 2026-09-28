@@ -7,7 +7,6 @@
 #include <clay_renderer_SDL3.hpp>
 #include <frame_limiter.hpp>
 #include <memory>
-#include <mutex>
 #include <optional>
 #include <queue>
 #include <settings.hpp>
@@ -127,13 +126,13 @@ private:
     void initCameras();
 
     void openCamera();
-    void closeCamera(bool lock = true);
+    void closeCamera();
 
     void setCamera(CameraInfo info);
     void setRecordingDevice(RecordingDeviceInfo info);
 
     void updateCameraDisplayRect();
-    void updateCameraTexture(bool shouldLockMutex = true);
+    void updateCameraTexture();
     // should be called every frame
     void renderCameraToTexture();
 
@@ -200,9 +199,6 @@ private:
     SDL_Cursor* m_currentCursor = nullptr;
     SDL_Cursor* m_nextCursor    = nullptr;
 
-    std::mutex m_streamMutex;
-    std::mutex m_audioMutex;
-
     using AudioType  = float;
     using AudioFrame = std::shared_ptr<AudioType[]>;
 
@@ -249,8 +245,6 @@ private:
         void* pixels;
         int pitch;
         size_t pixelsSize;
-
-        std::mutex mutex;
     } m_camera;
 
     CameraInfo m_currentCamera                   = { .id = 0, .name = "(null)" };

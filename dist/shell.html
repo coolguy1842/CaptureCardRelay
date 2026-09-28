@@ -1,8 +1,9 @@
+<!DOCTYPE html>
 <html>
 	<head>
 		<style>
 			html, body, canvas {
-				background-color: black;
+				background-color: #242424;
 
 				padding: 0;
 				margin: 0;
@@ -12,10 +13,27 @@
 
 				overflow: hidden;
 			}
+
+			#buttonContainer {
+				width: 100%;
+				height: 100%;
+
+				display: flex;
+
+				align-items: center;
+				justify-content: center;
+			}
 		</style>
 	</head>
 	<body>
-		<canvas id="canvas"></canvas>
+		<template id="script-template">
+			{{{ SCRIPT }}}
+		</template>
+
+		<canvas style="display: none;" id="canvas"></canvas>
+		<div id="buttonContainer">
+			<button id="runButton" onclick="clickToRun();">Click to run</button>
+		</div>
 
 		<script>
 			var Module = {
@@ -24,8 +42,20 @@
 					return canvas;
 				})(),
 			};
+
+			function clickToRun() {
+				const buttonContainer = document.getElementById("buttonContainer");
+				buttonContainer.remove();
+
+				Module.canvas.style.display = "block";
+
+  				const template = document.querySelector("#script-template");
+  				const clone = template.content.cloneNode(true);
+
+				document.body.appendChild(clone);
+			}
+
+			alert("This is a demo for the program. Audio (very bad), and video have limited quality on browsers. Expect worse quality, press O for options. Additionally WebGPU is not supported, frame rates will be very low.");
 		</script>
-		
-		{{{ SCRIPT }}}
 	</body>
 </html>

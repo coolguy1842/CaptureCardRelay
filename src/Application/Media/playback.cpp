@@ -36,9 +36,6 @@ void Application::openAudioPlaybackDevice() {
     int playbackBufferSize = 0;
     SDL_GetAudioDeviceFormat(m_audioPlayback.device, &m_audioPlayback.spec, &playbackBufferSize);
 
-    auto lock  = std::unique_lock(m_streamMutex);
-    auto lock2 = std::unique_lock(m_audioMutex);
-
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-conversion"
     const int frameSize    = static_cast<int>(SDL_AUDIO_FRAMESIZE(m_audioSpec));
@@ -61,8 +58,6 @@ void Application::openAudioPlaybackDevice() {
 }
 
 void Application::closeAudioPlaybackDevice() {
-    auto lock = std::unique_lock(m_streamMutex);
-
     if(m_audioPlayback.stream != nullptr) {
         SDL_DestroyAudioStream(m_audioPlayback.stream);
         m_audioPlayback.stream = nullptr;
@@ -72,8 +67,6 @@ void Application::closeAudioPlaybackDevice() {
         SDL_CloseAudioDevice(m_audioPlayback.device);
         m_audioPlayback.device = 0;
     }
-
-    auto lock2 = std::unique_lock(m_audioMutex);
 
     m_emptyAudioBuffer = {};
     m_audioBuffers     = {};

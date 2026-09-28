@@ -206,26 +206,20 @@ void Application::openCamera() {
 
     SDL_Log("\n");
     SDL_Log("Opening camera: %s", name);
-    auto lock = std::unique_lock(m_camera.mutex);
 
     m_camera.approved = false;
     m_currentCamera   = { camID, name };
 
     m_camera.device = SDL_OpenCamera(camID, spec);
     if(m_camera.device == nullptr) {
-        closeCamera(false);
+        closeCamera();
         SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Opening camera: %s", SDL_GetError());
     }
 
-    updateCameraTexture(false);
+    updateCameraTexture();
 }
 
-void Application::closeCamera(bool shouldLock) {
-    std::unique_lock<std::mutex> lock;
-    if(shouldLock) {
-        lock = std::unique_lock(m_camera.mutex);
-    }
-
+void Application::closeCamera() {
     m_camera.approved = false;
     m_currentCamera   = { .id = 0, .name = "(null)" };
 
@@ -312,12 +306,7 @@ void Application::updateCameraDisplayRect() {
     }
 }
 
-void Application::updateCameraTexture(bool shouldLock) {
-    std::unique_lock lock = std::unique_lock(m_camera.mutex, std::defer_lock);
-    if(shouldLock) {
-        lock.lock();
-    }
-
+void Application::updateCameraTexture() {
     if(m_camera.device == nullptr || !m_camera.approved) {
     cleanupCamera:
         if(m_camera.texture != nullptr) {
@@ -387,8 +376,6 @@ void Application::updateCameraTexture(bool shouldLock) {
 
     updateCameraDisplayRect();
     updateFrameLimiter(m_frameLimitInfo);
-
-    lock.unlock();
 }
 
 void Application::renderCameraToTexture() {
@@ -396,7 +383,6 @@ void Application::renderCameraToTexture() {
         return;
     }
 
-    auto lock            = std::unique_lock(m_camera.mutex);
     SDL_Surface* surface = SDL_AcquireCameraFrame(m_camera.device, NULL);
     if(surface != nullptr) {
         switch(m_camera.texture->format) {

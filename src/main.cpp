@@ -11,7 +11,6 @@
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
-#include <emscripten/html5.h>
 #endif
 
 void usage(int argc, char** argv) {
@@ -65,7 +64,6 @@ int main(int argc, char** argv) {
     }
 
 #ifdef __EMSCRIPTEN__
-    emscripten_run_script("alert('This is a demo for the program. Audio (very bad), and video have limited quality on browsers. Expect worse quality, press O for options. Additionally WebGPU is not supported, frame rates will be very low.')");
     emscripten_set_main_loop(loop, 0, true);
 #else
     loop();
