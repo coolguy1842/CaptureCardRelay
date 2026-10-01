@@ -14,11 +14,17 @@ public:
     float frameTime();
 
     // rolling max, min over past 200 frame times
-    float stableFrameTime() const;
+    float stableFrameTimeAverage() const;
+    float stableFrameTimeMin() const;
+    float stableFrameTimeMax() const;
 
+    float frameTimeAverage() const;
     float frameTimeMin() const;
     float frameTimeMax() const;
-    bool willFrameTimeRollover() const;
+
+    // updates the stable variables e.g min, max & frame time
+    void updateStable();
+    bool hasStableChanged();
 #endif
 
     void setFPSLimit(float fps);
@@ -36,17 +42,22 @@ private:
     SDL_Time m_frameEnd   = 0;
 
     SDL_Time m_frameTimeStart = 0;
+    float m_secondClock       = 0;
 
 #ifdef DEBUG
-    size_t m_frameTimeNum = 0;
-
     const static size_t maxFrameTimes = 100;
-    float m_frameTimes[maxFrameTimes];
+
+    struct Timings {
+        float average = -1.0f;
+        float min     = -1;
+        float max     = -1;
+    };
 
     // prevent div by 0
-    float m_frameTimeStable = 1.0f;
-    float m_frameTimeMin    = 0.0f;
-    float m_frameTimeMax    = 0.0f;
+    Timings m_stableTimings;
+    Timings m_timings;
+
+    bool m_stableChanged;
 #endif
 
     SDL_Time calculateSleepTime(SDL_Time start, SDL_Time end);

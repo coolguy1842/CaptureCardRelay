@@ -28,6 +28,8 @@ Clay_RenderCommandArray Application::buildUI() {
 
     CLAY(CLAY_ID("Body"), { .layout = { .sizing = { CLAY_SIZING_PERCENT(1.0), CLAY_SIZING_PERCENT(1.0) } } }) {
 #ifdef DEBUG
+        m_frameLimiter.frameTime();
+
         if(m_showFrametime) {
             CLAY_AUTO_ID({
                 .layout          = { .padding = CLAY_PADDING_ALL(8) },
@@ -43,14 +45,14 @@ Clay_RenderCommandArray Application::buildUI() {
                     .attachTo = CLAY_ATTACH_TO_PARENT,
                 },
             }) {
-                if(m_frameTimeText.empty() || m_frameLimiter.willFrameTimeRollover()) {
-                    float stableTime = m_frameLimiter.stableFrameTime();
+                if(m_frameTimeText.empty() || m_frameLimiter.hasStableChanged()) {
+                    const float stableTime = m_frameLimiter.stableFrameTimeAverage();
 
                     m_frameTimeText = std::format(
                         "FPS: {}  |  {:0.2}ms\nmin: {:0.2}ms\nmax: {:0.2}ms",
                         static_cast<int64_t>(1000 / stableTime), stableTime,
-                        m_frameLimiter.frameTimeMin(),
-                        m_frameLimiter.frameTimeMax()
+                        m_frameLimiter.stableFrameTimeMin(),
+                        m_frameLimiter.stableFrameTimeMax()
                     );
                 }
 
@@ -58,8 +60,6 @@ Clay_RenderCommandArray Application::buildUI() {
                 CLAY_TEXT(str, defaultTextConfig);
             }
         }
-
-        m_frameLimiter.frameTime();
 #endif
 
         BuildSettingsMenu();

@@ -19,9 +19,6 @@ FrameLimiter::FrameLimiter(bool useEarly)
 
 #ifdef DEBUG
     frameTime();
-
-    // just fake 60hz for startup
-    m_frameTimeStable = m_frameTimeMax = m_frameTimeMin = 16.6;
 #endif
 }
 
@@ -33,34 +30,62 @@ float FrameLimiter::frameTime() {
     SDL_Time frameTimeEnd = getNanoseconds();
     SDL_Time frameTime    = frameTimeEnd - m_frameTimeStart;
 
-    m_frameTimeStart = frameTimeEnd;
-    float ms         = frameTime / 1e+6;
+    float ms = frameTime / 1e+6;
 
-    if(++m_frameTimeNum >= maxFrameTimes) {
-        m_frameTimeMin = m_frameTimes[0];
-        m_frameTimeMax = m_frameTimes[0];
-
-        float totalFrameTime = 0.0f;
-        for(size_t i = 0; i < maxFrameTimes; i++) {
-            const float& time = m_frameTimes[i];
-
-            totalFrameTime += time;
-            m_frameTimeMin = SDL_min(time, m_frameTimeMin);
-            m_frameTimeMax = SDL_max(time, m_frameTimeMax);
-        }
-
-        m_frameTimeStable = totalFrameTime / maxFrameTimes;
-        m_frameTimeNum    = 0;
+    if(m_timings.average == -1) {
+        m_timings = {
+            .average = ms,
+            .min     = ms,
+            .max     = ms,
+        };
+    }
+    else {
+        // use rolling average: https://stackoverflow.com/questions/12636613/how-to-calculate-moving-average-without-keeping-the-count-and-data-total#comment79377875_23493727
+        m_timings = {
+            .average = (m_timings.average * (maxFrameTimes - 1) + ms) / maxFrameTimes,
+            .min     = SDL_min(m_timings.min, ms),
+            .max     = SDL_max(m_timings.max, ms),
+        };
     }
 
-    m_frameTimes[m_frameTimeNum] = ms;
+    m_secondClock += ms;
+
+    // update frametimes every second
+    if(m_secondClock >= 1000.0f) {
+        updateStable();
+        m_timings.average = -1;
+    }
+
+    m_frameTimeStart = getNanoseconds();
+
     return ms;
 }
 
-float FrameLimiter::frameTimeMin() const { return m_frameTimeMin; }
-float FrameLimiter::frameTimeMax() const { return m_frameTimeMax; }
-float FrameLimiter::stableFrameTime() const { return m_frameTimeStable; }
-bool FrameLimiter::willFrameTimeRollover() const { return m_frameTimeNum >= maxFrameTimes - 1; }
+float FrameLimiter::frameTimeAverage() const { return m_timings.average; }
+float FrameLimiter::frameTimeMin() const { return m_timings.min; }
+float FrameLimiter::frameTimeMax() const { return m_timings.max; }
+
+float FrameLimiter::stableFrameTimeAverage() const { return m_stableTimings.average; }
+float FrameLimiter::stableFrameTimeMin() const { return m_stableTimings.min; }
+float FrameLimiter::stableFrameTimeMax() const { return m_stableTimings.max; }
+
+bool FrameLimiter::hasStableChanged() {
+    if(m_stableChanged) {
+        m_stableChanged = false;
+        return true;
+    }
+
+    return false;
+}
+
+void FrameLimiter::updateStable() {
+    m_stableTimings   = m_timings;
+    m_timings.average = -1;
+
+    m_secondClock   = 0.0f;
+    m_stableChanged = true;
+}
+
 #endif
 
 void FrameLimiter::setFPSLimit(float fps) {

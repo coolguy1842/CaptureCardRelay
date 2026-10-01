@@ -203,6 +203,7 @@ void Application::handleEvent(SDL_Event* event) {
             break;
 #endif
         case SDLK_O:
+        case SDLK_ESCAPE:
             if((m_settingsActive = !m_settingsActive) == true) {
                 SDL_ShowCursor();
             }

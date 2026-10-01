@@ -2,6 +2,7 @@
 
 // pretty hacky, but allows knowing when the animation ends to stop rendering clay when not needed
 static bool s_animationActive = false;
+const float offset            = 7.5f;
 
 #define LERP(from, to, mix) (from + (to - from) * mix)
 bool EaseOut(Clay_TransitionCallbackArguments arguments) {
@@ -26,7 +27,7 @@ bool EaseOut(Clay_TransitionCallbackArguments arguments) {
 Clay_TransitionData EnterExitSlide(Clay_TransitionData initialState, Clay_TransitionProperty properties) {
     Clay_TransitionData targetState = initialState;
     if(properties & CLAY_TRANSITION_PROPERTY_Y) {
-        targetState.boundingBox.y += targetState.boundingBox.height;
+        targetState.boundingBox.y += targetState.boundingBox.height + offset;
     }
 
     return targetState;
@@ -52,6 +53,8 @@ void Application::BuildStatus() {
             .cornerRadius    = CLAY_CORNER_RADIUS(6),
 
             .floating = {
+                .offset = { .x = -offset, .y = -offset },
+
                 .attachPoints = { .element = CLAY_ATTACH_POINT_RIGHT_BOTTOM, .parent = CLAY_ATTACH_POINT_RIGHT_BOTTOM },
                 .attachTo     = CLAY_ATTACH_TO_PARENT,
             },

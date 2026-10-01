@@ -62,10 +62,6 @@ Application::Application(const char* settingsPath)
         SDL_Log("Created renderer.");
     }
 
-#ifdef __EMSCRIPTEN__
-    SDL_SetRenderVSync(m_renderData.renderer, 1);
-#endif
-
     if(!TTF_Init()) {
         SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't initialise SDL_ttf: %s", SDL_GetError());
         setShouldQuit();
@@ -117,9 +113,12 @@ Application::Application(const char* settingsPath)
     m_settings.displayModeChanged.connect<&Application::updateCameraDisplayMode>(this);
     m_settings.scaleModeChanged.connect<&Application::updateCameraScaleMode>(this);
     m_settings.pixelFormatChanged.connect<&Application::updateCameraPixelFormat>(this);
+
 #ifndef __EMSCRIPTEN__
     m_settings.frameLimitInfoChanged.connect<&Application::updateFrameLimiter>(this);
     updateFrameLimiter(m_settings.getFrameLimitInfo());
+#else
+    SDL_SetRenderVSync(m_renderData.renderer, 1);
 #endif
 
     m_pointerCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_POINTER);
@@ -266,6 +265,11 @@ void Application::render() {
 #ifdef DEBUG
     else {
         m_frameLimiter.frameTime();
+    }
+
+    // frametime display will consume hasStableChanged, so it will only print while that is not showing
+    if(m_frameLimiter.hasStableChanged()) {
+        SDL_Log("FPS: %d | min: %0.02f | max: %0.02f", static_cast<int>(1000 / m_frameLimiter.stableFrameTimeAverage()), m_frameLimiter.stableFrameTimeMin(), m_frameLimiter.stableFrameTimeMax());
     }
 #endif
 

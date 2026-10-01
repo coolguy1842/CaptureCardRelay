@@ -368,7 +368,7 @@ void Application::updateCameraTexture() {
     }
 
     if(format != m_camera.spec.format) {
-        // for some reason writing to a temporary buffer first is faster when using SDL_ConvertPixels
+        // for some reason writing to a temporary buffer first is faster when using SDL_ConvertPixels, pitch calculation from sdl3s internal source code
         m_camera.pitch      = ((m_camera.texture->w * SDL_BYTESPERPIXEL(m_camera.texture->format)) + 3) & ~3;
         m_camera.pixelsSize = static_cast<size_t>(m_camera.texture->h) * static_cast<size_t>(m_camera.pitch);
         m_camera.pixels     = SDL_malloc(m_camera.pixelsSize);
@@ -396,6 +396,9 @@ void Application::renderCameraToTexture() {
                    m_camera.texture->format, m_camera.pixels, m_camera.pitch
                )) {
                 SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Error converting pixels: %s", SDL_GetError());
+                SDL_ReleaseCameraFrame(m_camera.device, surface);
+
+                break;
             }
 
             SDL_ReleaseCameraFrame(m_camera.device, surface);
