@@ -42,7 +42,6 @@ private:
     SDL_Time m_frameEnd   = 0;
 
     SDL_Time m_frameTimeStart = 0;
-    float m_secondClock       = 0;
 
 #ifdef DEBUG
     const static size_t maxFrameTimes = 100;
@@ -57,7 +56,8 @@ private:
     Timings m_stableTimings;
     Timings m_timings;
 
-    bool m_stableChanged;
+    float m_secondClock  = 0;
+    bool m_stableChanged = false;
 #endif
 
     SDL_Time calculateSleepTime(SDL_Time start, SDL_Time end);
