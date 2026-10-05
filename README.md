@@ -71,4 +71,4 @@ cmake --build build -- -j $(nproc)
 - [SDL3](https://github.com/libsdl-org/SDL) Great cross-platform multimedia library
 - [Clay](https://github.com/nicbarker/clay) Great UI layout library.
 - [rocket](https://github.com/tripleslash/rocket) Easy to use & safe signal library.
-- [Rohrkabel](github.com/Curve/rohrkabel) Nice Pipewire C++ wrapper.
+- [Rohrkabel](https://github.com/Curve/rohrkabel) Nice Pipewire C++ wrapper.
