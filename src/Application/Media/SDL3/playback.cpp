@@ -1,5 +1,4 @@
 #include <application.hpp>
-#include <memory>
 
 void Application::onPlaybackCallback(void* userdata, SDL_AudioStream* stream, int additionalAmount, int totalAmount) { ((Application*)userdata)->playbackCallbackHandler(stream, additionalAmount, totalAmount); }
 void Application::playbackCallbackHandler(SDL_AudioStream* stream, int needed, int) {
@@ -7,7 +6,8 @@ void Application::playbackCallbackHandler(SDL_AudioStream* stream, int needed, i
         needed -= m_audioBufferSizeBytes;
 
         if(m_audioBuffers.empty()) {
-            SDL_PutAudioStreamDataNoCopy(stream, m_emptyAudioBuffer.get(), m_audioBufferSizeBytes, NULL, NULL);
+            // can cause a crash if using NoCopy if the buffer gets changed
+            SDL_PutAudioStreamData(stream, m_emptyAudioBuffer.get(), m_audioBufferSizeBytes);
             continue;
         }
 
@@ -53,7 +53,7 @@ void Application::openAudioPlaybackDevice() {
     m_audioPlayback.stream = SDL_CreateAudioStream(&m_audioSpec, &m_audioPlayback.spec);
     SDL_BindAudioStream(m_audioPlayback.device, m_audioPlayback.stream);
 
-    updateVolume(false);
+    _updateVolumeSDL();
     SDL_SetAudioStreamGetCallback(m_audioPlayback.stream, &Application::onPlaybackCallback, this);
 }
 
@@ -68,7 +68,15 @@ void Application::closeAudioPlaybackDevice() {
         m_audioPlayback.device = 0;
     }
 
-    m_emptyAudioBuffer = {};
+    m_emptyAudioBuffer.reset();
     m_audioBuffers     = {};
     m_freeAudioBuffers = {};
+}
+
+void Application::_updateVolumeSDL() {
+    if(m_audioPlayback.stream == nullptr) {
+        return;
+    }
+
+    SDL_SetAudioStreamGain(m_audioPlayback.stream, getCubicVolume());
 }

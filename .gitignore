@@ -3,11 +3,10 @@
 .vscode
 .tmp
 
-subprojects/*
-!subprojects/*.wrap
-
 result
 build*
+CMakeFiles
+
 debug*.sh
 run*.sh
 compile_commands.json

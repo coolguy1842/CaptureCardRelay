@@ -25,6 +25,7 @@
     buildInputs = with pkgs; [
         emscripten
 
+        pipewire
         sdl3
         sdl3-ttf
     ];

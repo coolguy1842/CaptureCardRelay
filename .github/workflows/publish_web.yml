@@ -15,10 +15,10 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
       
-      - name: Install Meson and Ninja
+      - name: Install CMake and Make
         run: |
           sudo apt-get update
-          sudo apt-get install -y meson ninja-build
+          sudo apt-get install -y cmake build-essential
 
       - name: Setup Emscripten SDK
         uses: emscripten-core/setup-emsdk@v15
@@ -26,14 +26,11 @@ jobs:
           version: 'latest'
           actions-cache-folder: 'emsdk-cache'
 
-      - name: Configure Meson
-        run: |
-          meson setup build \
-            --cross-file="emscripten.cross" \
-            --buildtype=release
+      - name: Configure CMake
+        run: emcmake cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 
-      - name: Compile Meson
-        run: meson compile -C build
+      - name: Compile CMake
+        run: cmake --build build -- -j 12
 
       - name: Copy built files
         run: |

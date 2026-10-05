@@ -53,7 +53,8 @@ float FrameLimiter::frameTime() {
     // update frametimes every second
     if(m_secondClock >= 1000.0f) {
         updateStable();
-        m_timings.average = -1;
+
+        m_secondClock = 0.0f;
     }
 
     m_frameTimeStart = getNanoseconds();
@@ -82,7 +83,6 @@ void FrameLimiter::updateStable() {
     m_stableTimings   = m_timings;
     m_timings.average = -1;
 
-    m_secondClock   = 0.0f;
     m_stableChanged = true;
 }
 

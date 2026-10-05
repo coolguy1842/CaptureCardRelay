@@ -1,11 +1,9 @@
 #include <application.hpp>
 #include <chrono>
 
-void Application::handleEvent(SDL_Event* event) {
+SDL_AppResult Application::handleEvent(SDL_Event* event) {
     switch(event->type) {
-    case SDL_EVENT_QUIT:
-        setShouldQuit(true);
-        break;
+    case SDL_EVENT_QUIT: return SDL_APP_SUCCESS;
     case SDL_EVENT_WINDOW_RESIZED:
         m_width  = event->window.data1;
         m_height = event->window.data2;
@@ -88,11 +86,23 @@ void Application::handleEvent(SDL_Event* event) {
         break;
     case SDL_EVENT_AUDIO_DEVICE_ADDED:
     case SDL_EVENT_AUDIO_DEVICE_REMOVED:
+#ifdef ENABLE_PIPEWIRE
+        if(m_usingPipewire) {
+            break;
+        }
+#endif
+
         openAudioPlaybackDevice();
         openAudioRecordingDevice();
 
         // fall through
     case SDL_EVENT_AUDIO_DEVICE_FORMAT_CHANGED: {
+#ifdef ENABLE_PIPEWIRE
+        if(m_usingPipewire) {
+            break;
+        }
+#endif
+
         if(m_audioRecording.stream != nullptr) {
             SDL_SetAudioStreamFormat(m_audioRecording.stream, &m_audioRecording.spec, &m_audioSpec);
         }
@@ -140,6 +150,42 @@ void Application::handleEvent(SDL_Event* event) {
             break;
         }
         case SDLK_RIGHT: {
+#ifdef ENABLE_PIPEWIRE
+            if(m_usingPipewire) {
+                if(m_pipewire.sources.empty()) {
+                    break;
+                }
+
+                PipewireDevice* currentDevice = m_pipewire.currentSource;
+                if(currentDevice == nullptr) {
+                    setRecordingDevicePipewire(m_pipewire.sources[0]);
+                    updatePipewireLink();
+
+                    break;
+                }
+
+                auto it = std::find_if(m_pipewire.sources.begin(), m_pipewire.sources.end(), [currentDevice](const auto& device) { return &device == currentDevice; });
+                if(it == m_pipewire.sources.end()) {
+                    it = m_pipewire.sources.begin();
+                }
+
+                if(it != m_pipewire.sources.end()) {
+                    it = it + 1;
+                    if(it == m_pipewire.sources.end()) {
+                        it = m_pipewire.sources.begin();
+                    }
+
+                    setRecordingDevicePipewire(*it);
+                }
+                else {
+                    m_settings.setSelectedRecordingDevice("");
+                    updatePipewireLink();
+                }
+
+                break;
+            }
+#endif
+
             if(m_recordingDevices.empty() || !m_settings.canSetRecordingDevice()) {
                 break;
             }
@@ -157,10 +203,10 @@ void Application::handleEvent(SDL_Event* event) {
                         it = m_recordingDevices.begin();
                     }
 
-                    setRecordingDevice(*it);
+                    setRecordingDeviceSDL(*it);
                 }
                 else {
-                    setRecordingDevice({ .id = 0, .name = "" });
+                    setRecordingDeviceSDL({ .id = 0, .name = "" });
                 }
             }
 
@@ -227,4 +273,6 @@ void Application::handleEvent(SDL_Event* event) {
         break;
     default: break;
     }
+
+    return SDL_APP_CONTINUE;
 }

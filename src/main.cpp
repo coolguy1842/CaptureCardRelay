@@ -3,6 +3,9 @@
 #define PROJECT_VERSION "1.0.0"
 #endif
 
+#define SDL_MAIN_USE_CALLBACKS
+#include <SDL3/SDL_main.h>
+
 #include <application.hpp>
 #include <clay_renderer_SDL3.hpp>
 #include <cstring>
@@ -28,27 +31,7 @@ void usage(int argc, char** argv) {
 const char* settingsPath         = nullptr;
 std::unique_ptr<Application> app = nullptr;
 
-void loop() {
-    if(app == nullptr) {
-        app = std::make_unique<Application>(settingsPath);
-    }
-
-#ifdef __EMSCRIPTEN__
-    if(!app->loop()) {
-        app.reset();
-        SDL_Clay_Exit();
-
-        emscripten_cancel_main_loop();
-    }
-#else
-    while(app->loop()) {}
-
-    app.reset();
-    SDL_Clay_Exit();
-#endif
-}
-
-int main(int argc, char** argv) {
+SDL_AppResult SDL_AppInit(void**, int argc, char** argv) {
     SDL_Log("Version %s", PROJECT_VERSION);
 
     switch(argc) {
@@ -56,21 +39,24 @@ int main(int argc, char** argv) {
     case 2:
         if(strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0) {
             usage(argc, argv);
-            return 0;
+            return SDL_APP_SUCCESS;
         }
 
         settingsPath = argv[1];
         break;
     default:
         usage(argc, argv);
-        return 1;
+        return SDL_APP_FAILURE;
     }
 
-#ifdef __EMSCRIPTEN__
-    emscripten_set_main_loop(loop, 0, true);
-#else
-    loop();
-#endif
+    app = std::make_unique<Application>(settingsPath);
+    if(app->getShouldQuit()) {
+        return SDL_APP_FAILURE;
+    }
 
-    return 0;
+    return SDL_APP_CONTINUE;
 }
+
+void SDL_AppQuit(void*, SDL_AppResult) { app.reset(); }
+SDL_AppResult SDL_AppEvent(void*, SDL_Event* event) { return app->handleEvent(event); }
+SDL_AppResult SDL_AppIterate(void*) { return app->loop(); }

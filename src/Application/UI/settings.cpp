@@ -223,7 +223,7 @@ void Application::BuildCameraSettings() {
     Build_ScrollBar(camerasContainerID);
 }
 
-void Application::BuildRecordingDeviceLabel(const RecordingDeviceInfo& info) {
+void Application::BuildSDLRecordingDeviceLabel(const RecordingDeviceInfo& info) {
     CLAY_AUTO_ID() {
         Clay_TextElementConfig textConfig = defaultTextConfig;
         if(!m_settings.canSetRecordingDevice()) {
@@ -235,7 +235,10 @@ void Application::BuildRecordingDeviceLabel(const RecordingDeviceInfo& info) {
                 textConfig   = hoveredTextConfig;
 
                 if(Clay_MouseClicked()) {
-                    setRecordingDevice(info);
+                    if(m_currentRecordingDevice.id != info.id) {
+                        setRecordingDeviceSDL(info);
+                    }
+
                     m_activeDropdown = m_invalidDropdown;
                 }
             }
@@ -249,20 +252,72 @@ void Application::BuildRecordingDeviceLabel(const RecordingDeviceInfo& info) {
     }
 }
 
+#ifdef ENABLE_PIPEWIRE
+
+void Application::BuildPipewireRecordingDeviceLabel(const PipewireDevice& device) {
+    CLAY_AUTO_ID() {
+        Clay_TextElementConfig textConfig = defaultTextConfig;
+        if(!m_settings.canSetRecordingDevice()) {
+            textConfig = lockedTextConfig;
+        }
+        else if(m_activeDropdown.id == recordingDevicesContainerID.id) {
+            if(Clay_Hovered()) {
+                m_nextCursor = m_pointerCursor;
+                textConfig   = hoveredTextConfig;
+
+                if(Clay_MouseClicked()) {
+                    if(m_pipewire.currentSource == nullptr || m_pipewire.currentSource->node.id() != device.node.id()) {
+                        setRecordingDevicePipewire(device);
+                    }
+
+                    m_activeDropdown = m_invalidDropdown;
+                }
+            }
+
+            if(m_pipewire.currentSource != nullptr && m_pipewire.currentSource->node.id() == device.node.id()) {
+                textConfig = selectedTextConfig;
+            }
+        }
+
+        CLAY_TEXT(toClayString(device.name.c_str()), textConfig);
+    }
+}
+
+#endif
+
 void Application::BuildRecordingDeviceSettings() {
     SettingContainer(recordingDevicesContainerID, CLAY_SIZING_FIXED(250), true) {
         CONTAINER_TITLE("Recording Device");
         SEPARATOR;
 
         if(m_activeDropdown.id == recordingDevicesContainerID.id) {
+#ifdef ENABLE_PIPEWIRE
+            if(m_usingPipewire) {
+                for(const PipewireDevice& device : m_pipewire.sources) {
+                    BuildPipewireRecordingDeviceLabel(device);
+                }
+
+                continue;
+            }
+#endif
+
             for(const RecordingDeviceInfo& info : m_recordingDevices) {
-                BuildRecordingDeviceLabel(info);
+                BuildSDLRecordingDeviceLabel(info);
             }
 
             continue;
         }
+#ifdef ENABLE_PIPEWIRE
+        if(m_usingPipewire) {
+            BuildPipewireRecordingDeviceLabel(m_pipewire.currentSource != nullptr ? *m_pipewire.currentSource : m_pipewire.sources[0]);
+        }
+#else
+        if(false) {}
+#endif
+        else {
+            BuildSDLRecordingDeviceLabel(m_currentRecordingDevice);
+        }
 
-        BuildRecordingDeviceLabel(m_currentRecordingDevice);
         if(m_settings.canSetRecordingDevice() && Clay_Hovered()) {
             m_nextCursor = m_pointerCursor;
 

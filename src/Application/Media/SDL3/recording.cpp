@@ -31,8 +31,8 @@ void Application::initAudioRecordingDevices() {
 
     if(recordingDevices == nullptr) {
         SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't enumerate recording devices: %s", SDL_GetError());
-
         setShouldQuit(true);
+
         return;
     }
 
@@ -60,7 +60,35 @@ void Application::openAudioRecordingDevice() {
         return;
     }
 
-    SDL_AudioDeviceID deviceID = m_settings.getSelectedRecordingDevice();
+    SDL_AudioDeviceID deviceID = 0;
+
+    int recordingDeviceCount   = 0;
+    SDL_AudioDeviceID* devices = SDL_GetAudioRecordingDevices(&recordingDeviceCount);
+
+    if(devices == nullptr || recordingDeviceCount == 0) {
+        deviceID = 0;
+    }
+    else {
+        const std::string selectedName = m_settings.getSelectedRecordingDevice();
+
+        if(!selectedName.empty()) {
+            for(int i = 0; i < recordingDeviceCount; i++) {
+                const SDL_AudioDeviceID device = devices[i];
+
+                const char* name = SDL_GetAudioDeviceName(device);
+                if(name != nullptr && selectedName == name) {
+                    deviceID = device;
+                    break;
+                }
+            }
+        }
+        else {
+            deviceID = devices[0];
+        }
+    }
+
+    SDL_free(devices);
+
     if(deviceID == 0) {
         deviceID = SDL_AUDIO_DEVICE_DEFAULT_RECORDING;
     }
@@ -101,8 +129,8 @@ void Application::closeAudioRecordingDevice() {
     }
 }
 
-void Application::setRecordingDevice(Application::RecordingDeviceInfo info) {
-    m_settings.setSelectedRecordingDevice(info.id);
+void Application::setRecordingDeviceSDL(Application::RecordingDeviceInfo info) {
+    m_settings.setSelectedRecordingDevice(info.name);
 
     const char* deviceName = "(null)";
     if(info.id != 0) {

@@ -16,7 +16,7 @@ Application::Application(const char* settingsPath)
     , m_width(800)
     , m_height(600)
     , m_frameLimiter(true) {
-    if(!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_CAMERA)) {
+    if(!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_CAMERA)) {
         SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't initialize SDL: %s", SDL_GetError());
         setShouldQuit();
 
@@ -87,17 +87,31 @@ Application::Application(const char* settingsPath)
     m_volume     = m_settings.getVolume();
     m_volumeText = std::format("{}%", m_volume);
 
-    SDL_PumpEvents();
-    SDL_FlushEvents(SDL_EVENT_AUDIO_DEVICE_ADDED, SDL_EVENT_AUDIO_DEVICE_ADDED);
-    SDL_FlushEvents(SDL_EVENT_CAMERA_DEVICE_ADDED, SDL_EVENT_CAMERA_DEVICE_ADDED);
-
     openCamera();
+
+#ifdef ENABLE_PIPEWIRE
+    initPipewire();
+
+    if(!m_usingPipewire) {
+        SDL_InitSubSystem(SDL_INIT_AUDIO);
+
+        openAudioPlaybackDevice();
+        openAudioRecordingDevice();
+    }
+#else
+    SDL_InitSubSystem(SDL_INIT_AUDIO);
+
     openAudioPlaybackDevice();
     openAudioRecordingDevice();
+#endif
 
     if(getShouldQuit()) {
         return;
     }
+
+    SDL_PumpEvents();
+    SDL_FlushEvents(SDL_EVENT_AUDIO_DEVICE_ADDED, SDL_EVENT_AUDIO_DEVICE_ADDED);
+    SDL_FlushEvents(SDL_EVENT_CAMERA_DEVICE_ADDED, SDL_EVENT_CAMERA_DEVICE_ADDED);
 
     uint32_t totalMemorySize = Clay_MinMemorySize();
     Clay_Arena clayMemory    = Clay_Arena{
@@ -217,23 +231,20 @@ void Application::updateFrameLimiter(FrameLimitInfo info) {
 }
 #endif
 
-bool Application::loop() {
-    if(getShouldQuit()) {
-        return false;
-    }
-
-    SDL_Event event;
-    while(SDL_PollEvent(&event)) {
-        handleEvent(&event);
-    }
-
+SDL_AppResult Application::loop() {
     update();
     render();
 
-    return !getShouldQuit();
+    return SDL_APP_CONTINUE;
 }
 
 void Application::update() {
+#ifdef ENABLE_PIPEWIRE
+    if(m_usingPipewire) {
+        m_pipewire.core->run_once();
+    }
+#endif
+
     if(!m_settingsActive && m_shouldHideCursor && SDL_CursorVisible() && std::chrono::system_clock::now() >= m_showCursorExpire) {
         SDL_HideCursor();
     }
@@ -302,20 +313,26 @@ void Application::setVolume(int volume, bool showStatus, bool save) {
     updateVolume(showStatus);
 }
 
+float Application::getCubicVolume() {
+    float volume = m_volume / 100.0f;
+    return std::powf(volume, 3.0f);
+}
+
 void Application::updateVolume(bool showStatus) {
     if(showStatus) {
         changeStatus(std::format("Volume: {}%", m_volume), std::chrono::milliseconds(1500));
     }
 
-    if(m_audioPlayback.stream == nullptr) {
-        return;
+#ifdef ENABLE_PIPEWIRE
+    if(m_usingPipewire) {
+        _updateVolumePipewire();
     }
-
-    // exponential volume function
-    float volume         = m_volume / 100.0f;
-    float adjustedVolume = std::powf(volume, 3.0f);
-
-    SDL_SetAudioStreamGain(m_audioPlayback.stream, adjustedVolume);
+#else
+    if(false) {}
+#endif
+    else {
+        _updateVolumeSDL();
+    }
 }
 
 bool Application::getShouldQuit() const { return m_shouldQuit; }

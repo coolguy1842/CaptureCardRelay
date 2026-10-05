@@ -57,8 +57,9 @@ public:
     void setSelectedCamera(SDL_CameraID camera);
 
     bool canSetRecordingDevice() const;
-    SDL_AudioDeviceID getSelectedRecordingDevice();
-    void setSelectedRecordingDevice(SDL_AudioDeviceID recordingDevice);
+    // empty if not set
+    std::string getSelectedRecordingDevice();
+    void setSelectedRecordingDevice(std::string recordingDevice);
 
     bool canSetDisplayMode() const;
     CameraDisplayMode getDisplayMode();
@@ -101,7 +102,7 @@ public:
 
 public:
     rocket::thread_safe_signal<void(SDL_CameraID)> selectedCameraChanged;
-    rocket::thread_safe_signal<void(SDL_AudioDeviceID)> selectedRecordingDeviceChanged;
+    rocket::thread_safe_signal<void(std::string)> selectedRecordingDeviceChanged;
     rocket::thread_safe_signal<void(int)> volumeChanged;
     rocket::thread_safe_signal<void(bool)> fullscreenChanged;
     rocket::thread_safe_signal<void(CameraDisplayMode)> displayModeChanged;

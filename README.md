@@ -41,7 +41,7 @@ Currently, there are settings for:
 
 Arch:
 ```sh
-wget https://raw.githubusercontent.com/coolguy1842/CaptureCardRelay/refs/heads/master/PKGBUILD
+wget https://github.com/coolguy1842/CaptureCardRelay/releases/latest/download/PKGBUILD
 makepkg -si
 ```
 
@@ -61,8 +61,8 @@ Nix:
 git clone https://github.com/coolguy1842/CaptureCardRelay
 cd CaptureCardRelay
 
-meson setup build
-meson compile -C build
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -- -j $(nproc)
 
 ./build/CaptureCardRelay
 ```
@@ -71,3 +71,4 @@ meson compile -C build
 - [SDL3](https://github.com/libsdl-org/SDL) Great cross-platform multimedia library
 - [Clay](https://github.com/nicbarker/clay) Great UI layout library.
 - [rocket](https://github.com/tripleslash/rocket) Easy to use & safe signal library.
+- [Rohrkabel](github.com/Curve/rohrkabel) Nice Pipewire C++ wrapper.

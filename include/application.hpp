@@ -12,21 +12,34 @@
 #include <settings.hpp>
 #include <string>
 
+#ifdef ENABLE_PIPEWIRE
+#include <rohrkabel/link/link.hpp>
+#include <rohrkabel/node/node.hpp>
+#include <rohrkabel/port/port.hpp>
+
+#include <rohrkabel/metadata/events.hpp>
+#include <rohrkabel/metadata/metadata.hpp>
+
+#include <rohrkabel/registry/events.hpp>
+#include <rohrkabel/registry/registry.hpp>
+#include <rohrkabel/spa/pod/prop.hpp>
+#endif
+
 class Application {
 public:
     Application(const char* settingsFile = nullptr);
     virtual ~Application();
 
-    bool loop();
+    SDL_AppResult loop();
 
     bool getShouldQuit() const;
     void setShouldQuit(bool shouldQuit = true);
 
+    SDL_AppResult handleEvent(SDL_Event* event);
+
 protected:
     virtual void update();
     virtual void render();
-
-    void handleEvent(SDL_Event* event);
 
 private:
     struct CameraInfo {
@@ -45,6 +58,49 @@ private:
 
         SDL_AudioStream* stream = nullptr;
     };
+
+#ifdef ENABLE_PIPEWIRE
+    struct PipewireDevice {
+        std::string name;
+        uint32_t id;
+
+        pipewire::node node;
+    };
+
+    struct PipewireData {
+        std::shared_ptr<pipewire::main_loop> loop;
+        std::shared_ptr<pipewire::context> context;
+        std::shared_ptr<pipewire::core> core;
+        std::optional<pipewire::registry> registry;
+        std::optional<pipewire::metadata> metadata;
+
+        std::shared_ptr<pipewire::registry_listener> registryListener;
+        std::shared_ptr<pipewire::metadata_listener> metadataListener;
+
+        struct {
+            std::optional<pipewire::node> node;
+
+            std::optional<pipewire::port> inFL;
+            std::optional<pipewire::port> inFR;
+
+            std::optional<pipewire::port> outFL;
+            std::optional<pipewire::port> outFR;
+        } virtualMic;
+
+        std::string defaultSinkName;
+        std::vector<PipewireDevice> sinks;
+        std::vector<PipewireDevice> sources;
+        std::vector<pipewire::port> ports;
+
+        PipewireDevice* currentSource = nullptr;
+        uint32_t lastSinkID           = static_cast<uint32_t>(-1);
+
+        // cleanup the links when changing microphones
+        std::vector<pipewire::link> links;
+    } m_pipewire;
+
+    bool m_usingPipewire = false;
+#endif
 
 private:
     // UI related
@@ -100,7 +156,11 @@ private:
     void BuildPixelFormatLabel(const PixelFormat& format);
     void BuildPixelFormatSettings();
 
-    void BuildRecordingDeviceLabel(const RecordingDeviceInfo& info);
+    void BuildSDLRecordingDeviceLabel(const RecordingDeviceInfo& info);
+#ifdef ENABLE_PIPEWIRE
+    void BuildPipewireRecordingDeviceLabel(const PipewireDevice& info);
+#endif
+
     void BuildRecordingDeviceSettings();
 
     void BuildDisplayModeLabel(const CameraDisplayMode& displayMode);
@@ -129,7 +189,11 @@ private:
     void closeCamera();
 
     void setCamera(CameraInfo info);
-    void setRecordingDevice(RecordingDeviceInfo info);
+    void setRecordingDeviceSDL(RecordingDeviceInfo info);
+
+#ifdef ENABLE_PIPEWIRE
+    void setRecordingDevicePipewire(const PipewireDevice& device);
+#endif
 
     void updateCameraDisplayRect();
     void updateCameraTexture();
@@ -142,6 +206,16 @@ private:
 
 #ifndef __EMSCRIPTEN__
     void updateFrameLimiter(FrameLimitInfo info);
+#endif
+
+#ifdef ENABLE_PIPEWIRE
+    void initPipewire();
+    void updatePipewireLink();
+
+    void onPipewireGlobal(const pipewire::global& global);
+    void onPipewireGlobalRemoved(uint32_t id);
+
+    int onPipewireMetadataProperty(const char* key, pipewire::metadata_property property);
 #endif
 
     void openAudioPlaybackDevice();
@@ -157,6 +231,13 @@ private:
     void setFullscreen(bool fullscreen = true);
 
     void setVolume(int volume, bool showStatus = true, bool save = true);
+
+    float getCubicVolume();
+    void _updateVolumeSDL();
+#ifdef ENABLE_PIPEWIRE
+    void _updateVolumePipewire();
+#endif
+
     void updateVolume(bool showStatus = true);
 
     void playbackCallbackHandler(SDL_AudioStream* stream, int additionalAmount, int totalAmount);
@@ -205,8 +286,13 @@ private:
     using AudioType  = float;
     using AudioFrame = std::shared_ptr<AudioType[]>;
 
+#ifndef __EMSCRIPTEN__
     static constexpr SDL_AudioSpec m_audioSpec = { SDL_AUDIO_F32, 2, 48000 };
-    static constexpr size_t maxAudioBuffers    = 32;
+#else
+    static constexpr SDL_AudioSpec m_audioSpec = { SDL_AUDIO_F32, 1, 8000 };
+#endif
+
+    static constexpr size_t maxAudioBuffers = 32;
 
     std::queue<AudioFrame> m_audioBuffers;
     std::queue<AudioFrame> m_freeAudioBuffers;

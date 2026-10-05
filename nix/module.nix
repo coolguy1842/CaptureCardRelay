@@ -33,6 +33,15 @@ in {
             default = defaultPackage;
         };
 
+        pipewireSupport = mkOption {
+            type = bool;
+            default = false;
+
+            description = ''
+                Try use Pipewire as the sound relay, will be lower latency but only works if the sound server is Pipewire.
+            '';
+        };
+
         settings = mkOption {
             default = {};
             description = ''
@@ -59,6 +68,8 @@ in {
     config = mkIf cfg.enable {
         environment.systemPackages = [
             (cfg.package.override {
+                pipewireSupport = cfg.pipewireSupport;
+
                 commandLineArgs = [
                     (pkgs.writeTextFile {
                         name = "CaptureCardRelaySettings";

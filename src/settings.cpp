@@ -329,55 +329,13 @@ bool Settings::canSetRecordingDevice() const {
     return canSet;
 }
 
-SDL_AudioDeviceID Settings::getSelectedRecordingDevice() {
-    int recordingDeviceCount   = 0;
-    SDL_AudioDeviceID* devices = SDL_GetAudioRecordingDevices(&recordingDeviceCount);
-
-    if(devices == nullptr || recordingDeviceCount == 0) {
-        return 0;
-    }
-
-    SDL_AudioDeviceID device                = devices[0];
-    std::optional<std::string> selectedName = getValue("recordingDevice");
-
-    if(!selectedName.has_value()) {
-        goto exit;
-    }
-
-    for(int i = 0; i < recordingDeviceCount; i++) {
-        device = devices[i];
-
-        const char* name = SDL_GetAudioDeviceName(device);
-        if(name != nullptr && strcmp(name, selectedName.value().c_str()) == 0) {
-            break;
-        }
-    }
-
-exit:
-    SDL_free(devices);
-    return device;
+std::string Settings::getSelectedRecordingDevice() {
+    return getValue("recordingDevice").value_or("");
 }
 
-void Settings::setSelectedRecordingDevice(SDL_AudioDeviceID device) {
-    if(device == 0) {
-        if(clearValue("recordingDevice")) {
-            selectedRecordingDeviceChanged(device);
-        }
-
-        return;
-    }
-
-    const char* name = SDL_GetAudioDeviceName(device);
-    if(name == nullptr) {
-        if(clearValue("recordingDevice")) {
-            selectedRecordingDeviceChanged(device);
-        }
-
-        return;
-    }
-
+void Settings::setSelectedRecordingDevice(std::string name) {
     if(setValue("recordingDevice", name)) {
-        selectedRecordingDeviceChanged(device);
+        selectedRecordingDeviceChanged(name);
     }
 }
 
