@@ -39,6 +39,8 @@ add_executable(${TARGET_NAME}
     src/main.cpp
 )
 
+add_compile_definitions("CAPTURECARDRELAY_VERSION=\"${PROJ_VERSION}\"")
+
 # https://stackoverflow.com/a/51190178
 target_compile_definitions(${TARGET_NAME} PUBLIC "$<$<CONFIG:DEBUG>:DEBUG>")
 target_compile_features(${TARGET_NAME} PRIVATE cxx_std_23)

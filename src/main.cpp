@@ -1,6 +1,6 @@
-#ifndef PROJECT_VERSION
+#ifndef CAPTURECARDRELAY_VERSION
 // fallback if not defined
-#define PROJECT_VERSION "1.0.0"
+#define CAPTURECARDRELAY_VERSION "1.0.0"
 #endif
 
 #define SDL_MAIN_USE_CALLBACKS
@@ -32,7 +32,7 @@ const char* settingsPath         = nullptr;
 std::unique_ptr<Application> app = nullptr;
 
 SDL_AppResult SDL_AppInit(void**, int argc, char** argv) {
-    SDL_Log("Version %s", PROJECT_VERSION);
+    SDL_Log("Version %s", CAPTURECARDRELAY_VERSION);
 
     switch(argc) {
     case 1: break;
