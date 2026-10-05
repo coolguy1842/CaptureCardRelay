@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.25)
-project(CaptureCardRelay LANGUAGES CXX VERSION 1.12.1)
+
+file(READ manifest.json MANIFEST_JSON)
+string(JSON PROJ_NAME    GET "${MANIFEST_JSON}" name)
+string(JSON PROJ_VERSION GET "${MANIFEST_JSON}" version)
+
+project(${PROJ_NAME} LANGUAGES CXX VERSION ${PROJ_VERSION})
 
 option(enable_pipewire "Enable Pipewire Direct Audio" ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)

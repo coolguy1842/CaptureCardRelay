@@ -58,9 +58,11 @@
             hash = "sha256-RbqywBm+C1Bo1KeFL2MdsE2PMKWbc3x2iWswKGXtO9o=";
         };
     };
+
+    manifest = (pkgs.lib.importJSON ../manifest.json);
 in pkgs.stdenv.mkDerivation {
-    name = "CaptureCardRelay";
-    version = "1.12.1";
+    name = manifest.name;
+    version = manifest.version;
     src = ../.;
 
     nativeBuildInputs = with pkgs; [
@@ -109,8 +111,8 @@ in pkgs.stdenv.mkDerivation {
         mkdir -p $out/share/applications
         mkdir -p $out/share/icons/hicolor/64x64/apps
 
-        cp ./CaptureCardRelay $out/bin/CaptureCardRelay
-        wrapProgram $out/bin/CaptureCardRelay \
+        cp ./${manifest.name} $out/bin/${manifest.name}
+        wrapProgram $out/bin/${manifest.name} \
             --add-flags ${lib.escapeShellArg commandLineArgs}
 
         cp $src/assets/capture-card-relay.desktop $out/share/applications
@@ -122,6 +124,6 @@ in pkgs.stdenv.mkDerivation {
         homepage = "https://github.com/coolguy1842/CaptureCardRelay/";
         license = licenses.gpl3;
 
-        mainProgram = "CaptureCardRelay";
+        mainProgram = manifest.name;
     };
 }
