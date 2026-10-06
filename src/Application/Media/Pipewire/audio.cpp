@@ -33,6 +33,10 @@ std::string getNodeName(pipewire::node& node) {
 }
 
 int Application::onPipewireMetadataProperty(const char* key, pipewire::metadata_property property) {
+    if(key == nullptr) {
+        return 0;
+    }
+
     if(strcmp(key, "default.audio.sink") == 0) {
         m_pipewire.defaultSinkName = extractName(property.value);
         updatePipewireLink();
@@ -126,6 +130,7 @@ void Application::onPipewireGlobalRemoved(uint32_t id) {
 }
 
 void Application::initPipewire() {
+    // TODO: try in different thread
     try {
         m_pipewire.loop    = pw::main_loop::create().value();
         m_pipewire.context = pw::context::create(m_pipewire.loop).value();
@@ -159,6 +164,8 @@ void Application::initPipewire() {
 
         auto factoryProps = pw::properties::create();
         factoryProps.set("monitor.channel-volumes", "true");
+        factoryProps.set("node.lock-quantum", "true");
+        factoryProps.set("node.force-quantum", "32/0");
 
         auto virtualMic = m_pipewire.core->wait(m_pipewire.core->create(pw::null_factory{
             .type      = pw::null_factory::kind::source,
