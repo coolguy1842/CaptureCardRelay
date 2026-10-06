@@ -327,16 +327,16 @@ private:
     std::vector<RecordingDeviceInfo> m_recordingDevices;
 
     struct {
-        SDL_Camera* device;
-        SDL_Texture* texture;
+        SDL_Camera* device   = nullptr;
+        SDL_Texture* texture = nullptr;
         SDL_CameraSpec spec;
 
-        bool approved;
+        bool approved = false;
         SDL_FRect displayRect;
 
-        void* pixels;
-        int pitch;
-        size_t pixelsSize;
+        void* pixels      = nullptr;
+        int pitch         = 0;
+        size_t pixelsSize = 0;
     } m_camera;
 
     CameraInfo m_currentCamera                   = { .id = 0, .name = "(null)" };

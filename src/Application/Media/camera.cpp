@@ -96,11 +96,11 @@ void Application::initCameras() {
 
     int cameraCount       = 0;
     SDL_CameraID* cameras = SDL_GetCameras(&cameraCount);
-
     if(cameras == nullptr) {
         SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't enumerate camera devices: %s", SDL_GetError());
         setShouldQuit(true);
 
+        SDL_free(cameras);
         return;
     }
 
@@ -115,6 +115,8 @@ void Application::initCameras() {
 
         m_cameras.push_back({ id, name });
     }
+
+    SDL_free(cameras);
 }
 
 void Application::openCamera() {
@@ -140,66 +142,71 @@ void Application::openCamera() {
 #endif
         formats == nullptr
     ) {
+        SDL_free(formats);
         return;
     }
 
     SDL_Colorspace preferredColorspace = m_settings.getPreferredColorspace();
     SDL_PixelFormat preferredFormat    = m_settings.getPreferredPixelFormat();
 
-    auto cmp = [preferredColorspace, preferredFormat](SDL_CameraSpec* a, SDL_CameraSpec* b) {
-        if(preferredColorspace != SDL_COLORSPACE_UNKNOWN && a->colorspace != b->colorspace) {
-            if(a->colorspace == preferredColorspace) {
+    auto cmp = [preferredColorspace, preferredFormat](const SDL_CameraSpec& a, const SDL_CameraSpec& b) {
+        if(preferredColorspace != SDL_COLORSPACE_UNKNOWN && a.colorspace != b.colorspace) {
+            if(a.colorspace == preferredColorspace) {
                 return true;
             }
-            else if(b->colorspace == preferredColorspace) {
+            else if(b.colorspace == preferredColorspace) {
                 return false;
             }
         }
 
-        if(preferredFormat != SDL_PIXELFORMAT_UNKNOWN && a->format != b->format) {
-            if(a->format == preferredFormat) {
+        if(preferredFormat != SDL_PIXELFORMAT_UNKNOWN && a.format != b.format) {
+            if(a.format == preferredFormat) {
                 return true;
             }
-            else if(b->format == preferredFormat) {
+            else if(b.format == preferredFormat) {
                 return false;
             }
         }
 
-        if(a->width != b->width) {
-            return a->width > b->width;
+        if(a.width != b.width) {
+            return a.width > b.width;
         }
 
-        if(a->height != b->height) {
-            return a->height > b->height;
+        if(a.height != b.height) {
+            return a.height > b.height;
         }
 
-        if(a->framerate_numerator / a->framerate_denominator != b->framerate_numerator / b->framerate_denominator) {
-            return a->framerate_numerator / a->framerate_denominator > b->framerate_numerator / b->framerate_denominator;
+        if(a.framerate_numerator / a.framerate_denominator != b.framerate_numerator / b.framerate_denominator) {
+            return a.framerate_numerator / a.framerate_denominator > b.framerate_numerator / b.framerate_denominator;
         }
 
-        if(getColorScore(a->colorspace) != getColorScore(b->colorspace)) {
-            return getColorScore(a->colorspace) > getColorScore(b->colorspace);
+        if(getColorScore(a.colorspace) != getColorScore(b.colorspace)) {
+            return getColorScore(a.colorspace) > getColorScore(b.colorspace);
         }
 
-        if(getFormatScore(a->format) != getFormatScore(b->format)) {
-            return getFormatScore(a->format) > getFormatScore(b->format);
+        if(getFormatScore(a.format) != getFormatScore(b.format)) {
+            return getFormatScore(a.format) > getFormatScore(b.format);
         }
 
         return false;
     };
 
-    std::set<SDL_CameraSpec*, decltype(cmp)> specs(cmp);
+    std::set<SDL_CameraSpec, decltype(cmp)> specs(cmp);
     for(int i = 0; i < numFormats; i++) {
-        specs.emplace(formats[i]);
+        specs.emplace(*formats[i]);
     }
 
     SDL_Log("Possible Camera Specs:");
-    for(SDL_CameraSpec* spec : specs) {
-        SDL_Log("  %dx%d@%0.2f - Format: %s - Colorspace: %s", spec->width, spec->height, spec->framerate_numerator / static_cast<float>(spec->framerate_denominator), pixelFormatName(spec->format), colorspaceName(spec->colorspace));
+    for(const SDL_CameraSpec& spec : specs) {
+        SDL_Log("  %dx%d@%0.2f - Format: %s - Colorspace: %s", spec.width, spec.height, spec.framerate_numerator / static_cast<float>(spec.framerate_denominator), pixelFormatName(spec.format), colorspaceName(spec.colorspace));
     }
 
-    SDL_CameraSpec* spec = *specs.begin();
-    const char* name     = SDL_GetCameraName(camID);
+    const SDL_CameraSpec spec = *specs.begin();
+
+    specs.clear();
+    SDL_free(formats);
+
+    const char* name = SDL_GetCameraName(camID);
     if(name == nullptr) {
         name = "(null)";
     }
@@ -210,7 +217,7 @@ void Application::openCamera() {
     m_camera.approved = false;
     m_currentCamera   = { camID, name };
 
-    m_camera.device = SDL_OpenCamera(camID, spec);
+    m_camera.device = SDL_OpenCamera(camID, &spec);
     if(m_camera.device == nullptr) {
         closeCamera();
         SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Opening camera: %s", SDL_GetError());

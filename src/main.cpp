@@ -57,6 +57,12 @@ SDL_AppResult SDL_AppInit(void**, int argc, char** argv) {
     return SDL_APP_CONTINUE;
 }
 
-void SDL_AppQuit(void*, SDL_AppResult) { app.reset(); }
+void SDL_AppQuit(void*, SDL_AppResult) {
+    // destroy text before, call after just to make sure
+    SDL_Clay_Exit();
+    app.reset();
+    SDL_Clay_Exit();
+}
+
 SDL_AppResult SDL_AppEvent(void*, SDL_Event* event) { return app->handleEvent(event); }
 SDL_AppResult SDL_AppIterate(void*) { return app->loop(); }

@@ -151,6 +151,10 @@ void SDL_Clay_Exit() {
         s_scissorStack.pop();
     }
 
+    for(auto pair : s_textMap) {
+        TTF_DestroyText(pair.second);
+    }
+
     s_textMap.clear();
 }
 
