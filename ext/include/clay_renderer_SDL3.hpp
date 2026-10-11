@@ -19,8 +19,11 @@ struct Clay_SDL3RendererData {
 void SDL_Clay_Exit();
 Clay_Dimensions SDL_MeasureText(Clay_StringSlice text, Clay_TextElementConfig* config, void* userData);
 
-void SDL_Clay_RenderFillRoundedRect(Clay_SDL3RendererData* rendererData, const SDL_FRect rect, const float cornerRadius, const Clay_Color _color);
-void SDL_Clay_RenderArc(Clay_SDL3RendererData* rendererData, const SDL_FPoint center, const float radius, const float startAngle, const float endAngle, const float thickness, const Clay_Color color);
+void SDL_Clay_RenderFillRoundedRect(Clay_SDL3RendererData* rendererData, const SDL_FRect& rect, const Clay_CornerRadius& cornerRadius, const Clay_Color& color);
+void SDL_Clay_RenderFilledArc(Clay_SDL3RendererData* rendererData, const SDL_FPoint& center, const float& radius, const float& startAngle, const float& endAngle, const Clay_Color& _color);
+void SDL_Clay_RenderArc(Clay_SDL3RendererData* rendererData, const SDL_FPoint& center, const float& radius, const float& startAngle, const float& endAngle, const float& thickness, const Clay_Color& color);
+bool SDL_Clay_FRectEqual(const SDL_FRect& a, const SDL_FRect& b);
+
 void SDL_Clay_RenderClayCommands(Clay_SDL3RendererData* rendererData, Clay_RenderCommandArray* rcommands);
 
 #endif
