@@ -41,7 +41,7 @@ SDL_AppResult SDL_AppInit(void** /*userData*/, int argc, char** argv) {
     case 1: break;
     case 2:
         settingsPath = args[1];
-        if(settingsPath != "-h" && settingsPath != "--help") {
+        if(settingsPath == "-h" || settingsPath == "--help") {
             usage(args);
             return SDL_APP_SUCCESS;
         }
