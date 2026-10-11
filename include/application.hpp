@@ -11,6 +11,7 @@
 #include <queue>
 #include <settings.hpp>
 #include <string>
+#include <vector>
 
 #ifdef ENABLE_PIPEWIRE
 #include <rohrkabel/link/link.hpp>
@@ -27,7 +28,10 @@
 
 class Application {
 public:
-    Application(const char* settingsFile = nullptr);
+    Application(const std::optional<std::string>& settingsPath);
+    Application(const Application&)            = delete;
+    Application& operator=(const Application&) = delete;
+
     virtual ~Application();
 
     SDL_AppResult loop();
@@ -43,18 +47,18 @@ protected:
 
 private:
     struct CameraInfo {
-        SDL_CameraID id;
-        const char* name;
+        SDL_CameraID id  = 0;
+        const char* name = nullptr;
     };
 
     struct RecordingDeviceInfo {
-        SDL_AudioDeviceID id;
-        const char* name;
+        SDL_AudioDeviceID id = 0;
+        const char* name     = nullptr;
     };
 
     struct AudioData {
         SDL_AudioDeviceID device = 0;
-        SDL_AudioSpec spec;
+        SDL_AudioSpec spec       = {};
 
         SDL_AudioStream* stream = nullptr;
     };
@@ -135,13 +139,13 @@ private:
     bool m_volumeFreeDuringSnap = false;
     bool m_volumeInSnapRange    = false;
 
-    bool Clay_MouseClicked();
-    bool Clay_MouseHeld();
+    static bool Clay_MouseClicked();
+    static bool Clay_MouseHeld();
     // only if current element itself is clicked, not including children
-    bool Clay_DirectlyClicked();
+    static bool Clay_DirectlyClicked();
 
-    bool Clay_MouseReleasedNow();
-    bool Clay_MouseReleased();
+    static bool Clay_MouseReleasedNow();
+    static bool Clay_MouseReleased();
 
     void updateUI();
     void updateSettingsUI();
@@ -158,7 +162,7 @@ private:
 
     void BuildSDLRecordingDeviceLabel(const RecordingDeviceInfo& info);
 #ifdef ENABLE_PIPEWIRE
-    void BuildPipewireRecordingDeviceLabel(const PipewireDevice& info);
+    void BuildPipewireRecordingDeviceLabel(const PipewireDevice& device);
 #endif
 
     void BuildRecordingDeviceSettings();
@@ -197,8 +201,9 @@ private:
 
     void updateCameraDisplayRect();
     void updateCameraTexture();
+    void cleanupCameraTexture();
     // should be called every frame
-    void renderCameraToTexture();
+    void renderCameraToTexture() const;
 
     void updateCameraDisplayMode(CameraDisplayMode mode);
     void updateCameraScaleMode(SDL_ScaleMode mode);
@@ -211,11 +216,12 @@ private:
 #ifdef ENABLE_PIPEWIRE
     void initPipewire();
     void updatePipewireLink();
+    void cleanupPipewire();
 
     void onPipewireGlobal(const pipewire::global& global);
     void onPipewireGlobalRemoved(uint32_t id);
 
-    int onPipewireMetadataProperty(const char* key, pipewire::metadata_property property);
+    int onPipewireMetadataProperty(const char* key, const pipewire::metadata_property& property);
 #endif
 
     void openAudioPlaybackDevice();
@@ -226,13 +232,13 @@ private:
     void openAudioRecordingDevice();
     void closeAudioRecordingDevice();
 
-    void changeStatus(std::string text, std::chrono::milliseconds timeToExpire);
+    void changeStatus(const std::string& text, std::chrono::milliseconds timeToExpire);
 
     void setFullscreen(bool fullscreen = true);
 
     void setVolume(int volume, bool showStatus = true, bool save = true);
 
-    float getCubicVolume();
+    float getCubicVolume() const;
     void _updateVolumeSDL();
 #ifdef ENABLE_PIPEWIRE
     void _updateVolumePipewire();
@@ -240,12 +246,12 @@ private:
 
     void updateVolume(bool showStatus = true);
 
-    void playbackCallbackHandler(SDL_AudioStream* stream, int additionalAmount, int totalAmount);
-    void recordingCallbackHandler(SDL_AudioStream* stream, int additionalAmount, int totalAmount);
+    void playbackCallbackHandler(SDL_AudioStream* stream, int needed, int totalAmount);
+    void recordingCallbackHandler(SDL_AudioStream* stream, int available, int totalAmount);
 
 private:
-    static void onPlaybackCallback(void* userdata, SDL_AudioStream* stream, int additionalAmount, int totalAmount);
-    static void onRecordingCallback(void* userdata, SDL_AudioStream* stream, int additionalAmount, int totalAmount);
+    static void onPlaybackCallback(void* userdata, SDL_AudioStream* stream, int needed, int totalAmount);
+    static void onRecordingCallback(void* userdata, SDL_AudioStream* stream, int available, int totalAmount);
 
 private:
     Settings m_settings;
@@ -284,15 +290,10 @@ private:
     SDL_Cursor* m_nextCursor    = nullptr;
 
     using AudioType  = float;
-    using AudioFrame = std::shared_ptr<AudioType[]>;
+    using AudioFrame = std::shared_ptr<std::vector<AudioType>>;
 
-#ifndef __EMSCRIPTEN__
     static constexpr SDL_AudioSpec m_audioSpec = { SDL_AUDIO_F32, 2, 48000 };
-#else
-    static constexpr SDL_AudioSpec m_audioSpec = { SDL_AUDIO_F32, 1, 8000 };
-#endif
-
-    static constexpr size_t maxAudioBuffers = 32;
+    static constexpr size_t maxAudioBuffers    = 32;
 
     std::queue<AudioFrame> m_audioBuffers;
     std::queue<AudioFrame> m_freeAudioBuffers;
@@ -301,7 +302,7 @@ private:
     int m_audioBufferSizeBytes;
 
     struct {
-        std::string text = "";
+        std::string text;
         std::optional<std::chrono::time_point<std::chrono::system_clock>> expire;
     } m_status;
 
@@ -316,7 +317,7 @@ private:
 
     FrameLimiter m_frameLimiter;
 #ifndef __EMSCRIPTEN__
-    FrameLimitInfo m_frameLimitInfo;
+    FrameLimitInfo m_frameLimitInfo = { .type = FrameLimitType::FRAME_LIMIT_NONE, .fps = 0.0f };
 #endif
 
     float m_fpsSliderPosition = 0.0f;
@@ -329,10 +330,10 @@ private:
     struct {
         SDL_Camera* device   = nullptr;
         SDL_Texture* texture = nullptr;
-        SDL_CameraSpec spec;
+        SDL_CameraSpec spec  = {};
 
-        bool approved = false;
-        SDL_FRect displayRect;
+        bool approved         = false;
+        SDL_FRect displayRect = { 0.0f, 0.0f };
 
         void* pixels      = nullptr;
         int pitch         = 0;
@@ -341,6 +342,9 @@ private:
 
     CameraInfo m_currentCamera                   = { .id = 0, .name = "(null)" };
     RecordingDeviceInfo m_currentRecordingDevice = { .id = 0, .name = "(null)" };
+
+    // to stop memory leak from displaying
+    std::unique_ptr<std::vector<char>> m_clayMemory;
 };
 
 #endif

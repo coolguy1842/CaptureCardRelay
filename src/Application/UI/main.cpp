@@ -19,6 +19,7 @@ bool Application::Clay_DirectlyClicked() {
     }
 
     Clay_ElementIdArray ids = Clay_GetPointerOverIds();
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     return ids.length != 0 && ids.internalArray[ids.length - 1].id == Clay_GetOpenElementId();
 }
 
@@ -74,7 +75,7 @@ Clay_RenderCommandArray Application::buildUI() {
     static uint64_t prev = SDL_GetPerformanceCounter();
     uint64_t now         = SDL_GetPerformanceCounter();
 
-    float deltaTime = (now - prev) / static_cast<float>(SDL_GetPerformanceFrequency());
+    float deltaTime = static_cast<float>(now - prev) / static_cast<float>(SDL_GetPerformanceFrequency());
     prev            = now;
 
     return Clay_EndLayout(deltaTime);
@@ -86,10 +87,10 @@ void Application::updateUI() {
     static uint64_t prev = SDL_GetPerformanceCounter();
     uint64_t now         = SDL_GetPerformanceCounter();
 
-    float deltaTime = static_cast<double>(((now - prev) * 1000 / static_cast<float>(SDL_GetPerformanceFrequency())));
+    float deltaTime = static_cast<float>(now - prev) / static_cast<float>(SDL_GetPerformanceFrequency());
     prev            = now;
 
-    Clay_UpdateScrollContainers(!(m_slidingVolume || m_slidingFPS || m_currentScrollBar != 0), Clay_Vector2{ m_mouseWheelX, m_mouseWheelY }, deltaTime);
+    Clay_UpdateScrollContainers(!m_slidingVolume && !m_slidingFPS && m_currentScrollBar == 0, Clay_Vector2{ m_mouseWheelX, m_mouseWheelY }, deltaTime);
     m_mouseWheelX = 0.0f;
     m_mouseWheelY = 0.0f;
 

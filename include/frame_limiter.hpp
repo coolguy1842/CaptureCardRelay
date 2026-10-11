@@ -6,21 +6,21 @@ class FrameLimiter {
 public:
     FrameLimiter(bool useEarly);
 
-    bool active() const;
-    bool useEarly() const;
+    [[nodiscard]] bool active() const;
+    [[nodiscard]] bool useEarly() const;
 
 #ifdef DEBUG
     // returns ms as float
     float frameTime();
 
     // rolling max, min over past 200 frame times
-    float stableFrameTimeAverage() const;
-    float stableFrameTimeMin() const;
-    float stableFrameTimeMax() const;
+    [[nodiscard]] float stableFrameTimeAverage() const;
+    [[nodiscard]] float stableFrameTimeMin() const;
+    [[nodiscard]] float stableFrameTimeMax() const;
 
-    float frameTimeAverage() const;
-    float frameTimeMin() const;
-    float frameTimeMax() const;
+    [[nodiscard]] float frameTimeAverage() const;
+    [[nodiscard]] float frameTimeMin() const;
+    [[nodiscard]] float frameTimeMax() const;
 
     // updates the stable variables e.g min, max & frame time
     void updateStable();
@@ -60,6 +60,6 @@ private:
     bool m_stableChanged = false;
 #endif
 
-    SDL_Time calculateSleepTime(SDL_Time start, SDL_Time end);
+    [[nodiscard]] SDL_Time calculateSleepTime(SDL_Time start, SDL_Time end) const;
     void doSleep(SDL_Time sleepTime);
 };

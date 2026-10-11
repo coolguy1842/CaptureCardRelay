@@ -7,7 +7,8 @@
 
 namespace pw = pipewire;
 
-static std::string extractName(const std::string& value) {
+namespace {
+std::string extractName(const std::string& value) {
     const auto delim = value.find(':');
     if(delim == std::string::npos) {
         return {};
@@ -31,8 +32,9 @@ std::string getNodeName(pipewire::node& node) {
 
     return name;
 }
+}; // namespace
 
-int Application::onPipewireMetadataProperty(const char* key, pipewire::metadata_property property) {
+int Application::onPipewireMetadataProperty(const char* key, const pipewire::metadata_property& property) {
     if(key == nullptr) {
         return 0;
     }
@@ -139,7 +141,9 @@ void Application::initPipewire() {
         auto registry = pw::registry::create(m_pipewire.core);
         if(!registry) {
             SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to create pipewire registry: %s", registry.error().message().c_str());
-            goto cleanup;
+
+            cleanupPipewire();
+            return;
         }
 
         m_pipewire.registry         = std::move(registry.value());
@@ -150,12 +154,14 @@ void Application::initPipewire() {
         m_pipewire.core->run_once();
         if(m_pipewire.defaultSinkName.empty()) {
             SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to get default playback device, using SDL3");
-            goto cleanup;
+
+            cleanupPipewire();
+            return;
         }
 
         if(m_pipewire.metadata) {
             m_pipewire.metadataListener = std::make_unique<pw::metadata_listener>(m_pipewire.metadata.value());
-            m_pipewire.metadataListener->on<pw::metadata_event::property>([this](const char* key, pw::metadata_property property) { return onPipewireMetadataProperty(key, property); });
+            m_pipewire.metadataListener->on<pw::metadata_event::property>([this](const char* key, const pw::metadata_property& property) { return onPipewireMetadataProperty(key, property); });
 
             m_pipewire.core->run_once();
         }
@@ -176,7 +182,9 @@ void Application::initPipewire() {
 
         if(!virtualMic) {
             SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to create null sink");
-            goto cleanup;
+
+            cleanupPipewire();
+            return;
         }
 
         m_pipewire.virtualMic.node = std::move(virtualMic.value());
@@ -236,20 +244,24 @@ void Application::initPipewire() {
 
         if(!m_pipewire.virtualMic.inFL || !m_pipewire.virtualMic.inFR || !m_pipewire.virtualMic.outFL || !m_pipewire.virtualMic.outFR) {
             SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to get all virtual microphone ports, using SDL3");
-            goto cleanup;
+
+            cleanupPipewire();
+            return;
         }
     }
     catch(...) {
         SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to initialize pipewire, using SDL3");
-        goto cleanup;
+
+        cleanupPipewire();
+        return;
     }
 
     m_usingPipewire = true;
 
     updatePipewireLink();
+}
 
-    return;
-cleanup:
+void Application::cleanupPipewire() {
     m_usingPipewire = false;
 
     try {
@@ -262,6 +274,7 @@ cleanup:
         m_pipewire = {};
     }
     catch(...) {
+        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Error happened while cleaning up pipewire");
     }
 }
 
@@ -285,7 +298,7 @@ void Application::updatePipewireLink() {
 
     const std::string sourceName = m_settings.getSelectedRecordingDevice();
 
-    m_pipewire.currentSource = &m_pipewire.sources[0];
+    m_pipewire.currentSource = m_pipewire.sources.data();
     for(auto& source : m_pipewire.sources) {
         if(getNodeName(source.node) == sourceName) {
             m_pipewire.currentSource = &source;

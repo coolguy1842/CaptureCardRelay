@@ -13,12 +13,12 @@ You can test the program here: https://coolguy1842.github.io/CaptureCardRelay/
 #### NOTE: this demo is very laggy, especially in audio, the camera quality cannot be changed due to limitations too. The full application is a lot better.
 
 ### Controls
-| Key | Action                       |
-| --- | ---------------------------- |
-| Left Arrow    | Cycle Cameras      |
-| Right Arrow   | Cycle Microphones  |
-| Up/Down Arrow | Raise/Lower Volume |
-| Escape/O      | Open Settings Menu |
+| Key | Action                         |
+| --- | ------------------------------ |
+| Left Arrow    | Cycle Cameras        |
+| Right Arrow   | Cycle Microphones    |
+| Up/Down Arrow | Raise/Lower Volume   |
+| Escape/O      | Toggle Settings Menu |
 
 ### Settings
 Currently, there are settings for:

@@ -37,20 +37,20 @@ SDL_AppResult Application::handleEvent(SDL_Event* event) {
     case SDL_EVENT_MOUSE_BUTTON_UP:
         m_mouseHeld        = event->type != SDL_EVENT_MOUSE_BUTTON_UP;
         m_shouldHideCursor = !m_mouseHeld;
-
-        goto cursorMain;
+        // fall-through
     case SDL_EVENT_MOUSE_MOTION:
-        m_cursorX = event->motion.x;
-        m_cursorY = event->motion.y;
+        if(event->type == SDL_EVENT_MOUSE_MOTION) {
+            m_cursorX = event->motion.x;
+            m_cursorY = event->motion.y;
+        }
 
-    cursorMain:
         m_showCursorExpire = std::chrono::system_clock::now() + std::chrono::milliseconds(1000);
         SDL_ShowCursor();
 
         break;
     case SDL_EVENT_MOUSE_WHEEL:
-        m_mouseWheelX += event->wheel.y * m_shiftHeld;
-        m_mouseWheelY += event->wheel.y * !m_shiftHeld;
+        m_mouseWheelX += event->wheel.y * (m_shiftHeld ? 1.0f : 0.0f);
+        m_mouseWheelY += event->wheel.y * (m_shiftHeld ? 0.0f : 1.0f);
 
         break;
     case SDL_EVENT_CAMERA_DEVICE_ADDED:
@@ -69,7 +69,7 @@ SDL_AppResult Application::handleEvent(SDL_Event* event) {
         }
 
         m_camera.spec = spec;
-        SDL_Log("Camera spec: %dx%d@%0.2f - Format: %s - Colorspace: %s", spec.width, spec.height, spec.framerate_numerator / static_cast<float>(spec.framerate_denominator), pixelFormatName(spec.format), colorspaceName(spec.colorspace));
+        SDL_Log("Camera spec: %dx%d@%0.2f - Format: %s - Colorspace: %s", spec.width, spec.height, static_cast<float>(spec.framerate_numerator) / static_cast<float>(spec.framerate_denominator), pixelFormatName(spec.format), colorspaceName(spec.colorspace));
 
         m_camera.approved = true;
         updateCameraTexture();
@@ -250,7 +250,8 @@ SDL_AppResult Application::handleEvent(SDL_Event* event) {
 #endif
         case SDLK_O:
         case SDLK_ESCAPE:
-            if((m_settingsActive = !m_settingsActive) == true) {
+            m_settingsActive = !m_settingsActive;
+            if(m_settingsActive) {
                 SDL_ShowCursor();
             }
 

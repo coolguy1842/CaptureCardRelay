@@ -66,7 +66,6 @@ in pkgs.stdenv.mkDerivation {
     src = ../.;
 
     nativeBuildInputs = with pkgs; [
-        clang
         pkg-config
         ninja
         cmake

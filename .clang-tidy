@@ -1,0 +1,42 @@
+---
+HeaderFileExtensions:
+  - ''
+  - h
+  - hpp
+ImplementationFileExtensions:
+  - c
+  - cpp
+HeaderFilterRegex: ''
+ExcludeHeaderFilterRegex: ''
+FormatStyle:     none
+SystemHeaders:   false
+WarningsAsErrors: true
+
+# -cppcoreguidelines-pro-type-vararg is just for this project as i use SDL_Log
+# -misc-non-private-member-variables-in-classes is because cppcoreguidlines implements the same check
+Checks: >
+    -*,
+    cppcoreguidelines-*,
+    bugprone-*,
+    misc-*,
+    modernize-*,
+    performance-*,
+    clang-analyzer-*,
+    readability-*,
+
+    -cppcoreguidelines-pro-type-vararg,
+
+    -cppcoreguidelines-pro-type-reinterpret-cast,
+    -cppcoreguidelines-avoid-magic-numbers,
+    -readability-magic-numbers,
+    -modernize-use-trailing-return-type,
+    -readability-redundant-access-specifiers,
+    -readability-uppercase-literal-suffix,
+    -readability-identifier-length,
+    -misc-non-private-member-variables-in-classes,
+    -readability-function-cognitive-complexity,
+    -readability-avoid-nested-conditional-operator
+
+CheckOptions:
+  cppcoreguidelines-avoid-non-const-global-variables.AllowInternalLinkage: true
+  cppcoreguidelines-special-member-functions.AllowMissingMoveFunctionsWhenCopyIsDeleted: true

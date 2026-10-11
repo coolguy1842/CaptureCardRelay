@@ -6,7 +6,7 @@
 #define SEPARATOR CLAY_AUTO_ID({                                                                      \
     .layout          = { .sizing = { .width = CLAY_SIZING_GROW(), .height = CLAY_SIZING_FIXED(2) } }, \
     .backgroundColor = { 0xAF, 0xAF, 0xAF, 0xFF },                                                    \
-})
+});
 
 #define HSPACER(pixels) CLAY_AUTO_ID({ .layout = { .sizing = { .width = CLAY_SIZING_FIXED(pixels) } } })
 #define VSPACER(pixels) CLAY_AUTO_ID({ .layout = { .sizing = { .height = CLAY_SIZING_FIXED(pixels) } } })
@@ -25,8 +25,9 @@ static const Clay_ElementId displayModeContainerID      = CLAY_ID("DisplayModeCo
 static const Clay_ElementId scaleModeContainerID        = CLAY_ID("ScaleModeContainer");
 static const Clay_ElementId frameLimitTypeContainerID   = CLAY_ID("FrameLimitTypeContainer");
 
-const Clay_String toClayString(const char* str) {
-    if(str == NULL) {
+namespace {
+Clay_String toClayString(const char* str) {
+    if(str == nullptr) {
         return { .isStaticallyAllocated = true, .length = 7, .chars = "(null)" };
     }
 
@@ -60,6 +61,7 @@ Clay_String scaleModeStr(SDL_ScaleMode mode) {
     }
 }
 
+#ifndef __EMSCRIPTEN__
 Clay_String frameLimitTypeStr(FrameLimitType type) {
     switch(type) {
     case FrameLimitType::FRAME_LIMIT_CAMERA:         return toClayString("Camera");
@@ -72,7 +74,11 @@ Clay_String frameLimitTypeStr(FrameLimitType type) {
     default:                                         return toClayString("Unknown");
     }
 }
+#endif
+}; // namespace
 
+// no lint as i want to be able to use this with the original block syntax (SettingContainer(...) { ... })
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define SettingContainer(id, widthSizing, shouldClip)                                                \
     CLAY_AUTO_ID({                                                                                   \
         .layout = {                                                                                  \
@@ -86,11 +92,11 @@ Clay_String frameLimitTypeStr(FrameLimitType type) {
         id,                                                                                          \
         {                                                                                            \
             .layout = {                                                                              \
-                .sizing          = { .width = widthSizing },                                         \
+                .sizing          = { .width = (widthSizing) },                                       \
                 .childGap        = 6,                                                                \
                 .layoutDirection = CLAY_TOP_TO_BOTTOM,                                               \
             },                                                                                       \
-            .clip = { .vertical = shouldClip, .childOffset = Clay_GetScrollOffset() },               \
+            .clip = { .vertical = (shouldClip), .childOffset = Clay_GetScrollOffset() },             \
         }                                                                                            \
     )
 
@@ -144,7 +150,7 @@ void Application::Build_ScrollBar(Clay_ElementId id, bool vertical) {
             },
             .backgroundColor = parentHovered || Clay_Hovered() ? hoveredColor : regularColor,
             .cornerRadius    = CLAY_CORNER_RADIUS(6),
-        });
+        }) {}
 
         uint32_t currentID = Clay_GetOpenElementId();
         if(m_currentScrollBar != currentID && parentHovered && Clay_MouseClicked()) {
@@ -676,7 +682,7 @@ void Application::BuildFullscreenSettings() {
                                              ? (canSetFullscreen ? fullscreenRegularColor : fullscreenLockedColor)
                                              : (canSetFullscreen ? nonFullscreenRegularColor : nonFullscreenLockedColor);
 
-                CLAY(CLAY_ID("FullscreenToggleButtonInner"), { .layout = { .sizing = GROWGROW }, .backgroundColor = color });
+                CLAY(CLAY_ID("FullscreenToggleButtonInner"), { .layout = { .sizing = GROWGROW }, .backgroundColor = color }) {}
             }
         }
     }
@@ -723,7 +729,7 @@ void Application::BuildVolumeSettings() {
                     .backgroundColor = canSetVolume ? regularColor : regularLockedColor,
                     .cornerRadius    = { 6, 0, 6, 0 },
                 }
-            );
+            ) {}
 
             CLAY(
                 CLAY_ID("VolumeTrackExtraRange"),
@@ -732,7 +738,7 @@ void Application::BuildVolumeSettings() {
                     .backgroundColor = canSetVolume ? extraColor : extraLockedColor,
                     .cornerRadius    = { 0, 6, 0, 6 },
                 }
-            );
+            ) {}
 
             Clay_ElementData data = Clay_GetElementData(volumeSliderTrackID);
             if(data.found && data.boundingBox.width != 0.0f) {
@@ -878,12 +884,12 @@ void Application::updateSettingsUI() {
             const float percent = std::clamp((m_cursorX - data.boundingBox.x) / data.boundingBox.width, 0.0f, 1.0f);
             m_fpsSliderPosition = percent;
 
-            int fps = percent * MAX_FPS;
+            int fps = static_cast<int>(percent * MAX_FPS);
 
             // round to nearest 5
             fps = ((fps + 5 - 1) / 5) * 5;
-            if(fps < 20.0f) {
-                fps = 0.0f;
+            if(fps < 20) {
+                fps = 0;
             }
 
             updateFrameLimiter({ .type = m_frameLimitInfo.type, .fps = static_cast<float>(fps) });
@@ -896,7 +902,7 @@ void Application::updateSettingsUI() {
         Clay_ElementData data = Clay_GetElementData(volumeSliderTrackID);
         if(data.found && prevCursorX != m_cursorX) {
             const float percent = std::clamp((m_cursorX - data.boundingBox.x) / data.boundingBox.width, 0.0f, 1.0f);
-            int volume          = percent * MAX_VOLUME;
+            int volume          = static_cast<int>(percent) * MAX_VOLUME;
 
             m_volumeInSnapRange      = volume >= VOLUME_SNAP_RANGE_MIN && volume <= VOLUME_SNAP_RANGE_MAX;
             const bool keepSnapRange = m_volumeInSnapRange || (volume >= VOLUME_SNAP_RANGE_MIN - VOLUME_SNAP_RANGE_KEEP && volume < VOLUME_SNAP_RANGE_MAX + VOLUME_SNAP_RANGE_KEEP);

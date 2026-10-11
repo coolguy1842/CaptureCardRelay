@@ -1,20 +1,20 @@
 #include <application.hpp>
 
-void Application::onPlaybackCallback(void* userdata, SDL_AudioStream* stream, int additionalAmount, int totalAmount) { ((Application*)userdata)->playbackCallbackHandler(stream, additionalAmount, totalAmount); }
-void Application::playbackCallbackHandler(SDL_AudioStream* stream, int needed, int) {
+void Application::onPlaybackCallback(void* userdata, SDL_AudioStream* stream, int needed, int totalAmount) { reinterpret_cast<Application*>(userdata)->playbackCallbackHandler(stream, needed, totalAmount); }
+void Application::playbackCallbackHandler(SDL_AudioStream* stream, int needed, int /*totalAmount*/) {
     while(needed >= m_audioBufferSizeBytes) {
         needed -= m_audioBufferSizeBytes;
 
         if(m_audioBuffers.empty()) {
             // can cause a crash if using NoCopy if the buffer gets changed
-            SDL_PutAudioStreamData(stream, m_emptyAudioBuffer.get(), m_audioBufferSizeBytes);
+            SDL_PutAudioStreamData(stream, m_emptyAudioBuffer->data(), m_audioBufferSizeBytes);
             continue;
         }
 
         AudioFrame buffer = m_audioBuffers.front();
         m_audioBuffers.pop();
 
-        SDL_PutAudioStreamData(stream, buffer.get(), m_audioBufferSizeBytes);
+        SDL_PutAudioStreamData(stream, buffer->data(), m_audioBufferSizeBytes);
 
         m_freeAudioBuffers.push(buffer);
     }
@@ -45,9 +45,9 @@ void Application::openAudioPlaybackDevice() {
     m_audioBuffers     = {};
     m_freeAudioBuffers = {};
 
-    m_emptyAudioBuffer = std::shared_ptr<AudioType[]>(new AudioType[static_cast<size_t>(m_audioBufferSizeBytes)]{});
+    m_emptyAudioBuffer = std::make_shared<std::vector<AudioType>>(static_cast<size_t>(m_audioBufferSizeBytes));
     for(size_t i = 0; i < maxAudioBuffers; i++) {
-        m_freeAudioBuffers.push(std::shared_ptr<AudioType[]>(new AudioType[static_cast<size_t>(m_audioBufferSizeBytes)]));
+        m_freeAudioBuffers.push(std::make_shared<std::vector<AudioType>>(static_cast<size_t>(m_audioBufferSizeBytes)));
     }
 
     m_audioPlayback.stream = SDL_CreateAudioStream(&m_audioSpec, &m_audioPlayback.spec);

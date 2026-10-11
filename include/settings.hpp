@@ -13,14 +13,14 @@
 #define MAX_FPS 250.0f
 #define MIN_FPS 0.0f
 
-enum CameraDisplayMode {
+enum CameraDisplayMode : std::int8_t {
     DISPLAY_MODE_CONTAIN, // letterboxing or pillarboxing
     DISPLAY_MODE_COVER,   // covers the image to the display while maintaining aspect ratio, will hide content if needed
     DISPLAY_MODE_FILL,    // stretches to the display size
     DISPLAY_MODE_NONE     // nothing is done to the image
 };
 
-enum FrameLimitType {
+enum FrameLimitType : std::int8_t {
     // limits to the cameras refresh rate
     FRAME_LIMIT_CAMERA,
     FRAME_LIMIT_CAMERA_X_1_5,
@@ -47,9 +47,15 @@ struct FrameLimitInfo {
 const char* pixelFormatName(SDL_PixelFormat format);
 const char* colorspaceName(SDL_Colorspace colorspace);
 
+SDL_PixelFormat pixelFormatFromName(const char* name);
+SDL_Colorspace colorspaceFromName(const char* name);
+
 class Settings {
 public:
-    Settings(const char* manualFile = NULL);
+    Settings(const std::optional<std::string>& manualFile = std::nullopt);
+    Settings(const Settings&)            = delete;
+    Settings& operator=(const Settings&) = delete;
+
     ~Settings();
 
     bool canSetSelectedCamera() const;
@@ -59,7 +65,7 @@ public:
     bool canSetRecordingDevice() const;
     // empty if not set
     std::string getSelectedRecordingDevice();
-    void setSelectedRecordingDevice(std::string recordingDevice);
+    void setSelectedRecordingDevice(const std::string& recordingDevice);
 
     bool canSetDisplayMode() const;
     CameraDisplayMode getDisplayMode();
@@ -98,9 +104,10 @@ public:
     // SDL_PIXELFORMAT_UNKNOWN is equal to unset, and will not bias the program
     bool canSetPreferredPixelFormat() const;
     SDL_PixelFormat getPreferredPixelFormat();
-    void setPreferredPixelFormat(SDL_PixelFormat colorspace);
+    void setPreferredPixelFormat(SDL_PixelFormat pixelFormat);
 
 public:
+    // NOLINTBEGIN(cppcoreguidelines-non-private-member-variables-in-classes)
     rocket::thread_safe_signal<void(SDL_CameraID)> selectedCameraChanged;
     rocket::thread_safe_signal<void(std::string)> selectedRecordingDeviceChanged;
     rocket::thread_safe_signal<void(int)> volumeChanged;
@@ -111,24 +118,23 @@ public:
     rocket::thread_safe_signal<void(PixelFormat)> pixelFormatChanged;
     rocket::thread_safe_signal<void(SDL_Colorspace)> preferredColorspaceChanged;
     rocket::thread_safe_signal<void(SDL_PixelFormat)> preferredPixelFormatChanged;
+    // NOLINTEND(cppcoreguidelines-non-private-member-variables-in-classes)
 
 protected:
-    std::optional<std::string> getValue(std::string key);
+    std::optional<std::string> getValue(const std::string& key);
     // if the value was locked then false is returned
-    bool setValue(std::string key, std::string value);
-    bool valueLocked(std::string key) const;
+    bool setValue(const std::string& key, const std::string& value);
+    bool valueLocked(const std::string& key) const;
 
     // same as setValue
-    bool clearValue(std::string key);
+    bool clearValue(const std::string& key);
 
-    void loadLocked(std::string path);
+    void loadLocked(const std::string& path);
     void load();
 
     void save();
 
 private:
-    std::string getSettingsPath();
-
     // priority is given to locked, locked options can't change
     std::unordered_map<std::string, std::string> m_lockedCache;
     std::unordered_map<std::string, std::string> m_cache;

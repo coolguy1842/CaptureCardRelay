@@ -7,8 +7,9 @@
 #include <filesystem>
 #include <fstream>
 #include <settings.hpp>
-#include <string>
+#include <span>
 
+namespace {
 const CameraDisplayMode DEFAULT_DISPLAY_MODE = DISPLAY_MODE_CONTAIN;
 const SDL_ScaleMode DEFAULT_SCALE_MODE       = SDL_SCALEMODE_LINEAR;
 
@@ -29,6 +30,8 @@ constexpr uint64_t hash(std::string_view str) {
 constexpr uint64_t operator""_hash(const char* str, size_t len) {
     return hash(std::string_view(str, len));
 }
+
+}; // namespace
 
 const char* pixelFormatName(SDL_PixelFormat format) {
     switch(format) {
@@ -204,7 +207,8 @@ SDL_Colorspace colorspaceFromName(const char* name) {
     }
 }
 
-std::string Settings::getSettingsPath() {
+namespace {
+std::string getSettingsPath() {
     std::string configPath;
 
 #ifdef __EMSCRIPTEN__
@@ -257,11 +261,12 @@ std::string Settings::getSettingsPath() {
     configPath += "/settings";
     return configPath;
 }
+}; // namespace
 
 Settings::~Settings() { save(); }
-Settings::Settings(const char* manualFile) {
-    if(manualFile != nullptr) {
-        loadLocked(manualFile);
+Settings::Settings(const std::optional<std::string>& manualFile) {
+    if(manualFile.has_value()) {
+        loadLocked(manualFile.value());
     }
 
     load();
@@ -273,32 +278,33 @@ bool Settings::canSetSelectedCamera() const {
 }
 
 SDL_CameraID Settings::getSelectedCamera() {
-    int cameraCount       = 0;
-    SDL_CameraID* cameras = SDL_GetCameras(&cameraCount);
+    std::vector<SDL_CameraID> cameras;
 
-    if(cameras == nullptr || cameraCount == 0) {
+    {
+        int cameraCount          = 0;
+        SDL_CameraID* camerasRaw = SDL_GetCameras(&cameraCount);
+        cameras.assign_range(std::span(camerasRaw, static_cast<size_t>(cameraCount)));
+
+        SDL_free(camerasRaw);
+    }
+
+    if(cameras.empty()) {
         return 0;
     }
 
-    SDL_CameraID camera                     = cameras[0];
     std::optional<std::string> selectedName = getValue("camera");
-
     if(!selectedName.has_value()) {
-        goto exit;
+        return cameras.front();
     }
 
-    for(int i = 0; i < cameraCount; i++) {
-        camera = cameras[i];
-
+    for(const SDL_CameraID& camera : cameras) {
         const char* name = SDL_GetCameraName(camera);
-        if(name != nullptr && strcmp(name, selectedName.value().c_str()) == 0) {
-            break;
+        if(name != nullptr && selectedName.value() == name) {
+            return camera;
         }
     }
 
-exit:
-    SDL_free(cameras);
-    return camera;
+    return cameras.front();
 }
 
 void Settings::setSelectedCamera(SDL_CameraID camera) {
@@ -333,9 +339,9 @@ std::string Settings::getSelectedRecordingDevice() {
     return getValue("recordingDevice").value_or("");
 }
 
-void Settings::setSelectedRecordingDevice(std::string name) {
-    if(setValue("recordingDevice", name)) {
-        selectedRecordingDeviceChanged(name);
+void Settings::setSelectedRecordingDevice(const std::string& recordingDevice) {
+    if(setValue("recordingDevice", recordingDevice)) {
+        selectedRecordingDeviceChanged(recordingDevice);
     }
 }
 
@@ -425,7 +431,7 @@ bool Settings::canSetFrameLimitFPS() const {
 }
 
 FrameLimitInfo Settings::getFrameLimitInfo() {
-    FrameLimitInfo info;
+    FrameLimitInfo info = { .type = DEFAULT_FRAME_LIMIT_TYPE, .fps = DEFAULT_FRAME_LIMIT_FPS };
 
     switch(std::atoi(getValue("frameLimitType").value_or(std::to_string(DEFAULT_FRAME_LIMIT_TYPE)).c_str())) {
     case FRAME_LIMIT_CAMERA:         info.type = FRAME_LIMIT_CAMERA; break;
@@ -438,7 +444,7 @@ FrameLimitInfo Settings::getFrameLimitInfo() {
     default:                         info.type = DEFAULT_FRAME_LIMIT_TYPE; break;
     }
 
-    float fps = std::atof(getValue("frameLimitFPS").value_or(std::to_string(DEFAULT_FRAME_LIMIT_FPS)).c_str());
+    float fps = static_cast<float>(std::atof(getValue("frameLimitFPS").value_or(std::to_string(DEFAULT_FRAME_LIMIT_FPS)).c_str()));
     info.fps  = std::clamp(fps, MIN_FPS, MAX_FPS);
 
     return info;
@@ -447,8 +453,8 @@ FrameLimitInfo Settings::getFrameLimitInfo() {
 void Settings::setFrameLimitInfo(FrameLimitInfo info) {
     // use bitwise or to make both get evaluated
     if(
-        (int)setValue("frameLimitType", std::to_string(info.type)) |
-        setValue("frameLimitFPS", std::to_string(info.fps))
+        (static_cast<int>(setValue("frameLimitType", std::to_string(info.type))) |
+         static_cast<int>(setValue("frameLimitFPS", std::to_string(info.fps)))) != 0
     ) {
         frameLimitInfoChanged(getFrameLimitInfo());
     }
@@ -466,7 +472,9 @@ void Settings::setFullscreen(bool fullscreen) {
     }
 }
 
+namespace {
 int clampVolume(int volume) { return std::max(MIN_VOLUME, std::min(MAX_VOLUME, volume)); }
+}; // namespace
 
 bool Settings::canSetVolume() const {
     static bool canSet = !valueLocked("volume");
@@ -500,27 +508,27 @@ bool Settings::canSetPreferredPixelFormat() const {
 }
 
 SDL_PixelFormat Settings::getPreferredPixelFormat() { return pixelFormatFromName(getValue("preferredPixelFormat").value_or(pixelFormatName(SDL_PIXELFORMAT_UNKNOWN)).c_str()); }
-void Settings::setPreferredPixelFormat(SDL_PixelFormat format) {
-    if(setValue("preferredPixelFormat", pixelFormatName(format))) {
-        preferredPixelFormatChanged(format);
+void Settings::setPreferredPixelFormat(SDL_PixelFormat pixelFormat) {
+    if(setValue("preferredPixelFormat", pixelFormatName(pixelFormat))) {
+        preferredPixelFormatChanged(pixelFormat);
     }
 }
 
-std::optional<std::string> Settings::getValue(std::string key) {
-    auto lockedIt  = m_lockedCache.find(key);
-    auto regularIt = m_cache.find(key);
-
+std::optional<std::string> Settings::getValue(const std::string& key) {
+    auto lockedIt = m_lockedCache.find(key);
     if(lockedIt != m_lockedCache.end()) {
         return lockedIt->second;
     }
-    else if(regularIt != m_cache.end()) {
+
+    auto regularIt = m_cache.find(key);
+    if(regularIt != m_cache.end()) {
         return regularIt->second;
     }
 
     return std::nullopt;
 }
 
-bool Settings::setValue(std::string key, std::string value) {
+bool Settings::setValue(const std::string& key, const std::string& value) {
     if(valueLocked(key)) {
         return false;
     }
@@ -534,11 +542,11 @@ bool Settings::setValue(std::string key, std::string value) {
     return true;
 }
 
-bool Settings::valueLocked(std::string key) const {
+bool Settings::valueLocked(const std::string& key) const {
     return m_lockedCache.contains(key);
 }
 
-bool Settings::clearValue(std::string key) {
+bool Settings::clearValue(const std::string& key) {
     if(valueLocked(key)) {
         return false;
     }
@@ -552,7 +560,8 @@ bool Settings::clearValue(std::string key) {
     return true;
 }
 
-void _load(std::unordered_map<std::string, std::string>& cache, std::string path) {
+namespace {
+void _load(std::unordered_map<std::string, std::string>& cache, const std::string& path) {
 #ifdef __EMSCRIPTEN__
     return;
 #endif
@@ -563,7 +572,7 @@ void _load(std::unordered_map<std::string, std::string>& cache, std::string path
     }
 
     for(std::string line; std::getline(file, line);) {
-        size_t pos = line.find_first_of(":");
+        size_t pos = line.find_first_of(':');
         if(pos == std::string::npos) {
             continue;
         }
@@ -573,8 +582,9 @@ void _load(std::unordered_map<std::string, std::string>& cache, std::string path
         cache[key]        = value;
     }
 }
+}; // namespace
 
-void Settings::loadLocked(std::string path) { _load(m_lockedCache, path); }
+void Settings::loadLocked(const std::string& path) { _load(m_lockedCache, path); }
 void Settings::load() { _load(m_cache, getSettingsPath()); }
 
 void Settings::save() {

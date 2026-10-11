@@ -1,8 +1,12 @@
 #include <application.hpp>
 #include <format>
 #include <set>
+#include <span>
+
+namespace {
 
 uint16_t getColorScore(const SDL_Colorspace& color) {
+    // NOLINTBEGIN(bugprone-branch-clone)
     switch(color) {
     case SDL_COLORSPACE_SRGB:           return 2;
     case SDL_COLORSPACE_SRGB_LINEAR:    return 2;
@@ -17,10 +21,12 @@ uint16_t getColorScore(const SDL_Colorspace& color) {
     case SDL_COLORSPACE_UNKNOWN:
     default:                            return 0;
     };
+    // NOLINTEND(bugprone-branch-clone)
 };
 
 uint16_t getFormatScore(const SDL_PixelFormat& format) {
     // dont remember how i came to these
+    // NOLINTBEGIN(bugprone-branch-clone)
     switch(format) {
     case SDL_PIXELFORMAT_MJPG:          return 1;
     case SDL_PIXELFORMAT_EXTERNAL_OES:  return 2;
@@ -89,34 +95,39 @@ uint16_t getFormatScore(const SDL_PixelFormat& format) {
     case SDL_PIXELFORMAT_UNKNOWN:
     default:                            return 0;
     };
+    // NOLINTEND(bugprone-branch-clone)
 };
+}; // namespace
 
 void Application::initCameras() {
+    std::vector<SDL_CameraID> cameras;
     m_cameras.clear();
 
-    int cameraCount       = 0;
-    SDL_CameraID* cameras = SDL_GetCameras(&cameraCount);
-    if(cameras == nullptr) {
+    {
+        int cameraCount          = 0;
+        SDL_CameraID* camerasRaw = SDL_GetCameras(&cameraCount);
+        cameras.assign_range(std::span(camerasRaw, static_cast<size_t>(cameraCount)));
+
+        SDL_free(camerasRaw);
+    }
+
+    if(cameras.empty()) {
         SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't enumerate camera devices: %s", SDL_GetError());
         setShouldQuit(true);
 
-        SDL_free(cameras);
         return;
     }
 
-    for(int i = 0; i < cameraCount; i++) {
-        SDL_CameraID id  = cameras[i];
-        const char* name = SDL_GetCameraName(id);
+    for(const SDL_CameraID& camera : cameras) {
+        const char* name = SDL_GetCameraName(camera);
 
         if(name == nullptr) {
-            SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to get name of camera with id: %d: %s", id, SDL_GetError());
+            SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to get name of camera with id: %d: %s", camera, SDL_GetError());
             name = "";
         }
 
-        m_cameras.push_back({ id, name });
+        m_cameras.push_back({ .id = camera, .name = name });
     }
-
-    SDL_free(cameras);
 }
 
 void Application::openCamera() {
@@ -133,28 +144,16 @@ void Application::openCamera() {
         camID = m_cameras[0].id;
     }
 
-    int numFormats           = 0;
-    SDL_CameraSpec** formats = SDL_GetCameraSupportedFormats(camID, &numFormats);
-
-    if(
-#ifndef __EMSCRIPTEN__
-        numFormats <= 0 ||
-#endif
-        formats == nullptr
-    ) {
-        SDL_free(formats);
-        return;
-    }
-
     SDL_Colorspace preferredColorspace = m_settings.getPreferredColorspace();
     SDL_PixelFormat preferredFormat    = m_settings.getPreferredPixelFormat();
 
-    auto cmp = [preferredColorspace, preferredFormat](const SDL_CameraSpec& a, const SDL_CameraSpec& b) {
+    const auto cmp = [preferredColorspace, preferredFormat](const SDL_CameraSpec& a, const SDL_CameraSpec& b) {
         if(preferredColorspace != SDL_COLORSPACE_UNKNOWN && a.colorspace != b.colorspace) {
             if(a.colorspace == preferredColorspace) {
                 return true;
             }
-            else if(b.colorspace == preferredColorspace) {
+
+            if(b.colorspace == preferredColorspace) {
                 return false;
             }
         }
@@ -163,7 +162,8 @@ void Application::openCamera() {
             if(a.format == preferredFormat) {
                 return true;
             }
-            else if(b.format == preferredFormat) {
+
+            if(b.format == preferredFormat) {
                 return false;
             }
         }
@@ -192,19 +192,36 @@ void Application::openCamera() {
     };
 
     std::set<SDL_CameraSpec, decltype(cmp)> specs(cmp);
-    for(int i = 0; i < numFormats; i++) {
-        specs.emplace(*formats[i]);
+
+    {
+        int numFormats              = 0;
+        SDL_CameraSpec** formatsRaw = SDL_GetCameraSupportedFormats(camID, &numFormats);
+
+        for(SDL_CameraSpec* spec : std::span(formatsRaw, static_cast<size_t>(numFormats))) {
+            specs.emplace(*spec);
+        }
+
+        SDL_free(reinterpret_cast<void*>(formatsRaw));
     }
+
+#ifndef __EMSCRIPTEN__
+    if(specs.empty()) {
+        return;
+    }
+#endif
 
     SDL_Log("Possible Camera Specs:");
     for(const SDL_CameraSpec& spec : specs) {
-        SDL_Log("  %dx%d@%0.2f - Format: %s - Colorspace: %s", spec.width, spec.height, spec.framerate_numerator / static_cast<float>(spec.framerate_denominator), pixelFormatName(spec.format), colorspaceName(spec.colorspace));
+        SDL_Log("  %dx%d@%0.2f - Format: %s - Colorspace: %s", spec.width, spec.height, static_cast<float>(spec.framerate_numerator) / static_cast<float>(spec.framerate_denominator), pixelFormatName(spec.format), colorspaceName(spec.colorspace));
     }
 
-    const SDL_CameraSpec spec = *specs.begin();
+#ifdef __EMSCRIPTEN
+    const SDL_CameraSpec* spec = nullptr;
+#else
+    const SDL_CameraSpec* spec = &*specs.begin();
+#endif
 
     specs.clear();
-    SDL_free(formats);
 
     const char* name = SDL_GetCameraName(camID);
     if(name == nullptr) {
@@ -215,9 +232,9 @@ void Application::openCamera() {
     SDL_Log("Opening camera: %s", name);
 
     m_camera.approved = false;
-    m_currentCamera   = { camID, name };
+    m_currentCamera   = { .id = camID, .name = name };
 
-    m_camera.device = SDL_OpenCamera(camID, &spec);
+    m_camera.device = SDL_OpenCamera(camID, spec);
     if(m_camera.device == nullptr) {
         closeCamera();
         SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Opening camera: %s", SDL_GetError());
@@ -282,8 +299,8 @@ void Application::updateCameraDisplayRect() {
     case DISPLAY_MODE_CONTAIN:
     case DISPLAY_MODE_COVER:   {
         // most logic here from: https://github.com/nrkn/object-fit-math/blob/master/src/fitter.ts
-        float widthRatio  = rect.w / m_camera.texture->w;
-        float heightRatio = rect.h / m_camera.texture->h;
+        float widthRatio  = rect.w / static_cast<float>(m_camera.texture->w);
+        float heightRatio = rect.h / static_cast<float>(m_camera.texture->h);
 
         // min of width vs height ratios
         float ratio = mode == DISPLAY_MODE_CONTAIN
@@ -291,8 +308,8 @@ void Application::updateCameraDisplayRect() {
                           : CLAY__MAX((rect.w / m_camera.texture->w), (rect.h / m_camera.texture->h));
 
         SDL_FRect newRect;
-        newRect.w = m_camera.texture->w * ratio;
-        newRect.h = m_camera.texture->h * ratio;
+        newRect.w = static_cast<float>(m_camera.texture->w) * ratio;
+        newRect.h = static_cast<float>(m_camera.texture->h) * ratio;
         newRect.x = (rect.w - newRect.w) / 2.0f;
         newRect.y = (rect.h - newRect.h) / 2.0f;
 
@@ -313,22 +330,7 @@ void Application::updateCameraDisplayRect() {
     }
 }
 
-void Application::updateCameraTexture() {
-    if(m_camera.device == nullptr || !m_camera.approved) {
-    cleanupCamera:
-        if(m_camera.texture != nullptr) {
-            SDL_DestroyTexture(m_camera.texture);
-            m_camera.texture = nullptr;
-        }
-
-        if(m_camera.pixels != nullptr) {
-            SDL_free(m_camera.pixels);
-            m_camera.pixels = nullptr;
-        }
-
-        return;
-    }
-
+void Application::cleanupCameraTexture() {
     if(m_camera.texture != nullptr) {
         SDL_DestroyTexture(m_camera.texture);
         m_camera.texture = nullptr;
@@ -338,11 +340,20 @@ void Application::updateCameraTexture() {
         SDL_free(m_camera.pixels);
         m_camera.pixels = nullptr;
     }
+}
+
+void Application::updateCameraTexture() {
+    cleanupCameraTexture();
+    if(m_camera.device == nullptr || !m_camera.approved) {
+        return;
+    }
 
     SDL_PropertiesID props = SDL_CreateProperties();
     if(props == 0) {
         SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to create properties for texture: %s", SDL_GetError());
-        goto cleanupCamera;
+        cleanupCameraTexture();
+
+        return;
     }
 
     SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_WIDTH_NUMBER, m_camera.spec.width);
@@ -350,25 +361,27 @@ void Application::updateCameraTexture() {
     SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_ACCESS_NUMBER, SDL_TEXTUREACCESS_STREAMING);
     SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_COLORSPACE_NUMBER, m_camera.spec.colorspace);
 
-    SDL_PixelFormat format = static_cast<SDL_PixelFormat>(m_settings.getPixelFormat());
+    auto format = static_cast<SDL_PixelFormat>(m_settings.getPixelFormat());
     if(format == SDL_PIXELFORMAT_UNKNOWN) {
         // use cameras pixel format
         format = m_camera.spec.format;
     }
 
     SDL_SetNumberProperty(props, SDL_PROP_TEXTURE_CREATE_FORMAT_NUMBER, format);
-    if((m_camera.texture = SDL_CreateTextureWithProperties(m_renderData.renderer, props)) == nullptr) {
+
+    m_camera.texture = SDL_CreateTextureWithProperties(m_renderData.renderer, props);
+    if(m_camera.texture == nullptr) {
         SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to create texture: %s", SDL_GetError());
         SDL_DestroyProperties(props);
 
-        goto cleanupCamera;
+        cleanupCameraTexture();
     }
 
     SDL_DestroyProperties(props);
     SDL_SetTextureScaleMode(m_camera.texture, m_settings.getScaleMode());
 
     // make sure texture starts blank, doesnt work on mjpeg but dont care too much
-    SDL_Surface* surface;
+    SDL_Surface* surface = nullptr;
     if(SDL_LockTextureToSurface(m_camera.texture, NULL, &surface)) {
         SDL_ClearSurface(surface, 0.0, 0.0, 0.0, 1.0);
         SDL_UnlockTexture(m_camera.texture);
@@ -388,12 +401,12 @@ void Application::updateCameraTexture() {
 #endif
 }
 
-void Application::renderCameraToTexture() {
-    if(!m_camera.approved) {
+void Application::renderCameraToTexture() const {
+    if(!m_camera.approved || m_camera.texture == nullptr) {
         return;
     }
 
-    SDL_Surface* surface = SDL_AcquireCameraFrame(m_camera.device, NULL);
+    SDL_Surface* surface = SDL_AcquireCameraFrame(m_camera.device, nullptr);
     if(surface != nullptr) {
         switch(m_camera.texture->format) {
         case SDL_PIXELFORMAT_RGB24: {
@@ -410,8 +423,8 @@ void Application::renderCameraToTexture() {
 
             SDL_ReleaseCameraFrame(m_camera.device, surface);
 
-            void* pixels;
-            int pitch;
+            void* pixels = nullptr;
+            int pitch    = 0;
 
             SDL_LockTexture(m_camera.texture, NULL, &pixels, &pitch);
             SDL_memmove(pixels, m_camera.pixels, m_camera.pixelsSize);

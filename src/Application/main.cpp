@@ -7,15 +7,18 @@
 #define CLAY_IMPLEMENTATION
 #include <clay.h>
 
+namespace {
 void HandleClayErrors(Clay_ErrorData errorData) {
     SDL_LogError(SDL_LOG_CATEGORY_ERROR, "%s", errorData.errorText.chars);
 }
+}; // namespace
 
-Application::Application(const char* settingsPath)
+Application::Application(const std::optional<std::string>& settingsPath)
     : m_settings(settingsPath)
+    , m_audioBufferSizeBytes(0)
     , m_width(800)
     , m_height(600)
-    , m_frameLimiter(true) {
+    , m_frameLimiter(false) {
     if(!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_CAMERA)) {
         SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't initialize SDL: %s", SDL_GetError());
         setShouldQuit();
@@ -23,7 +26,8 @@ Application::Application(const char* settingsPath)
         return;
     }
 
-    if((m_window = SDL_CreateWindow("Capture Card Relay", m_width, m_height, SDL_WINDOW_RESIZABLE)) == nullptr) {
+    m_window = SDL_CreateWindow("Capture Card Relay", m_width, m_height, SDL_WINDOW_RESIZABLE);
+    if(m_window == nullptr) {
         SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't create window: %s", SDL_GetError());
         setShouldQuit();
 
@@ -31,7 +35,9 @@ Application::Application(const char* settingsPath)
     }
 
     setFullscreen(m_settings.isFullscreen());
-    if((m_renderData.renderer = SDL_CreateGPURenderer(NULL, m_window)) != NULL) {
+
+    m_renderData.renderer = SDL_CreateGPURenderer(NULL, m_window);
+    if(m_renderData.renderer != nullptr) {
         SDL_GPUDevice* gpu = SDL_GetGPURendererDevice(m_renderData.renderer);
         if(gpu == nullptr) {
             SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Created renderer with GPU device, but GPU somehow null: %s", SDL_GetError());
@@ -52,7 +58,9 @@ Application::Application(const char* settingsPath)
     }
     else {
         SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't create GPU renderer, using SDL_CreateRenderer: %s", SDL_GetError());
-        if((m_renderData.renderer = SDL_CreateRenderer(m_window, NULL)) == NULL) {
+
+        m_renderData.renderer = SDL_CreateRenderer(m_window, nullptr);
+        if(m_renderData.renderer == nullptr) {
             SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't create renderer: %s", SDL_GetError());
             setShouldQuit();
 
@@ -69,14 +77,15 @@ Application::Application(const char* settingsPath)
         return;
     }
 
-    if((m_renderData.textEngine = TTF_CreateRendererTextEngine(m_renderData.renderer)) == nullptr) {
+    m_renderData.textEngine = TTF_CreateRendererTextEngine(m_renderData.renderer);
+    if(m_renderData.textEngine == nullptr) {
         SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to create text engine from renderer: %s", SDL_GetError());
         setShouldQuit();
 
         return;
     }
 
-    m_renderData.fonts.push_back(TTF_OpenFontIO(SDL_IOFromConstMem(damase_v2, sizeof(damase_v2)), true, 40.0f));
+    m_renderData.fonts.push_back(TTF_OpenFontIO(SDL_IOFromConstMem(reinterpret_cast<const void*>(damase_v2), sizeof(damase_v2)), true, 40.0f));
     if(m_renderData.fonts.back() == nullptr) {
         SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't open font: %s", SDL_GetError());
         setShouldQuit();
@@ -113,15 +122,17 @@ Application::Application(const char* settingsPath)
     SDL_FlushEvents(SDL_EVENT_AUDIO_DEVICE_ADDED, SDL_EVENT_AUDIO_DEVICE_ADDED);
     SDL_FlushEvents(SDL_EVENT_CAMERA_DEVICE_ADDED, SDL_EVENT_CAMERA_DEVICE_ADDED);
 
-    uint32_t totalMemorySize = Clay_MinMemorySize();
-    Clay_Arena clayMemory    = Clay_Arena{
-           .capacity = static_cast<size_t>(totalMemorySize),
-           .memory   = (char*)malloc(totalMemorySize)
+    uint32_t arenaSize = Clay_MinMemorySize();
+    m_clayMemory       = std::make_unique<std::vector<char>>(static_cast<size_t>(arenaSize));
+
+    Clay_Arena clayMemory = {
+        .capacity = m_clayMemory->size(),
+        .memory   = m_clayMemory->data(),
     };
 
     SDL_GetWindowSize(m_window, &m_width, &m_height);
 
-    Clay_Initialize(clayMemory, Clay_Dimensions(m_width, m_height), Clay_ErrorHandler(HandleClayErrors));
+    Clay_Initialize(clayMemory, { static_cast<float>(m_width), static_cast<float>(m_height) }, { HandleClayErrors });
     Clay_SetMeasureTextFunction(SDL_MeasureText, &m_renderData.fonts);
 
     m_settings.displayModeChanged.connect<&Application::updateCameraDisplayMode>(this);
@@ -152,7 +163,7 @@ Application::~Application() {
     SDL_DestroyCursor(m_pointerCursor);
     SDL_DestroyCursor(m_defaultCursor);
 
-    for(auto font : m_renderData.fonts) {
+    for(auto* font : m_renderData.fonts) {
         if(font == nullptr) {
             continue;
         }
@@ -161,18 +172,26 @@ Application::~Application() {
     }
 
     TTF_DestroyRendererTextEngine(m_renderData.textEngine);
+    TTF_Quit();
 
     SDL_DestroyRenderer(m_renderData.renderer);
     SDL_DestroyWindow(m_window);
 
     SDL_Quit();
+    m_clayMemory.reset();
 }
 
-void Application::updateCameraDisplayMode(CameraDisplayMode) { updateCameraDisplayRect(); }
-void Application::updateCameraScaleMode(SDL_ScaleMode) { updateCameraTexture(); }
-void Application::updateCameraPixelFormat(PixelFormat) { updateCameraTexture(); }
+void Application::updateCameraDisplayMode(CameraDisplayMode /*mode*/) { updateCameraDisplayRect(); }
+void Application::updateCameraScaleMode(SDL_ScaleMode /*scaleMode*/) { updateCameraTexture(); }
+void Application::updateCameraPixelFormat(PixelFormat /*format*/) { updateCameraTexture(); }
 
 #ifndef __EMSCRIPTEN__
+namespace {
+float getCameraRefreshRate(SDL_CameraSpec spec) {
+    return static_cast<float>(spec.framerate_numerator) / static_cast<float>(spec.framerate_denominator);
+}
+}; // namespace
+
 void Application::updateFrameLimiter(FrameLimitInfo info) {
     m_frameLimitInfo = info;
     m_fpsText        = std::format("{} FPS", info.fps);
@@ -180,54 +199,59 @@ void Application::updateFrameLimiter(FrameLimitInfo info) {
     switch(info.type) {
     case FRAME_LIMIT_CAMERA:
         if(m_camera.device == nullptr) {
-        cameraFPSFallback:
-            // set to vsync as fallback
-            m_frameLimiter.setFPSLimit(0);
-            SDL_SetRenderVSync(m_renderData.renderer, 1);
-
             break;
         }
 
         SDL_SetRenderVSync(m_renderData.renderer, SDL_RENDERER_VSYNC_DISABLED);
-        m_frameLimiter.setFPSLimit(m_camera.spec.framerate_numerator / static_cast<float>(m_camera.spec.framerate_denominator));
+        m_frameLimiter.setFPSLimit(getCameraRefreshRate(m_camera.spec));
 
-        break;
+        return;
     case FRAME_LIMIT_CAMERA_X_1_5:
-        if(m_camera.device == nullptr) goto cameraFPSFallback;
+        if(m_camera.device == nullptr) {
+            break;
+        }
 
         SDL_SetRenderVSync(m_renderData.renderer, SDL_RENDERER_VSYNC_DISABLED);
-        m_frameLimiter.setFPSLimit((m_camera.spec.framerate_numerator / static_cast<float>(m_camera.spec.framerate_denominator)) * 1.5f);
+        m_frameLimiter.setFPSLimit(getCameraRefreshRate(m_camera.spec) * 1.5f);
 
-        break;
+        return;
     case FRAME_LIMIT_CAMERA_X_2_0:
-        if(m_camera.device == nullptr) goto cameraFPSFallback;
+        if(m_camera.device == nullptr) {
+            break;
+        }
 
         SDL_SetRenderVSync(m_renderData.renderer, SDL_RENDERER_VSYNC_DISABLED);
-        m_frameLimiter.setFPSLimit((m_camera.spec.framerate_numerator / static_cast<float>(m_camera.spec.framerate_denominator)) * 2.0f);
+        m_frameLimiter.setFPSLimit(getCameraRefreshRate(m_camera.spec) * 2.0f);
 
-        break;
+        SDL_Log("set limit to %f", getCameraRefreshRate(m_camera.spec) * 2.0f);
+
+        return;
     case FRAME_LIMIT_VSYNC:
         m_frameLimiter.setFPSLimit(0);
         SDL_SetRenderVSync(m_renderData.renderer, 1);
 
-        break;
+        return;
     case FRAME_LIMIT_VSYNC_ADAPTIVE:
         m_frameLimiter.setFPSLimit(0);
         SDL_SetRenderVSync(m_renderData.renderer, SDL_RENDERER_VSYNC_ADAPTIVE);
 
-        break;
+        return;
     case FRAME_LIMIT_FPS:
         SDL_SetRenderVSync(m_renderData.renderer, SDL_RENDERER_VSYNC_DISABLED);
         m_frameLimiter.setFPSLimit(info.fps);
 
-        break;
+        return;
     case FRAME_LIMIT_NONE:
     default:
         SDL_SetRenderVSync(m_renderData.renderer, SDL_RENDERER_VSYNC_DISABLED);
-        m_frameLimiter.setFPSLimit(0.0f);
+        m_frameLimiter.setFPSLimit(0);
 
-        break;
+        return;
     }
+
+    // set to vsync as fallback
+    m_frameLimiter.setFPSLimit(0);
+    SDL_SetRenderVSync(m_renderData.renderer, 1);
 }
 #endif
 
@@ -289,7 +313,7 @@ void Application::render() {
     m_frameLimiter.limit(false);
 }
 
-void Application::changeStatus(std::string text, std::chrono::milliseconds timeToExpire) {
+void Application::changeStatus(const std::string& text, std::chrono::milliseconds timeToExpire) {
     m_status.text   = text;
     m_status.expire = std::chrono::system_clock::now() + timeToExpire;
 
@@ -313,8 +337,8 @@ void Application::setVolume(int volume, bool showStatus, bool save) {
     updateVolume(showStatus);
 }
 
-float Application::getCubicVolume() {
-    float volume = m_volume / 100.0f;
+float Application::getCubicVolume() const {
+    auto volume = static_cast<float>(m_volume) / 100.0f;
     return std::powf(volume, 3.0f);
 }
 

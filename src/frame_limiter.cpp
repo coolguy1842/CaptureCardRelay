@@ -2,8 +2,9 @@
 #include <frame_limiter.hpp>
 #include <thread>
 
+namespace {
 SDL_Time getNanoseconds() {
-    SDL_Time nanos;
+    SDL_Time nanos = 0;
     if(!SDL_GetCurrentTime(&nanos)) {
         // fallback nanos function
         nanos = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
@@ -11,6 +12,7 @@ SDL_Time getNanoseconds() {
 
     return nanos;
 }
+}; // namespace
 
 FrameLimiter::FrameLimiter(bool useEarly)
     : m_useEarly(useEarly)
@@ -30,8 +32,7 @@ float FrameLimiter::frameTime() {
     SDL_Time frameTimeEnd = getNanoseconds();
     SDL_Time frameTime    = frameTimeEnd - m_frameTimeStart;
 
-    float ms = frameTime / 1e+6;
-
+    const float ms = static_cast<float>(frameTime) / 1e+6f;
     if(m_timings.average == -1) {
         m_timings = {
             .average = ms,
@@ -58,7 +59,6 @@ float FrameLimiter::frameTime() {
     }
 
     m_frameTimeStart = getNanoseconds();
-
     return ms;
 }
 
@@ -89,13 +89,13 @@ void FrameLimiter::updateStable() {
 #endif
 
 void FrameLimiter::setFPSLimit(float fps) {
-    const int64_t new_target = (fps <= 0.0f) ? 0 : static_cast<int64_t>(1'000'000'000.0f / fps);
-    if(m_target == new_target) {
+    const int64_t newTarget = (fps <= 0.0f) ? 0 : static_cast<int64_t>(1e+9f / fps);
+    if(m_target == newTarget) {
         return;
     }
 
-    m_target = new_target;
-    m_active = (new_target > 0);
+    m_target = newTarget;
+    m_active = (newTarget > 0);
 }
 
 void FrameLimiter::setUseEarly(bool useEarly) {
@@ -103,10 +103,7 @@ void FrameLimiter::setUseEarly(bool useEarly) {
 }
 
 void FrameLimiter::limit(bool isEarly) {
-    if(!m_active || m_target <= 0) {
-        return;
-    }
-    else if(isEarly != m_useEarly) {
+    if(!m_active || m_target <= 0 || isEarly != m_useEarly) {
         return;
     }
 
@@ -119,7 +116,7 @@ void FrameLimiter::limit(bool isEarly) {
     m_frameEnd = getNanoseconds();
 }
 
-SDL_Time FrameLimiter::calculateSleepTime(SDL_Time start, SDL_Time end) {
+SDL_Time FrameLimiter::calculateSleepTime(SDL_Time start, SDL_Time end) const {
     if(m_target <= 0 || start <= 0) {
         return 0;
     }
@@ -127,7 +124,7 @@ SDL_Time FrameLimiter::calculateSleepTime(SDL_Time start, SDL_Time end) {
     SDL_Time work  = SDL_max(start - end, 0);
     SDL_Time sleep = (m_target - work) - m_overhead;
 
-    return sleep > 0 ? sleep : 0;
+    return SDL_min(sleep, 0);
 }
 
 void FrameLimiter::doSleep(SDL_Time sleepTime) {

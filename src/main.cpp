@@ -8,18 +8,20 @@
 
 #include <application.hpp>
 #include <clay_renderer_SDL3.hpp>
-#include <cstring>
-#include <memory>
 #include <settings.hpp>
+#include <span>
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #endif
 
-void usage(int argc, char** argv) {
+namespace {
+std::unique_ptr<Application> app = nullptr;
+
+void usage(std::span<char*> args) {
     const char* programName = "CaptureCardRelay";
-    if(argc > 0) {
-        programName = argv[0];
+    if(!args.empty()) {
+        programName = args.front();
     }
 
     SDL_Log("Usage: %s [FILE]", programName);
@@ -28,24 +30,25 @@ void usage(int argc, char** argv) {
     SDL_Log("  -h, --help  display this help and exit");
 }
 
-const char* settingsPath         = nullptr;
-std::unique_ptr<Application> app = nullptr;
+}; // namespace
 
-SDL_AppResult SDL_AppInit(void**, int argc, char** argv) {
+SDL_AppResult SDL_AppInit(void** /*userData*/, int argc, char** argv) {
+    const std::span<char*> args(argv, static_cast<size_t>(argc));
     SDL_Log("Version %s", CAPTURECARDRELAY_VERSION);
 
+    std::optional<std::string> settingsPath;
     switch(argc) {
     case 1: break;
     case 2:
-        if(strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0) {
-            usage(argc, argv);
+        settingsPath = args[1];
+        if(settingsPath != "-h" && settingsPath != "--help") {
+            usage(args);
             return SDL_APP_SUCCESS;
         }
 
-        settingsPath = argv[1];
         break;
     default:
-        usage(argc, argv);
+        usage(args);
         return SDL_APP_FAILURE;
     }
 
@@ -57,12 +60,12 @@ SDL_AppResult SDL_AppInit(void**, int argc, char** argv) {
     return SDL_APP_CONTINUE;
 }
 
-void SDL_AppQuit(void*, SDL_AppResult) {
+void SDL_AppQuit(void* /*userData*/, SDL_AppResult /*result*/) {
     // destroy text before, call after just to make sure
     SDL_Clay_Exit();
     app.reset();
     SDL_Clay_Exit();
 }
 
-SDL_AppResult SDL_AppEvent(void*, SDL_Event* event) { return app->handleEvent(event); }
-SDL_AppResult SDL_AppIterate(void*) { return app->loop(); }
+SDL_AppResult SDL_AppEvent(void* /*userData*/, SDL_Event* event) { return app->handleEvent(event); }
+SDL_AppResult SDL_AppIterate(void* /*userData*/) { return app->loop(); }
