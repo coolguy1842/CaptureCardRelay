@@ -108,14 +108,16 @@ void Application::initCameras() {
         SDL_CameraID* camerasRaw = SDL_GetCameras(&cameraCount);
         cameras.assign_range(std::span(camerasRaw, static_cast<size_t>(cameraCount)));
 
+        if(camerasRaw == nullptr) {
+            SDL_free(camerasRaw);
+
+            SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't enumerate camera devices: %s", SDL_GetError());
+            setShouldQuit(true);
+
+            return;
+        }
+
         SDL_free(camerasRaw);
-    }
-
-    if(cameras.empty()) {
-        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't enumerate camera devices: %s", SDL_GetError());
-        setShouldQuit(true);
-
-        return;
     }
 
     for(const SDL_CameraID& camera : cameras) {

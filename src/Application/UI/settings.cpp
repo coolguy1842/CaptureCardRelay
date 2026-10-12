@@ -902,7 +902,7 @@ void Application::updateSettingsUI() {
         Clay_ElementData data = Clay_GetElementData(volumeSliderTrackID);
         if(data.found && prevCursorX != m_cursorX) {
             const float percent = std::clamp((m_cursorX - data.boundingBox.x) / data.boundingBox.width, 0.0f, 1.0f);
-            int volume          = static_cast<int>(percent) * MAX_VOLUME;
+            int volume          = static_cast<int>(percent * MAX_VOLUME);
 
             m_volumeInSnapRange      = volume >= VOLUME_SNAP_RANGE_MIN && volume <= VOLUME_SNAP_RANGE_MAX;
             const bool keepSnapRange = m_volumeInSnapRange || (volume >= VOLUME_SNAP_RANGE_MIN - VOLUME_SNAP_RANGE_KEEP && volume < VOLUME_SNAP_RANGE_MAX + VOLUME_SNAP_RANGE_KEEP);

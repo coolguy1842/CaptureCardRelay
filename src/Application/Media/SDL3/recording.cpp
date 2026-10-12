@@ -33,14 +33,16 @@ void Application::initAudioRecordingDevices() {
         SDL_AudioDeviceID* recordingDevicesRaw = SDL_GetAudioRecordingDevices(&recordingDeviceCount);
         recordingDevices.assign_range(std::span(recordingDevicesRaw, static_cast<size_t>(recordingDeviceCount)));
 
+        if(recordingDevicesRaw == nullptr) {
+            SDL_free(recordingDevicesRaw);
+
+            SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't enumerate recording devices: %s", SDL_GetError());
+            setShouldQuit(true);
+
+            return;
+        }
+
         SDL_free(recordingDevicesRaw);
-    }
-
-    if(recordingDevices.empty()) {
-        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't enumerate recording devices: %s", SDL_GetError());
-        setShouldQuit(true);
-
-        return;
     }
 
     for(const SDL_AudioDeviceID& device : recordingDevices) {
