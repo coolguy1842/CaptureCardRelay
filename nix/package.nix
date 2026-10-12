@@ -1,5 +1,5 @@
 {
-    pkgs, lib,
+    pkgs, lib, stdenv,
     commandLineArgs ? "",
     pipewireSupport ? true,
     ...
@@ -60,7 +60,7 @@
     };
 
     manifest = (pkgs.lib.importJSON ../manifest.json);
-in pkgs.stdenv.mkDerivation {
+in stdenv.mkDerivation {
     name = manifest.name;
     version = manifest.version;
     src = ../.;
@@ -71,19 +71,23 @@ in pkgs.stdenv.mkDerivation {
         cmake
         meson
 
+        kdePackages.extra-cmake-modules
+
         makeWrapper
     ];
 
     buildInputs = with pkgs; [
         sdl3
         sdl3-ttf
-    ] ++ lib.optionals pipewireSupport [
+    ] ++ lib.optionals (pipewireSupport && stdenv.hostPlatform.isLinux) [
         pipewire
     ];
 
+    dontWrapQtApps = true;
     cmakeFlags =[
-        "-Duse_pipewire=${if pipewireSupport then "ON" else "OFF"}"
+        "-Duse_pipewire=${if (pipewireSupport && stdenv.hostPlatform.isLinux) then "ON" else "OFF"}"
         
+        "-DApp_BINARY_NAME=${manifest.name}"
         "-DFETCHCONTENT_SOURCE_DIR_ROHRKABEL=/tmp/rohrkabel"
         "-DCPM_coco_SOURCE=/tmp/coco"
         "-DCPM_ereignis_SOURCE=/tmp/ereignis"
@@ -105,17 +109,9 @@ in pkgs.stdenv.mkDerivation {
         addDep channel "${channel.src}"
     '';
 
-    installPhase = ''
-        mkdir -p $out/bin
-        mkdir -p $out/share/applications
-        mkdir -p $out/share/icons/hicolor/64x64/apps
-
-        cp ./${manifest.name} $out/bin/${manifest.name}
+    postInstall = ''
         wrapProgram $out/bin/${manifest.name} \
             --add-flags ${lib.escapeShellArg commandLineArgs}
-
-        cp $src/assets/capture-card-relay.desktop $out/share/applications
-        cp $src/assets/capture-card-relay.png $out/share/icons/hicolor/64x64/apps
     '';
 
     meta = with lib; {

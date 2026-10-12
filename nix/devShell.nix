@@ -20,6 +20,8 @@
         ninja
         cmake
         meson
+
+        kdePackages.extra-cmake-modules
     ];
 
     buildInputs = with pkgs; [

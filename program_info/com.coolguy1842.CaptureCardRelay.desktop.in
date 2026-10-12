@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Name=@App_DisplayName@
+Comment=Watch, and listen to your capture cards output
+Type=Application
+Terminal=false
+Exec=@App_BINARY_NAME@ %U
+StartupNotify=true
+Icon=@App_ID@
+Categories=AudioVideo;
+Keywords=capture;
+StartupWMClass=@App_CommonName@
+MimeType=text/plain;

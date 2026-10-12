@@ -11,15 +11,23 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(FetchContent)
 
-if(DEFINED EMSCRIPTEN)
-    set(TARGET_NAME index)
-else()
-    set(TARGET_NAME ${PROJECT_NAME})
+# https://github.com/PrismLauncher/PrismLauncher/blob/6cf70e75064171c0c7d756d5a111e76a3360d513/CMakeLists.txt#L24
+# Output all executables and shared libs in the main build folder, not in subfolders.
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
+if(UNIX)
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
 endif()
 
+if(DEFINED EMSCRIPTEN)
+    set(App_BINARY_NAME "index")
+endif()
+
+set(App_BINARY_NAME "CaptureCardRelay" CACHE STRING "Name of the application binary")
+add_subdirectory(program_info)
+
 include_directories(SYSTEM ext/include)
-add_executable(${TARGET_NAME}
-    ext/src/clay_renderer_SDL3.cpp    
+add_executable(${App_Name}
+    src/clay_renderer_SDL3.cpp    
     
     src/frame_limiter.cpp
     src/settings.cpp
@@ -42,9 +50,9 @@ add_executable(${TARGET_NAME}
 add_compile_definitions("CAPTURECARDRELAY_VERSION=\"${PROJ_VERSION}\"")
 
 # https://stackoverflow.com/a/51190178
-target_compile_definitions(${TARGET_NAME} PUBLIC "$<$<CONFIG:DEBUG>:DEBUG>")
-target_compile_features(${TARGET_NAME} PRIVATE cxx_std_23)
-target_compile_options(${TARGET_NAME} PRIVATE
+target_compile_definitions(${App_Name} PUBLIC "$<$<CONFIG:DEBUG>:DEBUG>")
+target_compile_features(${App_Name} PRIVATE cxx_std_23)
+target_compile_options(${App_Name} PRIVATE
 	-Wall
     -Wextra
     -Werror
@@ -75,39 +83,53 @@ target_compile_options(${TARGET_NAME} PRIVATE
 if(DEFINED EMSCRIPTEN)
     message(STATUS "Using Emscripten")
             
-    target_compile_options(${TARGET_NAME} PRIVATE -sUSE_SDL=3 --use-port=sdl3_ttf)
-    target_link_options(${TARGET_NAME} PRIVATE -sUSE_SDL=3 --use-port=sdl3_ttf)
+    target_compile_options(${App_Name} PRIVATE -sUSE_SDL=3 --use-port=sdl3_ttf)
+    target_link_options(${App_Name} PRIVATE -sUSE_SDL=3 --use-port=sdl3_ttf)
     
-    target_link_options(${TARGET_NAME} PRIVATE -sALLOW_MEMORY_GROWTH --shell-file ${PROJECT_SOURCE_DIR}/dist/shell.html -o index.html)
-
+    target_link_options(${App_Name} PRIVATE -sALLOW_MEMORY_GROWTH --shell-file ${PROJECT_SOURCE_DIR}/dist/shell.html -o index.html)
     set(CMAKE_EXECUTABLE_SUFFIX ".html")
 else()
-    if(enable_pipewire)
-        # https://github.com/PolisanTheEasyNick/Crescendo/blob/main/CMakeLists.txt
-        find_package(PkgConfig)
+    if(UNIX)
+        if(enable_pipewire)
+            # https://github.com/PolisanTheEasyNick/Crescendo/blob/main/CMakeLists.txt
+            find_package(PkgConfig)
 
-        if(PkgConfig_FOUND)
-            pkg_search_module(PKG_PipeWire QUIET libpipewire-0.3 pipewire-0.3)
+            if(PkgConfig_FOUND)
+                pkg_search_module(PKG_PipeWire QUIET libpipewire-0.3 pipewire-0.3)
 
-            if(PKG_PipeWire_FOUND)
-                FetchContent_Declare(
-                    rohrkabel
-                    GIT_REPOSITORY "https://github.com/Curve/rohrkabel"
-                    GIT_TAG v13.1.1
-                    SYSTEM
-                )
+                if(PKG_PipeWire_FOUND)
+                    FetchContent_Declare(
+                        rohrkabel
+                        GIT_REPOSITORY "https://github.com/Curve/rohrkabel"
+                        GIT_TAG v13.1.1
+                        EXCLUDE_FROM_ALL
+                        SYSTEM
+                    )
 
-                FetchContent_MakeAvailable(rohrkabel)
+                    FetchContent_MakeAvailable(rohrkabel)
 
-                target_compile_definitions(${TARGET_NAME} PUBLIC -DENABLE_PIPEWIRE)
-                target_include_directories(${TARGET_NAME} PRIVATE ${PKG_PipeWire_INCLUDE_DIRS})
-                target_link_libraries(${TARGET_NAME} PRIVATE ${PKG_PipeWire_LIBRARIES} rohrkabel)
+                    target_compile_definitions(${App_Name} PUBLIC -DENABLE_PIPEWIRE)
+                    target_include_directories(${App_Name} PRIVATE ${PKG_PipeWire_INCLUDE_DIRS})
+                    target_link_libraries(${App_Name} PRIVATE ${PKG_PipeWire_LIBRARIES} rohrkabel)
+                else()
+                    message("Pipewire enabled, could not find Pipewire, using SDL3 only")
+                endif()
             else()
-                message("Pipewire enabled, could not find Pipewire, using SDL3 only")
+                message("Pipewire enabled, could not find PkgConfig, using SDL3 only")
             endif()
-        else()
-            message("Pipewire enabled, could not find PkgConfig, using SDL3 only")
         endif()
+
+        find_package(ECM NO_MODULE REQUIRED)
+        set(CMAKE_MODULE_PATH "${ECM_MODULE_PATH};${CMAKE_MODULE_PATH}")
+
+        include(KDEInstallDirs)
+
+        install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${App_Desktop} DESTINATION ${KDE_INSTALL_APPDIR})
+        install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/${App_PNG} DESTINATION "${KDE_INSTALL_ICONDIR}/hicolor/64x64/apps")
+    elseif(WIN32)
+        target_compile_options(${App_Name} PRIVATE mwindows)
+    else()
+        message(FATAL_ERROR "Platform not supported")
     endif()
 
     find_package(SDL3 QUIET)
@@ -120,6 +142,7 @@ else()
             SDL3
             GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
             GIT_TAG release-3.4.18
+            EXCLUDE_FROM_ALL
         )
 
         FetchContent_MakeAvailable(SDL3)
@@ -132,19 +155,22 @@ else()
             SDL3_ttf
             GIT_REPOSITORY https://github.com/libsdl-org/SDL_ttf.git
             GIT_TAG release-3.2.2
+            EXCLUDE_FROM_ALL
         )
 
         FetchContent_MakeAvailable(SDL3_ttf)
     endif()
 
-    if(WIN32)
-        target_compile_options(${TARGET_NAME} PRIVATE mwindows)
-    endif()
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address,undefined -g")
+    set(CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address,undefined -g")
 
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address -g")
-    set(CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address -g")
-
-    target_link_libraries(${TARGET_NAME} PRIVATE SDL3::SDL3 SDL3_ttf::SDL3_ttf)
+    target_link_libraries(${App_Name} PRIVATE SDL3::SDL3 SDL3_ttf::SDL3_ttf)
 endif()
 
-target_include_directories(${TARGET_NAME} PRIVATE include)
+target_include_directories(${App_Name} PRIVATE include)
+
+if(DEFINED App_BINARY_NAME)
+    set_target_properties(${App_Name} PROPERTIES OUTPUT_NAME "${App_BINARY_NAME}")
+endif()
+
+install(TARGETS ${App_Name} BUNDLE DESTINATION "." COMPONENT Runtime)

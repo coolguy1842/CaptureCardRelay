@@ -252,18 +252,7 @@ void Application::closeCamera() {
         m_camera.device = nullptr;
     }
 
-    if(m_camera.texture != nullptr) {
-        SDL_DestroyTexture(m_camera.texture);
-        m_camera.texture = nullptr;
-    }
-
-    if(m_camera.pixels != nullptr) {
-        SDL_free(m_camera.pixels);
-
-        m_camera.pixels     = nullptr;
-        m_camera.pitch      = 0;
-        m_camera.pixelsSize = 0;
-    }
+    cleanupCameraTexture();
 }
 
 void Application::setCamera(Application::CameraInfo info) {
@@ -338,7 +327,10 @@ void Application::cleanupCameraTexture() {
 
     if(m_camera.pixels != nullptr) {
         SDL_free(m_camera.pixels);
-        m_camera.pixels = nullptr;
+
+        m_camera.pixels     = nullptr;
+        m_camera.pitch      = 0;
+        m_camera.pixelsSize = 0;
     }
 }
 
