@@ -48,6 +48,11 @@ int Application::onPipewireMetadataProperty(const char* key, const pipewire::met
 }
 
 void Application::onPipewireGlobal(const pipewire::global& global) {
+    // this can never really be false, but leave it here for clang-tidy
+    if(!m_pipewire.registry.has_value()) {
+        return;
+    }
+
     if(global.type == pw::metadata::type) {
         auto metadata = m_pipewire.core->wait(m_pipewire.registry->bind<pw::metadata>(global.id));
         if(!metadata) {
@@ -120,7 +125,6 @@ void Application::onPipewireGlobalRemoved(uint32_t id) {
         for(auto it = m_pipewire.sources.begin(); it != m_pipewire.sources.end(); it++) {
             if(it->node.id() == id) {
                 m_pipewire.sources.erase(it);
-                removed = true;
                 break;
             }
         }
@@ -333,16 +337,26 @@ void Application::updatePipewireLink() {
 
         auto factory = std::optional<pw::link_factory>{};
         if(node == sourceID && info.direction == pipewire::port_direction::output) {
+            std::optional<pipewire::port>& inPort = (port_id == "0" ? m_pipewire.virtualMic.inFL : m_pipewire.virtualMic.inFR);
+            if(!inPort.has_value()) {
+                continue;
+            }
+
             factory = {
-                .input  = (port_id == "0" ? m_pipewire.virtualMic.inFL : m_pipewire.virtualMic.inFR)->id(),
+                .input  = inPort->id(),
                 .output = info.id,
             };
         }
 
         if(node == sinkID && info.direction == pipewire::port_direction::input) {
+            std::optional<pipewire::port>& outPort = (port_id == "0" ? m_pipewire.virtualMic.outFL : m_pipewire.virtualMic.outFR);
+            if(!outPort.has_value()) {
+                continue;
+            }
+
             factory = {
                 .input  = info.id,
-                .output = (port_id == "0" ? m_pipewire.virtualMic.outFL : m_pipewire.virtualMic.outFR)->id(),
+                .output = outPort->id(),
             };
         }
 
@@ -371,12 +385,12 @@ void Application::setRecordingDevicePipewire(const Application::PipewireDevice& 
 }
 
 void Application::_updateVolumePipewire() {
-    if(!m_usingPipewire) {
+    if(!m_usingPipewire || !m_pipewire.virtualMic.node.has_value()) {
         return;
     }
 
     const float volume = getCubicVolume();
-    auto params        = m_pipewire.core->wait(m_pipewire.virtualMic.node->params());
+    const auto params  = m_pipewire.core->wait(m_pipewire.virtualMic.node->params());
 
     for(const auto& [pod_id, pod] : params) {
         auto prop = pod.find_recursive(pipewire::spa::prop::channel_volumes);

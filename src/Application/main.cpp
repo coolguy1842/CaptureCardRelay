@@ -36,7 +36,7 @@ Application::Application(const std::optional<std::string>& settingsPath)
 
     setFullscreen(m_settings.isFullscreen());
 
-    m_renderData.renderer = SDL_CreateGPURenderer(NULL, m_window);
+    m_renderData.renderer = SDL_CreateGPURenderer(nullptr, m_window);
     if(m_renderData.renderer != nullptr) {
         SDL_GPUDevice* gpu = SDL_GetGPURendererDevice(m_renderData.renderer);
         if(gpu == nullptr) {
@@ -46,7 +46,7 @@ Application::Application(const std::optional<std::string>& settingsPath)
             return;
         }
 
-        SDL_PropertiesID props = SDL_GetGPUDeviceProperties(gpu);
+        const SDL_PropertiesID props = SDL_GetGPUDeviceProperties(gpu);
         if(props != 0) {
             const char* name = SDL_GetStringProperty(props, SDL_PROP_GPU_DEVICE_NAME_STRING, "");
             SDL_Log("Created renderer with GPU: %s", name);
@@ -122,10 +122,10 @@ Application::Application(const std::optional<std::string>& settingsPath)
     SDL_FlushEvents(SDL_EVENT_AUDIO_DEVICE_ADDED, SDL_EVENT_AUDIO_DEVICE_ADDED);
     SDL_FlushEvents(SDL_EVENT_CAMERA_DEVICE_ADDED, SDL_EVENT_CAMERA_DEVICE_ADDED);
 
-    uint32_t arenaSize = Clay_MinMemorySize();
-    m_clayMemory       = std::make_unique<std::vector<char>>(static_cast<size_t>(arenaSize));
+    const uint32_t arenaSize = Clay_MinMemorySize();
+    m_clayMemory             = std::make_unique<std::vector<char>>(static_cast<size_t>(arenaSize));
 
-    Clay_Arena clayMemory = {
+    const Clay_Arena clayMemory = {
         .capacity = m_clayMemory->size(),
         .memory   = m_clayMemory->data(),
     };
@@ -198,7 +198,7 @@ void Application::updateFrameLimiter(FrameLimitInfo info) {
 
     switch(info.type) {
     case FRAME_LIMIT_CAMERA:
-        if(m_camera.device == nullptr) {
+        if(m_camera.device == nullptr || !m_camera.approved) {
             break;
         }
 
@@ -207,7 +207,7 @@ void Application::updateFrameLimiter(FrameLimitInfo info) {
 
         return;
     case FRAME_LIMIT_CAMERA_X_1_5:
-        if(m_camera.device == nullptr) {
+        if(m_camera.device == nullptr || !m_camera.approved) {
             break;
         }
 
@@ -216,14 +216,12 @@ void Application::updateFrameLimiter(FrameLimitInfo info) {
 
         return;
     case FRAME_LIMIT_CAMERA_X_2_0:
-        if(m_camera.device == nullptr) {
+        if(m_camera.device == nullptr || !m_camera.approved) {
             break;
         }
 
         SDL_SetRenderVSync(m_renderData.renderer, SDL_RENDERER_VSYNC_DISABLED);
         m_frameLimiter.setFPSLimit(getCameraRefreshRate(m_camera.spec) * 2.0f);
-
-        SDL_Log("set limit to %f", getCameraRefreshRate(m_camera.spec) * 2.0f);
 
         return;
     case FRAME_LIMIT_VSYNC:
@@ -288,7 +286,7 @@ void Application::render() {
 
     if(m_camera.approved) {
         renderCameraToTexture();
-        SDL_RenderTexture(m_renderData.renderer, m_camera.texture, NULL, &m_camera.displayRect);
+        SDL_RenderTexture(m_renderData.renderer, m_camera.texture, nullptr, &m_camera.displayRect);
     }
 
     if(m_shouldRenderClay) {
@@ -352,6 +350,7 @@ void Application::updateVolume(bool showStatus) {
         _updateVolumePipewire();
     }
 #else
+    // NOLINTNEXTLINE
     if(false) {}
 #endif
     else {

@@ -84,7 +84,7 @@ in stdenv.mkDerivation {
 
     dontWrapQtApps = true;
     cmakeFlags =[
-        "-Duse_pipewire=${if (pipewireSupport && stdenv.hostPlatform.isLinux) then "ON" else "OFF"}"
+        "-DUSE_PIPEWIRE=${if (pipewireSupport && stdenv.hostPlatform.isLinux) then "ON" else "OFF"}"
         
         "-DApp_BINARY_NAME=${manifest.name}"
         "-DFETCHCONTENT_SOURCE_DIR_ROHRKABEL=/tmp/rohrkabel"

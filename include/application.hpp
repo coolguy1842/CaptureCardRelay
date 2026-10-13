@@ -203,7 +203,7 @@ private:
     void updateCameraTexture();
     void cleanupCameraTexture();
     // should be called every frame
-    void renderCameraToTexture() const;
+    void renderCameraToTexture();
 
     void updateCameraDisplayMode(CameraDisplayMode mode);
     void updateCameraScaleMode(SDL_ScaleMode mode);
@@ -335,9 +335,8 @@ private:
         bool approved         = false;
         SDL_FRect displayRect = { 0.0f, 0.0f };
 
-        void* pixels      = nullptr;
-        int pitch         = 0;
-        size_t pixelsSize = 0;
+        std::vector<Uint8> pixels;
+        int pitch = 0;
     } m_camera;
 
     CameraInfo m_currentCamera                   = { .id = 0, .name = "(null)" };

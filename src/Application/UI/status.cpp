@@ -16,8 +16,8 @@ bool EaseOut(Clay_TransitionCallbackArguments arguments) {
         ratio = CLAY__MIN(arguments.elapsedTime / arguments.duration, 1);
     }
 
-    float inverse    = 1.0f - ratio;
-    float lerpAmount = 1.0f - (inverse * inverse * inverse);
+    const float inverse    = 1.0f - ratio;
+    const float lerpAmount = 1.0f - (inverse * inverse * inverse);
     if((arguments.properties & CLAY_TRANSITION_PROPERTY_Y) != 0) {
         arguments.current->boundingBox.y = LERP(arguments.initial.boundingBox.y, arguments.target.boundingBox.y, lerpAmount);
     }
@@ -80,7 +80,7 @@ void Application::BuildStatus() {
     ) {
         s_animationActive = true;
 
-        Clay_String statusStr = { .isStaticallyAllocated = false, .length = static_cast<int32_t>(m_status.text.size()), .chars = m_status.text.c_str() };
+        const Clay_String statusStr = { .isStaticallyAllocated = false, .length = static_cast<int32_t>(m_status.text.size()), .chars = m_status.text.c_str() };
         CLAY_TEXT(statusStr, defaultTextConfig);
     }
 }

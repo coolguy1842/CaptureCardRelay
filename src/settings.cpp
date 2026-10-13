@@ -20,7 +20,7 @@ const PixelFormat DEFAULT_PIXEL_FORMAT = PIXEL_FORMAT_RGB24;
 
 constexpr uint64_t hash(std::string_view str) {
     uint64_t hash = 0;
-    for(char c : str) {
+    for(const char& c : str) {
         hash = (hash * 131) + static_cast<uint64_t>(c);
     }
 
@@ -230,17 +230,20 @@ std::string getSettingsPath() {
     // https://stackoverflow.com/a/3999597
     size_t tmpPathSize = wcslen(tmpPath);
 
-    int pathSize = WideCharToMultiByte(CP_UTF8, 0, tmpPath, (int)tmpPathSize, NULL, 0, NULL, NULL);
+    int pathSize = WideCharToMultiByte(CP_UTF8, 0, tmpPath, (int)tmpPathSize, nullptr, 0, nullptr, nullptr);
     configPath   = std::string(static_cast<size_t>(pathSize), 0);
 
-    WideCharToMultiByte(CP_UTF8, 0, tmpPath, (int)tmpPathSize, configPath.data(), pathSize, NULL, NULL);
+    WideCharToMultiByte(CP_UTF8, 0, tmpPath, (int)tmpPathSize, configPath.data(), pathSize, nullptr, nullptr);
     CoTaskMemFree(tmpPath);
 #else
-    if(std::getenv("XDG_CONFIG_HOME") != nullptr) {
-        configPath = std::getenv("XDG_CONFIG_HOME");
+    const char* xdgHome = std::getenv("XDG_CONFIG_HOME");
+    const char* home    = std::getenv("HOME");
+
+    if(xdgHome != nullptr) {
+        configPath = xdgHome;
     }
-    else if(std::getenv("HOME") != nullptr) {
-        configPath = std::string(std::getenv("HOME")) + "/.config";
+    else if(home != nullptr) {
+        configPath = std::string(home) + "/.config";
     }
     else {
         SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't get home config directory.");
@@ -273,7 +276,7 @@ Settings::Settings(const std::optional<std::string>& manualFile) {
 }
 
 bool Settings::canSetSelectedCamera() const {
-    static bool canSet = !valueLocked("camera");
+    static const bool canSet = !valueLocked("camera");
     return canSet;
 }
 
@@ -331,7 +334,7 @@ void Settings::setSelectedCamera(SDL_CameraID camera) {
 }
 
 bool Settings::canSetRecordingDevice() const {
-    static bool canSet = !valueLocked("recordingDevice");
+    static const bool canSet = !valueLocked("recordingDevice");
     return canSet;
 }
 
@@ -346,12 +349,12 @@ void Settings::setSelectedRecordingDevice(const std::string& recordingDevice) {
 }
 
 bool Settings::canSetDisplayMode() const {
-    static bool canSet = !valueLocked("displayMode");
+    static const bool canSet = !valueLocked("displayMode");
     return canSet;
 }
 
 CameraDisplayMode Settings::getDisplayMode() {
-    int mode = std::atoi(getValue("displayMode").value_or(std::to_string(DEFAULT_DISPLAY_MODE)).c_str());
+    const int mode = std::atoi(getValue("displayMode").value_or(std::to_string(DEFAULT_DISPLAY_MODE)).c_str());
 
     switch(mode) {
     case DISPLAY_MODE_CONTAIN:
@@ -372,12 +375,12 @@ void Settings::setDisplayMode(CameraDisplayMode mode) {
 }
 
 bool Settings::canSetScaleMode() const {
-    static bool canSet = !valueLocked("scaleMode");
+    static const bool canSet = !valueLocked("scaleMode");
     return canSet;
 }
 
 SDL_ScaleMode Settings::getScaleMode() {
-    int mode = std::atoi(getValue("scaleMode").value_or(std::to_string(DEFAULT_SCALE_MODE)).c_str());
+    const int mode = std::atoi(getValue("scaleMode").value_or(std::to_string(DEFAULT_SCALE_MODE)).c_str());
 
     switch(mode) {
     case SDL_SCALEMODE_NEAREST:
@@ -397,17 +400,17 @@ void Settings::setScaleMode(SDL_ScaleMode mode) {
 }
 
 bool Settings::canSetPixelFormat() const {
-    static bool canSet = !valueLocked("pixelFormat");
+    static const bool canSet = !valueLocked("pixelFormat");
     return canSet;
 }
 
 PixelFormat Settings::getPixelFormat() {
-    int mode = std::atoi(getValue("pixelFormat").value_or(std::to_string(DEFAULT_PIXEL_FORMAT)).c_str());
+    const int format = std::atoi(getValue("pixelFormat").value_or(std::to_string(DEFAULT_PIXEL_FORMAT)).c_str());
 
-    switch(mode) {
+    switch(format) {
     case PIXEL_FORMAT_CAMERA:
     case PIXEL_FORMAT_RGB24:
-        return static_cast<PixelFormat>(mode);
+        return static_cast<PixelFormat>(format);
     default:
         setPixelFormat(DEFAULT_PIXEL_FORMAT);
         return DEFAULT_PIXEL_FORMAT;
@@ -421,12 +424,12 @@ void Settings::setPixelFormat(PixelFormat format) {
 }
 
 bool Settings::canSetFrameLimitType() const {
-    static bool canSet = !valueLocked("frameLimitType");
+    static const bool canSet = !valueLocked("frameLimitType");
     return canSet;
 }
 
 bool Settings::canSetFrameLimitFPS() const {
-    static bool canSet = !valueLocked("frameLimitFPS");
+    static const bool canSet = !valueLocked("frameLimitFPS");
     return canSet;
 }
 
@@ -444,8 +447,8 @@ FrameLimitInfo Settings::getFrameLimitInfo() {
     default:                         info.type = DEFAULT_FRAME_LIMIT_TYPE; break;
     }
 
-    float fps = static_cast<float>(std::atof(getValue("frameLimitFPS").value_or(std::to_string(DEFAULT_FRAME_LIMIT_FPS)).c_str()));
-    info.fps  = std::clamp(fps, MIN_FPS, MAX_FPS);
+    const float fps = static_cast<float>(std::atof(getValue("frameLimitFPS").value_or(std::to_string(DEFAULT_FRAME_LIMIT_FPS)).c_str()));
+    info.fps        = std::clamp(fps, MIN_FPS, MAX_FPS);
 
     return info;
 }
@@ -461,7 +464,7 @@ void Settings::setFrameLimitInfo(FrameLimitInfo info) {
 }
 
 bool Settings::canSetFullscreen() const {
-    static bool canSet = !valueLocked("fullscreen");
+    static const bool canSet = !valueLocked("fullscreen");
     return canSet;
 }
 
@@ -477,7 +480,7 @@ int clampVolume(int volume) { return std::max(MIN_VOLUME, std::min(MAX_VOLUME, v
 }; // namespace
 
 bool Settings::canSetVolume() const {
-    static bool canSet = !valueLocked("volume");
+    static const bool canSet = !valueLocked("volume");
     return canSet;
 }
 
@@ -491,7 +494,7 @@ void Settings::setVolume(int volume) {
 }
 
 bool Settings::canSetPreferredColorspace() const {
-    static bool canSet = !valueLocked("preferredColorspace");
+    static const bool canSet = !valueLocked("preferredColorspace");
     return canSet;
 }
 
@@ -503,7 +506,7 @@ void Settings::setPreferredColorspace(SDL_Colorspace colorspace) {
 }
 
 bool Settings::canSetPreferredPixelFormat() const {
-    static bool canSet = !valueLocked("preferredPixelFormat");
+    static const bool canSet = !valueLocked("preferredPixelFormat");
     return canSet;
 }
 
@@ -515,12 +518,12 @@ void Settings::setPreferredPixelFormat(SDL_PixelFormat pixelFormat) {
 }
 
 std::optional<std::string> Settings::getValue(const std::string& key) {
-    auto lockedIt = m_lockedCache.find(key);
+    const auto lockedIt = m_lockedCache.find(key);
     if(lockedIt != m_lockedCache.end()) {
         return lockedIt->second;
     }
 
-    auto regularIt = m_cache.find(key);
+    const auto regularIt = m_cache.find(key);
     if(regularIt != m_cache.end()) {
         return regularIt->second;
     }
@@ -572,14 +575,14 @@ void _load(std::unordered_map<std::string, std::string>& cache, const std::strin
     }
 
     for(std::string line; std::getline(file, line);) {
-        size_t pos = line.find_first_of(':');
+        const size_t pos = line.find_first_of(':');
         if(pos == std::string::npos) {
             continue;
         }
 
-        std::string key   = line.substr(0, pos);
-        std::string value = line.substr(pos + 1);
-        cache[key]        = value;
+        const std::string key   = line.substr(0, pos);
+        const std::string value = line.substr(pos + 1);
+        cache[key]              = value;
     }
 }
 }; // namespace

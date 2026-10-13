@@ -1,3 +1,4 @@
+#include <SDL3/SDL_stdinc.h>
 #include <application.hpp>
 #include <format>
 #include <set>
@@ -146,8 +147,8 @@ void Application::openCamera() {
         camID = m_cameras[0].id;
     }
 
-    SDL_Colorspace preferredColorspace = m_settings.getPreferredColorspace();
-    SDL_PixelFormat preferredFormat    = m_settings.getPreferredPixelFormat();
+    const SDL_Colorspace preferredColorspace = m_settings.getPreferredColorspace();
+    const SDL_PixelFormat preferredFormat    = m_settings.getPreferredPixelFormat();
 
     const auto cmp = [preferredColorspace, preferredFormat](const SDL_CameraSpec& a, const SDL_CameraSpec& b) {
         if(preferredColorspace != SDL_COLORSPACE_UNKNOWN && a.colorspace != b.colorspace) {
@@ -199,7 +200,7 @@ void Application::openCamera() {
         int numFormats              = 0;
         SDL_CameraSpec** formatsRaw = SDL_GetCameraSupportedFormats(camID, &numFormats);
 
-        for(SDL_CameraSpec* spec : std::span(formatsRaw, static_cast<size_t>(numFormats))) {
+        for(const SDL_CameraSpec* spec : std::span(formatsRaw, static_cast<size_t>(numFormats))) {
             specs.emplace(*spec);
         }
 
@@ -278,7 +279,7 @@ void Application::setCamera(Application::CameraInfo info) {
 }
 
 void Application::updateCameraDisplayRect() {
-    SDL_FRect rect       = { 0, 0, static_cast<float>(m_width), static_cast<float>(m_height) };
+    const SDL_FRect rect = { 0, 0, static_cast<float>(m_width), static_cast<float>(m_height) };
     m_camera.displayRect = rect;
 
     if(m_camera.texture == nullptr) {
@@ -290,13 +291,13 @@ void Application::updateCameraDisplayRect() {
     case DISPLAY_MODE_CONTAIN:
     case DISPLAY_MODE_COVER:   {
         // most logic here from: https://github.com/nrkn/object-fit-math/blob/master/src/fitter.ts
-        float widthRatio  = rect.w / static_cast<float>(m_camera.texture->w);
-        float heightRatio = rect.h / static_cast<float>(m_camera.texture->h);
+        const float widthRatio  = rect.w / static_cast<float>(m_camera.texture->w);
+        const float heightRatio = rect.h / static_cast<float>(m_camera.texture->h);
 
         // min of width vs height ratios
-        float ratio = mode == DISPLAY_MODE_CONTAIN
-                          ? CLAY__MIN(widthRatio, heightRatio)
-                          : CLAY__MAX((rect.w / m_camera.texture->w), (rect.h / m_camera.texture->h));
+        const float ratio = mode == DISPLAY_MODE_CONTAIN
+                                ? CLAY__MIN(widthRatio, heightRatio)
+                                : CLAY__MAX((rect.w / m_camera.texture->w), (rect.h / m_camera.texture->h));
 
         SDL_FRect newRect;
         newRect.w = static_cast<float>(m_camera.texture->w) * ratio;
@@ -327,13 +328,8 @@ void Application::cleanupCameraTexture() {
         m_camera.texture = nullptr;
     }
 
-    if(m_camera.pixels != nullptr) {
-        SDL_free(m_camera.pixels);
-
-        m_camera.pixels     = nullptr;
-        m_camera.pitch      = 0;
-        m_camera.pixelsSize = 0;
-    }
+    m_camera.pixels.clear();
+    m_camera.pitch = 0;
 }
 
 void Application::updateCameraTexture() {
@@ -342,7 +338,7 @@ void Application::updateCameraTexture() {
         return;
     }
 
-    SDL_PropertiesID props = SDL_CreateProperties();
+    const SDL_PropertiesID props = SDL_CreateProperties();
     if(props == 0) {
         SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to create properties for texture: %s", SDL_GetError());
         cleanupCameraTexture();
@@ -376,16 +372,15 @@ void Application::updateCameraTexture() {
 
     // make sure texture starts blank, doesnt work on mjpeg but dont care too much
     SDL_Surface* surface = nullptr;
-    if(SDL_LockTextureToSurface(m_camera.texture, NULL, &surface)) {
+    if(SDL_LockTextureToSurface(m_camera.texture, nullptr, &surface)) {
         SDL_ClearSurface(surface, 0.0, 0.0, 0.0, 1.0);
         SDL_UnlockTexture(m_camera.texture);
     }
 
     if(format != m_camera.spec.format) {
         // for some reason writing to a temporary buffer first is faster when using SDL_ConvertPixels, pitch calculation from sdl3s internal source code
-        m_camera.pitch      = ((m_camera.texture->w * SDL_BYTESPERPIXEL(m_camera.texture->format)) + 3) & ~3;
-        m_camera.pixelsSize = static_cast<size_t>(m_camera.texture->h) * static_cast<size_t>(m_camera.pitch);
-        m_camera.pixels     = SDL_malloc(m_camera.pixelsSize);
+        m_camera.pitch = ((m_camera.texture->w * SDL_BYTESPERPIXEL(m_camera.texture->format)) + 3) & ~3;
+        m_camera.pixels.resize(static_cast<size_t>(m_camera.texture->h) * static_cast<size_t>(m_camera.pitch));
     }
 
     updateCameraDisplayRect();
@@ -395,7 +390,7 @@ void Application::updateCameraTexture() {
 #endif
 }
 
-void Application::renderCameraToTexture() const {
+void Application::renderCameraToTexture() {
     if(!m_camera.approved || m_camera.texture == nullptr) {
         return;
     }
@@ -407,7 +402,7 @@ void Application::renderCameraToTexture() const {
             if(!SDL_ConvertPixels(
                    m_camera.texture->w, m_camera.texture->h,
                    surface->format, surface->pixels, surface->pitch,
-                   m_camera.texture->format, m_camera.pixels, m_camera.pitch
+                   m_camera.texture->format, m_camera.pixels.data(), m_camera.pitch
                )) {
                 SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Error converting pixels: %s", SDL_GetError());
                 SDL_ReleaseCameraFrame(m_camera.device, surface);
@@ -420,14 +415,14 @@ void Application::renderCameraToTexture() const {
             void* pixels = nullptr;
             int pitch    = 0;
 
-            SDL_LockTexture(m_camera.texture, NULL, &pixels, &pitch);
-            SDL_memmove(pixels, m_camera.pixels, m_camera.pixelsSize);
+            SDL_LockTexture(m_camera.texture, nullptr, &pixels, &pitch);
+            SDL_memmove(pixels, m_camera.pixels.data(), m_camera.pixels.size());
             SDL_UnlockTexture(m_camera.texture);
 
             break;
         }
         default:
-            SDL_UpdateTexture(m_camera.texture, NULL, surface->pixels, surface->pitch);
+            SDL_UpdateTexture(m_camera.texture, nullptr, surface->pixels, surface->pitch);
             SDL_ReleaseCameraFrame(m_camera.device, surface);
             break;
         }

@@ -1,3 +1,4 @@
+#include <SDL3/SDL_stdinc.h>
 #include <chrono>
 #include <frame_limiter.hpp>
 #include <thread>
@@ -29,8 +30,8 @@ bool FrameLimiter::useEarly() const { return m_useEarly; }
 
 #ifdef DEBUG
 float FrameLimiter::frameTime() {
-    SDL_Time frameTimeEnd = getNanoseconds();
-    SDL_Time frameTime    = frameTimeEnd - m_frameTimeStart;
+    const SDL_Time frameTimeEnd = getNanoseconds();
+    const SDL_Time frameTime    = frameTimeEnd - m_frameTimeStart;
 
     const float ms = static_cast<float>(frameTime) / 1e+6f;
     if(m_timings.average == -1) {
@@ -89,7 +90,7 @@ void FrameLimiter::updateStable() {
 #endif
 
 void FrameLimiter::setFPSLimit(float fps) {
-    const int64_t newTarget = (fps <= 0.0f) ? 0 : static_cast<int64_t>(1e+9f / fps);
+    const SDL_Time newTarget = (fps <= 0.0f) ? 0 : static_cast<SDL_Time>(1e+9f / fps);
     if(m_target == newTarget) {
         return;
     }
@@ -107,8 +108,8 @@ void FrameLimiter::limit(bool isEarly) {
         return;
     }
 
-    m_frameStart       = getNanoseconds();
-    int64_t sleep_time = calculateSleepTime(m_frameStart, m_frameEnd);
+    m_frameStart              = getNanoseconds();
+    const SDL_Time sleep_time = calculateSleepTime(m_frameStart, m_frameEnd);
     if(sleep_time > 0) {
         doSleep(sleep_time);
     }
@@ -121,8 +122,8 @@ SDL_Time FrameLimiter::calculateSleepTime(SDL_Time start, SDL_Time end) const {
         return 0;
     }
 
-    SDL_Time work  = SDL_max(start - end, 0);
-    SDL_Time sleep = (m_target - work) - m_overhead;
+    const SDL_Time work  = SDL_max(start - end, 0);
+    const SDL_Time sleep = (m_target - work) - m_overhead;
 
     return SDL_min(sleep, 0);
 }
@@ -132,10 +133,10 @@ void FrameLimiter::doSleep(SDL_Time sleepTime) {
         return;
     }
 
-    int64_t before = getNanoseconds();
+    const SDL_Time before = getNanoseconds();
     std::this_thread::sleep_for(std::chrono::nanoseconds(sleepTime));
 
-    int64_t over = (getNanoseconds() - before) - sleepTime;
+    SDL_Time over = (getNanoseconds() - before) - sleepTime;
     if(over < 0 || over > (m_target / 2)) {
         over = 0;
     }

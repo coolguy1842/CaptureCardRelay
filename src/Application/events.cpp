@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <application.hpp>
 #include <chrono>
 
@@ -129,7 +130,7 @@ SDL_AppResult Application::handleEvent(SDL_Event* event) {
             if(m_camera.device != nullptr) {
                 SDL_CameraID currentCamera = SDL_GetCameraID(m_camera.device);
 
-                auto it = std::find_if(m_cameras.begin(), m_cameras.end(), [currentCamera](const auto& info) { return info.id == currentCamera; });
+                auto it = std::ranges::find_if(m_cameras, [currentCamera](const auto& info) { return info.id == currentCamera; });
                 if(it == m_cameras.end()) {
                     it = m_cameras.begin();
                 }
@@ -156,7 +157,7 @@ SDL_AppResult Application::handleEvent(SDL_Event* event) {
                     break;
                 }
 
-                PipewireDevice* currentDevice = m_pipewire.currentSource;
+                const PipewireDevice* currentDevice = m_pipewire.currentSource;
                 if(currentDevice == nullptr) {
                     setRecordingDevicePipewire(m_pipewire.sources[0]);
                     updatePipewireLink();
@@ -164,7 +165,7 @@ SDL_AppResult Application::handleEvent(SDL_Event* event) {
                     break;
                 }
 
-                auto it = std::find_if(m_pipewire.sources.begin(), m_pipewire.sources.end(), [currentDevice](const auto& device) { return &device == currentDevice; });
+                auto it = std::ranges::find_if(m_pipewire.sources, [currentDevice](const auto& device) { return &device == currentDevice; });
                 if(it == m_pipewire.sources.end()) {
                     it = m_pipewire.sources.begin();
                 }
@@ -191,7 +192,7 @@ SDL_AppResult Application::handleEvent(SDL_Event* event) {
             }
 
             if(m_audioRecording.device != 0) {
-                auto it = std::find_if(m_recordingDevices.begin(), m_recordingDevices.end(), [this](const auto& info) { return m_currentRecordingDevice.id == info.id; });
+                auto it = std::ranges::find_if(m_recordingDevices, [this](const auto& info) { return m_currentRecordingDevice.id == info.id; });
 
                 if(it == m_recordingDevices.end()) {
                     it = m_recordingDevices.begin();

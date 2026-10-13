@@ -18,7 +18,8 @@ bool Application::Clay_DirectlyClicked() {
         return false;
     }
 
-    Clay_ElementIdArray ids = Clay_GetPointerOverIds();
+    const Clay_ElementIdArray ids = Clay_GetPointerOverIds();
+
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     return ids.length != 0 && ids.internalArray[ids.length - 1].id == Clay_GetOpenElementId();
 }
@@ -57,7 +58,7 @@ Clay_RenderCommandArray Application::buildUI() {
                     );
                 }
 
-                Clay_String str = { .isStaticallyAllocated = false, .length = static_cast<int32_t>(m_frameTimeText.size()), .chars = m_frameTimeText.c_str() };
+                const Clay_String str = { .isStaticallyAllocated = false, .length = static_cast<int32_t>(m_frameTimeText.size()), .chars = m_frameTimeText.c_str() };
                 CLAY_TEXT(str, defaultTextConfig);
             }
         }
@@ -73,10 +74,10 @@ Clay_RenderCommandArray Application::buildUI() {
     }
 
     static uint64_t prev = SDL_GetPerformanceCounter();
-    uint64_t now         = SDL_GetPerformanceCounter();
+    const uint64_t now   = SDL_GetPerformanceCounter();
 
-    float deltaTime = static_cast<float>(now - prev) / static_cast<float>(SDL_GetPerformanceFrequency());
-    prev            = now;
+    const float deltaTime = static_cast<float>(now - prev) / static_cast<float>(SDL_GetPerformanceFrequency());
+    prev                  = now;
 
     return Clay_EndLayout(deltaTime);
 }
@@ -85,10 +86,10 @@ void Application::updateUI() {
     Clay_SetPointerState(Clay_Vector2{ .x = m_cursorX, .y = m_cursorY }, m_mouseHeld);
 
     static uint64_t prev = SDL_GetPerformanceCounter();
-    uint64_t now         = SDL_GetPerformanceCounter();
+    const uint64_t now   = SDL_GetPerformanceCounter();
 
-    float deltaTime = static_cast<float>(now - prev) / static_cast<float>(SDL_GetPerformanceFrequency());
-    prev            = now;
+    const float deltaTime = static_cast<float>(now - prev) / static_cast<float>(SDL_GetPerformanceFrequency());
+    prev                  = now;
 
     Clay_UpdateScrollContainers(!m_slidingVolume && !m_slidingFPS && m_currentScrollBar == 0, Clay_Vector2{ m_mouseWheelX, m_mouseWheelY }, deltaTime);
     m_mouseWheelX = 0.0f;

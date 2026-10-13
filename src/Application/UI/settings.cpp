@@ -3,21 +3,6 @@
 #include <clay_renderer_SDL3.hpp>
 #include <settings.hpp>
 
-#define SEPARATOR CLAY_AUTO_ID({                                                                      \
-    .layout          = { .sizing = { .width = CLAY_SIZING_GROW(), .height = CLAY_SIZING_FIXED(2) } }, \
-    .backgroundColor = { 0xAF, 0xAF, 0xAF, 0xFF },                                                    \
-});
-
-#define HSPACER(pixels) CLAY_AUTO_ID({ .layout = { .sizing = { .width = CLAY_SIZING_FIXED(pixels) } } })
-#define VSPACER(pixels) CLAY_AUTO_ID({ .layout = { .sizing = { .height = CLAY_SIZING_FIXED(pixels) } } })
-
-#define CONTAINER_TITLE(title)                                                                                                                            \
-    CLAY_AUTO_ID({ .layout = { .sizing = { .width = CLAY_SIZING_GROW() }, .childAlignment = { .x = CLAY_ALIGN_X_CENTER, .y = CLAY_ALIGN_Y_CENTER } } }) { \
-        CLAY_TEXT(CLAY_STRING(title), defaultTextConfig);                                                                                                 \
-    }
-
-#define GROWGROW { .width = CLAY_SIZING_GROW(), .height = CLAY_SIZING_GROW() }
-
 static const Clay_ElementId camerasContainerID          = CLAY_ID("CamerasContainer");
 static const Clay_ElementId pixelFormatContainerID      = CLAY_ID("PixelFormatContainer");
 static const Clay_ElementId recordingDevicesContainerID = CLAY_ID("RecordingDevicesContainer");
@@ -25,7 +10,22 @@ static const Clay_ElementId displayModeContainerID      = CLAY_ID("DisplayModeCo
 static const Clay_ElementId scaleModeContainerID        = CLAY_ID("ScaleModeContainer");
 static const Clay_ElementId frameLimitTypeContainerID   = CLAY_ID("FrameLimitTypeContainer");
 
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define CONTAINER_TITLE(title)                                                                                                                            \
+    CLAY_AUTO_ID({ .layout = { .sizing = { .width = CLAY_SIZING_GROW() }, .childAlignment = { .x = CLAY_ALIGN_X_CENTER, .y = CLAY_ALIGN_Y_CENTER } } }) { \
+        CLAY_TEXT(CLAY_STRING(title), defaultTextConfig);                                                                                                 \
+    }
+
 namespace {
+constexpr void SEPARATOR() {
+    CLAY_AUTO_ID({
+        .layout          = { .sizing = { .width = CLAY_SIZING_GROW(), .height = CLAY_SIZING_FIXED(2) } },
+        .backgroundColor = { 0xAF, 0xAF, 0xAF, 0xFF },
+    });
+}
+
+constexpr Clay_Sizing GROWGROW() { return { .width = CLAY_SIZING_GROW(), .height = CLAY_SIZING_GROW() }; }
+
 Clay_String toClayString(const char* str) {
     if(str == nullptr) {
         return { .isStaticallyAllocated = true, .length = 7, .chars = "(null)" };
@@ -101,8 +101,9 @@ Clay_String frameLimitTypeStr(FrameLimitType type) {
     )
 
 void Application::Build_ScrollBar(Clay_ElementId id, bool vertical) {
-    Clay_ScrollContainerData scrollData = Clay_GetScrollContainerData(id);
-    Clay_ElementData elementData        = Clay_GetElementData(id);
+    const Clay_ScrollContainerData scrollData = Clay_GetScrollContainerData(id);
+    const Clay_ElementData elementData        = Clay_GetElementData(id);
+
     if(
         !scrollData.found || !elementData.found ||
         (vertical ? scrollData.scrollContainerDimensions.height >= scrollData.contentDimensions.height : scrollData.scrollContainerDimensions.width >= scrollData.contentDimensions.width)
@@ -110,8 +111,8 @@ void Application::Build_ScrollBar(Clay_ElementId id, bool vertical) {
         return;
     }
 
-    Clay_FloatingAttachPoints verticalAttach   = { .element = CLAY_ATTACH_POINT_RIGHT_TOP, .parent = CLAY_ATTACH_POINT_RIGHT_TOP };
-    Clay_FloatingAttachPoints horizontalAttach = { .element = CLAY_ATTACH_POINT_LEFT_BOTTOM, .parent = CLAY_ATTACH_POINT_LEFT_BOTTOM };
+    const static Clay_FloatingAttachPoints verticalAttach   = { .element = CLAY_ATTACH_POINT_RIGHT_TOP, .parent = CLAY_ATTACH_POINT_RIGHT_TOP };
+    const static Clay_FloatingAttachPoints horizontalAttach = { .element = CLAY_ATTACH_POINT_LEFT_BOTTOM, .parent = CLAY_ATTACH_POINT_LEFT_BOTTOM };
 
     CLAY_AUTO_ID(
         {
@@ -133,13 +134,13 @@ void Application::Build_ScrollBar(Clay_ElementId id, bool vertical) {
             },
         }
     ) {
-        bool parentHovered = Clay_Hovered();
+        const bool parentHovered = Clay_Hovered();
 
-        float handleWidth  = (scrollData.scrollContainerDimensions.width / scrollData.contentDimensions.width) * scrollData.scrollContainerDimensions.width;
-        float handleHeight = (scrollData.scrollContainerDimensions.height / scrollData.contentDimensions.height) * scrollData.scrollContainerDimensions.height;
+        const float handleWidth  = (scrollData.scrollContainerDimensions.width / scrollData.contentDimensions.width) * scrollData.scrollContainerDimensions.width;
+        const float handleHeight = (scrollData.scrollContainerDimensions.height / scrollData.contentDimensions.height) * scrollData.scrollContainerDimensions.height;
 
-        Clay_Color regularColor = { 0x54, 0x54, 0x54, 0xFF };
-        Clay_Color hoveredColor = { 0x44, 0x44, 0x44, 0xFF };
+        const Clay_Color regularColor = { 0x54, 0x54, 0x54, 0xFF };
+        const Clay_Color hoveredColor = { 0x44, 0x44, 0x44, 0xFF };
 
         CLAY_AUTO_ID({
             .layout = {
@@ -152,22 +153,22 @@ void Application::Build_ScrollBar(Clay_ElementId id, bool vertical) {
             .cornerRadius    = CLAY_CORNER_RADIUS(6),
         }) {}
 
-        uint32_t currentID = Clay_GetOpenElementId();
+        const uint32_t currentID = Clay_GetOpenElementId();
         if(m_currentScrollBar != currentID && parentHovered && Clay_MouseClicked()) {
             m_currentScrollBar         = currentID;
-            m_currentScrollClickOrigin = { m_cursorX, m_cursorY };
+            m_currentScrollClickOrigin = { .x = m_cursorX, .y = m_cursorY };
         }
 
         if(m_currentScrollBar == currentID) {
             if(vertical) {
-                float centerOffset  = ((elementData.boundingBox.y + (handleHeight / 2)) - m_cursorY);
-                float scrollPercent = centerOffset / (scrollData.scrollContainerDimensions.height - handleHeight);
+                const float centerOffset  = ((elementData.boundingBox.y + (handleHeight / 2)) - m_cursorY);
+                const float scrollPercent = centerOffset / (scrollData.scrollContainerDimensions.height - handleHeight);
 
                 scrollData.scrollPosition->y = scrollPercent * (scrollData.contentDimensions.height - scrollData.scrollContainerDimensions.height);
             }
             else {
-                float centerOffset  = ((elementData.boundingBox.x + (handleWidth / 2)) - m_cursorX);
-                float scrollPercent = centerOffset / (scrollData.scrollContainerDimensions.width - handleWidth);
+                const float centerOffset  = ((elementData.boundingBox.x + (handleWidth / 2)) - m_cursorX);
+                const float scrollPercent = centerOffset / (scrollData.scrollContainerDimensions.width - handleWidth);
 
                 scrollData.scrollPosition->x = scrollPercent * (scrollData.contentDimensions.width - scrollData.scrollContainerDimensions.width);
             }
@@ -206,7 +207,7 @@ void Application::BuildCameraLabel(const Application::CameraInfo& info) {
 void Application::BuildCameraSettings() {
     SettingContainer(camerasContainerID, CLAY_SIZING_FIXED(200), true) {
         CONTAINER_TITLE("Camera");
-        SEPARATOR;
+        SEPARATOR();
 
         if(m_activeDropdown.id == camerasContainerID.id) {
             for(auto& info : m_cameras) {
@@ -294,7 +295,7 @@ void Application::BuildPipewireRecordingDeviceLabel(const PipewireDevice& device
 void Application::BuildRecordingDeviceSettings() {
     SettingContainer(recordingDevicesContainerID, CLAY_SIZING_FIXED(250), true) {
         CONTAINER_TITLE("Recording Device");
-        SEPARATOR;
+        SEPARATOR();
 
         if(m_activeDropdown.id == recordingDevicesContainerID.id) {
 #ifdef ENABLE_PIPEWIRE
@@ -318,6 +319,7 @@ void Application::BuildRecordingDeviceSettings() {
             BuildPipewireRecordingDeviceLabel(m_pipewire.currentSource != nullptr ? *m_pipewire.currentSource : m_pipewire.sources[0]);
         }
 #else
+        // NOLINTNEXTLINE
         if(false) {}
 #endif
         else {
@@ -367,7 +369,7 @@ void Application::BuildPixelFormatLabel(const PixelFormat& format) {
 void Application::BuildPixelFormatSettings() {
     SettingContainer(pixelFormatContainerID, CLAY_SIZING_FIXED(200), true) {
         CONTAINER_TITLE("Pixel Format");
-        SEPARATOR;
+        SEPARATOR();
 
         if(m_activeDropdown.id == pixelFormatContainerID.id) {
             BuildPixelFormatLabel(PIXEL_FORMAT_RGB24);
@@ -418,7 +420,7 @@ void Application::BuildDisplayModeLabel(const CameraDisplayMode& displayMode) {
 void Application::BuildDisplayModeSettings() {
     SettingContainer(displayModeContainerID, CLAY_SIZING_FIT(), true) {
         CONTAINER_TITLE("Display Mode");
-        SEPARATOR;
+        SEPARATOR();
 
         if(m_activeDropdown.id == displayModeContainerID.id) {
             BuildDisplayModeLabel(DISPLAY_MODE_CONTAIN);
@@ -471,7 +473,7 @@ void Application::BuildScaleModeLabel(const SDL_ScaleMode& scaleMode) {
 void Application::BuildScaleModeSettings() {
     SettingContainer(scaleModeContainerID, CLAY_SIZING_FIT(), true) {
         CONTAINER_TITLE("Scale Mode");
-        SEPARATOR;
+        SEPARATOR();
 
         if(m_activeDropdown.id == scaleModeContainerID.id) {
             BuildScaleModeLabel(SDL_SCALEMODE_NEAREST);
@@ -542,7 +544,7 @@ void Application::BuildFrameLimiterSettings() {
 
     SettingContainer(CLAY_ID("FrameLimitContainer"), CLAY_SIZING_FIT(), false) {
         CONTAINER_TITLE("Frame Limiting");
-        SEPARATOR;
+        SEPARATOR();
 
         CLAY(
             frameLimitTypeContainerID,
@@ -584,7 +586,7 @@ void Application::BuildFrameLimiterSettings() {
         Build_ScrollBar(frameLimitTypeContainerID);
 
         if(m_frameLimitInfo.type == FRAME_LIMIT_FPS) {
-            SEPARATOR;
+            SEPARATOR();
 
             CLAY(
                 fpsSliderTrackID,
@@ -596,10 +598,10 @@ void Application::BuildFrameLimiterSettings() {
             ) {
                 checkSliderClicked();
 
-                Clay_ElementData data = Clay_GetElementData(fpsSliderTrackID);
+                const Clay_ElementData data = Clay_GetElementData(fpsSliderTrackID);
                 if(data.found && data.boundingBox.width != 0.0f) {
-                    Clay_Color handleDefaultColor = { 0xFF, 0xFF, 0xFF, 0xFF };
-                    Clay_Color handleLockedColor  = { 0xAF, 0xAF, 0xAF, 0xFF };
+                    const Clay_Color handleDefaultColor = { 0xFF, 0xFF, 0xFF, 0xFF };
+                    const Clay_Color handleLockedColor  = { 0xAF, 0xAF, 0xAF, 0xFF };
 
                     CLAY_AUTO_ID({
                         .layout = {
@@ -641,7 +643,7 @@ void Application::BuildFullscreenSettings() {
 
     SettingContainer(CLAY_ID("FullscreenContainer"), CLAY_SIZING_FIT(), false) {
         CONTAINER_TITLE("Fullscreen");
-        SEPARATOR;
+        SEPARATOR();
 
         const int baseSize          = 18;
         const int hoveredSizeOffset = 2;
@@ -682,7 +684,7 @@ void Application::BuildFullscreenSettings() {
                                              ? (canSetFullscreen ? fullscreenRegularColor : fullscreenLockedColor)
                                              : (canSetFullscreen ? nonFullscreenRegularColor : nonFullscreenLockedColor);
 
-                CLAY(CLAY_ID("FullscreenToggleButtonInner"), { .layout = { .sizing = GROWGROW }, .backgroundColor = color }) {}
+                CLAY(CLAY_ID("FullscreenToggleButtonInner"), { .layout = { .sizing = GROWGROW() }, .backgroundColor = color }) {}
             }
         }
     }
@@ -710,7 +712,7 @@ void Application::BuildVolumeSettings() {
 
     SettingContainer(CLAY_ID("VolumeContainer"), CLAY_SIZING_FIT(), false) {
         CONTAINER_TITLE("Volume");
-        SEPARATOR;
+        SEPARATOR();
 
         CLAY(
             volumeSliderTrackID,
@@ -734,16 +736,16 @@ void Application::BuildVolumeSettings() {
             CLAY(
                 CLAY_ID("VolumeTrackExtraRange"),
                 {
-                    .layout          = { .sizing = GROWGROW },
+                    .layout          = { .sizing = GROWGROW() },
                     .backgroundColor = canSetVolume ? extraColor : extraLockedColor,
                     .cornerRadius    = { 0, 6, 0, 6 },
                 }
             ) {}
 
-            Clay_ElementData data = Clay_GetElementData(volumeSliderTrackID);
+            const Clay_ElementData data = Clay_GetElementData(volumeSliderTrackID);
             if(data.found && data.boundingBox.width != 0.0f) {
-                Clay_Color handleDefaultColor = { 0xFF, 0xFF, 0xFF, 0xFF };
-                Clay_Color handleLockedColor  = { 0xAF, 0xAF, 0xAF, 0xFF };
+                const Clay_Color handleDefaultColor = { 0xFF, 0xFF, 0xFF, 0xFF };
+                const Clay_Color handleLockedColor  = { 0xAF, 0xAF, 0xAF, 0xFF };
 
                 CLAY_AUTO_ID({
                     .layout = {
@@ -787,7 +789,7 @@ void Application::BuildSettingsMenu() {
         CLAY_ID("SettingsBackground"),
         {
             .layout = {
-                .sizing         = GROWGROW,
+                .sizing         = GROWGROW(),
                 .childAlignment = { .x = CLAY_ALIGN_X_CENTER, .y = CLAY_ALIGN_Y_CENTER },
             },
             .backgroundColor = { 0x00, 0x00, 0x00, 0xAF },
@@ -812,7 +814,7 @@ void Application::BuildSettingsMenu() {
                 m_activeDropdown = m_invalidDropdown;
             }
 
-            CLAY_AUTO_ID({ .layout = { .sizing = GROWGROW, .layoutDirection = CLAY_TOP_TO_BOTTOM } }) {
+            CLAY_AUTO_ID({ .layout = { .sizing = GROWGROW(), .layoutDirection = CLAY_TOP_TO_BOTTOM } }) {
                 CLAY(
                     settingsContainerID,
                     {
@@ -879,7 +881,7 @@ void Application::updateSettingsUI() {
 
 #ifndef __EMSCRIPTEN__
     if(m_slidingFPS) {
-        Clay_ElementData data = Clay_GetElementData(fpsSliderTrackID);
+        const Clay_ElementData data = Clay_GetElementData(fpsSliderTrackID);
         if(data.found && prevCursorX != m_cursorX) {
             const float percent = std::clamp((m_cursorX - data.boundingBox.x) / data.boundingBox.width, 0.0f, 1.0f);
             m_fpsSliderPosition = percent;
@@ -899,7 +901,7 @@ void Application::updateSettingsUI() {
 
     if(m_slidingVolume) {
         // snap volume to 100, if it goes within a range outside of the snap range then dont snap to 100
-        Clay_ElementData data = Clay_GetElementData(volumeSliderTrackID);
+        const Clay_ElementData data = Clay_GetElementData(volumeSliderTrackID);
         if(data.found && prevCursorX != m_cursorX) {
             const float percent = std::clamp((m_cursorX - data.boundingBox.x) / data.boundingBox.width, 0.0f, 1.0f);
             int volume          = static_cast<int>(percent * MAX_VOLUME);

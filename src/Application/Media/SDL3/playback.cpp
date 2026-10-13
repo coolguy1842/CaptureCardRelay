@@ -11,7 +11,7 @@ void Application::playbackCallbackHandler(SDL_AudioStream* stream, int needed, i
             continue;
         }
 
-        AudioFrame buffer = m_audioBuffers.front();
+        const AudioFrame buffer = m_audioBuffers.front();
         m_audioBuffers.pop();
 
         SDL_PutAudioStreamData(stream, buffer->data(), m_audioBufferSizeBytes);
