@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="48"
+   height="48"
+   viewBox="0 0 12.7 12.7"
+   version="1.1"
+   id="svg1"
+   inkscape:version="1.4.4 (dcaf3e7d9e, 2026-05-05)"
+   sodipodi:docname="com.coolguy.CaptureCardRelay.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#000000"
+     bordercolor="#eeeeee"
+     borderopacity="1"
+     inkscape:showpageshadow="0"
+     inkscape:pageopacity="0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#505050"
+     inkscape:document-units="mm"
+     inkscape:zoom="8"
+     inkscape:cx="71.8125"
+     inkscape:cy="28.75"
+     inkscape:window-width="1917"
+     inkscape:window-height="1096"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1" />
+  <defs
+     id="defs1" />
+  <rect
+     style="display:inline;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.209153;stroke-dasharray:none;stroke-opacity:1"
+     id="rect4"
+     width="12.7"
+     height="12.7"
+     x="-1.110223e-16"
+     y="0"
+     inkscape:label="background" />
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <g
+       id="g7"
+       inkscape:label="box">
+      <rect
+         style="fill:none;fill-opacity:1;stroke:#d4d9dc;stroke-width:0.271416;stroke-opacity:1"
+         id="rect1"
+         width="9.4285841"
+         height="9.4285841"
+         x="1.635708"
+         y="1.635708"
+         ry="0.44122186"
+         inkscape:label="box" />
+      <rect
+         style="fill:#d4d9dc;fill-opacity:1;stroke:none;stroke-width:0.185308;stroke-dasharray:none;stroke-opacity:1"
+         id="rect2-3"
+         width="1.5"
+         height="0.5"
+         x="-8.8817842e-16"
+         y="5.5"
+         ry="0"
+         rx="0"
+         inkscape:label="cableIn1" />
+      <rect
+         style="fill:#d4d9dc;fill-opacity:1;stroke:none;stroke-width:0.185308;stroke-dasharray:none;stroke-opacity:1"
+         id="rect2"
+         width="1.5"
+         height="0.5"
+         x="0"
+         y="6.5"
+         ry="0"
+         rx="0"
+         inkscape:label="cableIn2" />
+      <rect
+         style="fill:#d4d9dc;fill-opacity:1;stroke:none;stroke-width:0.185308;stroke-dasharray:none;stroke-opacity:1"
+         id="rect2-1"
+         width="1.5"
+         height="0.5"
+         x="11.2"
+         y="6"
+         ry="0"
+         rx="0"
+         inkscape:label="cableOut" />
+    </g>
+    <g
+       id="g8"
+       inkscape:label="camera">
+      <rect
+         style="fill:none;fill-opacity:1;stroke:#d4d9dc;stroke-width:0.242509;stroke-dasharray:none;stroke-opacity:1"
+         id="rect5"
+         width="5.7574911"
+         height="3.7574906"
+         x="3.4712543"
+         y="4.4712548"
+         ry="0.12010293"
+         inkscape:label="cameraBody" />
+      <circle
+         style="fill:none;fill-opacity:1;stroke:#d4d9dc;stroke-width:0.2;stroke-dasharray:none;stroke-opacity:1"
+         id="path5"
+         cx="6.3499999"
+         cy="6.3499999"
+         r="0.69999999"
+         inkscape:label="cameraLens" />
+      <rect
+         style="fill:#d4d9dc;fill-opacity:1;stroke:none;stroke-width:0.132505;stroke-dasharray:none;stroke-opacity:1"
+         id="rect6"
+         width="0.60000002"
+         height="0.2"
+         x="7.5"
+         y="4.1500001"
+         inkscape:label="cameraShutter" />
+      <rect
+         style="fill:#d4d9dc;fill-opacity:1;stroke:none;stroke-width:0.195561;stroke-dasharray:none;stroke-opacity:1"
+         id="rect7"
+         width="0.55000001"
+         height="0.55000001"
+         x="6.0749998"
+         y="3.9000001"
+         ry="0.07879214"
+         inkscape:label="cameraFlash" />
+    </g>
+  </g>
+</svg>

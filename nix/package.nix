@@ -72,7 +72,6 @@ in stdenv.mkDerivation {
         meson
 
         kdePackages.extra-cmake-modules
-
         makeWrapper
     ];
 

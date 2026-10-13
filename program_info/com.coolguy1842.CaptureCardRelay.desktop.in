@@ -1,7 +1,7 @@
 [Desktop Entry]
 Version=1.0
 Name=@App_DisplayName@
-Comment=Watch, and listen to your capture cards output
+Comment=@App_Description@
 Type=Application
 Terminal=false
 Exec=@App_BINARY_NAME@ %U

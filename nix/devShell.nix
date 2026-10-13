@@ -31,4 +31,10 @@
         sdl3
         sdl3-ttf
     ];
+
+    packages = with pkgs; [
+        inkscape
+        icoutils
+        oxipng
+    ];
 }

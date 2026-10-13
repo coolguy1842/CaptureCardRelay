@@ -72,3 +72,4 @@ cmake --build build -- -j $(nproc)
 - [Clay](https://github.com/nicbarker/clay) Great UI layout library.
 - [rocket](https://github.com/tripleslash/rocket) Easy to use & safe signal library.
 - [Rohrkabel](https://github.com/Curve/rohrkabel) Nice Pipewire C++ wrapper.
+- [PrismLauncher](github.com/PrismLauncher/PrismLauncher) CMake setup heavily based off this.

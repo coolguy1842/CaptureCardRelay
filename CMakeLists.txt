@@ -6,6 +6,10 @@ string(JSON PROJ_VERSION GET "${MANIFEST_JSON}" version)
 
 project(${PROJ_NAME} LANGUAGES CXX VERSION ${PROJ_VERSION})
 
+set(App_VERSION_NAME "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}")
+set(App_VERSION_NAME4 "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}.0")
+set(App_VERSION_NAME4_COMMA "${PROJECT_VERSION_MAJOR},${PROJECT_VERSION_MINOR},${PROJECT_VERSION_PATCH},0")
+
 option(enable_pipewire "Enable Pipewire Direct Audio" ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -18,15 +22,19 @@ if(UNIX)
     set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
 endif()
 
-if(DEFINED EMSCRIPTEN)
-    set(App_BINARY_NAME "index")
+if(EMSCRIPTEN)
+    set(App_BINARY_NAME "index" CACHE STRING "Name of the output HTML, JS, WASM file")
+else()
+    set(App_BINARY_NAME "CaptureCardRelay" CACHE STRING "Name of the application binary")
 endif()
 
-set(App_BINARY_NAME "CaptureCardRelay" CACHE STRING "Name of the application binary")
 add_subdirectory(program_info)
 
-include_directories(SYSTEM ext/include)
-add_executable(${App_Name}
+if(WIN32 AND NOT EMSCRIPTEN)
+    set(APP_RCS ${CMAKE_CURRENT_BINARY_DIR}/${App_Branding_WindowsRC})
+endif()
+
+add_executable(${App_Name} WIN32
     src/clay_renderer_SDL3.cpp    
     
     src/frame_limiter.cpp
@@ -45,6 +53,7 @@ add_executable(${App_Name}
     src/Application/UI/settings.cpp
 
     src/main.cpp
+    ${APP_RCS}
 )
 
 add_compile_definitions("CAPTURECARDRELAY_VERSION=\"${PROJ_VERSION}\"")
@@ -86,10 +95,10 @@ if(DEFINED EMSCRIPTEN)
     target_compile_options(${App_Name} PRIVATE -sUSE_SDL=3 --use-port=sdl3_ttf)
     target_link_options(${App_Name} PRIVATE -sUSE_SDL=3 --use-port=sdl3_ttf)
     
-    target_link_options(${App_Name} PRIVATE -sALLOW_MEMORY_GROWTH --shell-file ${PROJECT_SOURCE_DIR}/dist/shell.html -o index.html)
+    target_link_options(${App_Name} PRIVATE -sALLOW_MEMORY_GROWTH --shell-file ${PROJECT_SOURCE_DIR}/dist/shell.html -o ${App_BINARY_NAME}.html)
     set(CMAKE_EXECUTABLE_SUFFIX ".html")
 else()
-    if(UNIX)
+    if(UNIX AND NOT APPLE)
         if(enable_pipewire)
             # https://github.com/PolisanTheEasyNick/Crescendo/blob/main/CMakeLists.txt
             find_package(PkgConfig)
@@ -125,10 +134,9 @@ else()
         include(KDEInstallDirs)
 
         install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${App_Desktop} DESTINATION ${KDE_INSTALL_APPDIR})
-        install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/${App_PNG} DESTINATION "${KDE_INSTALL_ICONDIR}/hicolor/64x64/apps")
-    elseif(WIN32)
-        target_compile_options(${App_Name} PRIVATE -mwindows)
-    else()
+        install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/${App_SVG} DESTINATION "${KDE_INSTALL_ICONDIR}/hicolor/scalable/apps")
+        install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/${App_PNG_256} DESTINATION "${KDE_INSTALL_ICONDIR}/hicolor/256x256/apps" RENAME "${App_ID}.png")
+    elseif(NOT WIN32)
         message(FATAL_ERROR "Platform not supported")
     endif()
 
@@ -167,10 +175,18 @@ else()
     target_link_libraries(${App_Name} PRIVATE SDL3::SDL3 SDL3_ttf::SDL3_ttf)
 endif()
 
+target_include_directories(${App_Name} SYSTEM PRIVATE ext/include)
 target_include_directories(${App_Name} PRIVATE include)
 
 if(DEFINED App_BINARY_NAME)
     set_target_properties(${App_Name} PROPERTIES OUTPUT_NAME "${App_BINARY_NAME}")
 endif()
 
-install(TARGETS ${App_Name} BUNDLE DESTINATION "." COMPONENT Runtime)
+install(TARGETS ${App_Name}
+    BUNDLE DESTINATION "." COMPONENT Runtime
+)
+
+# install pdbs
+if(CMAKE_CXX_LINKER_SUPPORTS_PDB)
+    install(FILES $<TARGET_PDB_FILE:${Launcher_Name}> DESTINATION ${BINARY_DEST_DIR} OPTIONAL)
+endif()
