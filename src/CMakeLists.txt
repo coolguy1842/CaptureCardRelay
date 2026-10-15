@@ -97,16 +97,6 @@ if(CMAKE_CXX_LINKER_SUPPORTS_PDB)
     install(FILES $<TARGET_PDB_FILE:${App_Name}> DESTINATION ${BINARY_DEST_DIR} OPTIONAL)
 endif()
 
-get_target_property(SDL3_LIB_DIR SDL3::SDL3 IMPORTED_LOCATION)
-if(SDL3_LIB_DIR)
-    get_filename_component(SDL3_LIB_DIR "${SDL3_LIB_DIR}" DIRECTORY)
-endif()
-
-get_target_property(SDL3_TTF_LIB_DIR SDL3_ttf::SDL3_ttf IMPORTED_LOCATION)
-if(SDL3_TTF_LIB_DIR)
-    get_filename_component(SDL3_TTF_LIB_DIR "${SDL3_TTF_LIB_DIR}" DIRECTORY)
-endif()
-
 # https://gitlab.kitware.com/cmake/cmake/-/work_items/22993
 if(NOT EMSCRIPTEN AND WIN32)
     add_custom_command(
