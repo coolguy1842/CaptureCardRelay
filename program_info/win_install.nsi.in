@@ -11,9 +11,9 @@ Name "@App_DisplayName@"
 InstallDir "$LOCALAPPDATA\Programs\@App_CommonName@"
 InstallDirRegKey HKCU "Software\@App_CommonName@" "InstallDir"
 RequestExecutionLevel user
-OutFile "../@App_CommonName@-Setup.exe"
+OutFile "@App_CommonName@-Setup.exe"
 
-!define MUI_ICON "../@App_Branding_ICO@"
+!define MUI_ICON "@App_Branding_ICO@"
 
 !define UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\@App_CommonName@"
 
@@ -309,6 +309,7 @@ Section "@App_DisplayName@"
   SetOutPath $INSTDIR
 
   File "@App_BINARY_NAME@.exe"
+  File *.dll
 
   ; Write the installation path into the registry
   WriteRegStr HKCU Software\@App_CommonName@ "InstallDir" "$INSTDIR"
@@ -338,8 +339,6 @@ Section "@App_DisplayName@"
 
 SectionEnd
 
-@App_MSVC_Redist_NSIS_Section@
-
 Section "Start Menu Shortcut" SM_SHORTCUTS
 
   CreateShortcut "$SMPROGRAMS\@App_DisplayName@.lnk" "$INSTDIR\@App_BINARY_NAME@.exe" "" "$INSTDIR\@App_BINARY_NAME@.exe" 0
@@ -364,6 +363,7 @@ Section "Uninstall"
   DeleteRegKey HKCU SOFTWARE\@App_CommonName@
 
   Delete $INSTDIR\@App_BINARY_NAME@.exe
+  Delete $INSTDIR\*.dll
 
   Delete $INSTDIR\uninstall.exe
 

@@ -1,10 +1,13 @@
-cmake_minimum_required(VERSION 3.25)
+cmake_minimum_required(VERSION 3.27)
 
 file(READ manifest.json MANIFEST_JSON)
 string(JSON PROJ_NAME    GET "${MANIFEST_JSON}" name)
 string(JSON PROJ_VERSION GET "${MANIFEST_JSON}" version)
 
 project(${PROJ_NAME} LANGUAGES CXX VERSION ${PROJ_VERSION})
+
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(App_VERSION_NAME "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}")
 set(App_VERSION_NAME4 "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}.0")
@@ -26,6 +29,11 @@ endif()
 
 option(USE_PIPEWIRE "Enable the use of Pipewire direct audio" ON)
 option(USE_CLANG_TIDY "Enable the use of clang-tidy during compilation" OFF)
+option(DEBUG_ADDRESS_SANITIZER "Enable Address Sanitizer in Debug builds" OFF)
+option(ENABLE_LTO "Enable Link Time Optimization" OFF)
+
+string(TIMESTAMP TODAY "%Y-%m-%d")
+set(App_BUILD_TIMESTAMP "${TODAY}")
 
 if(EMSCRIPTEN)
     set(App_BINARY_NAME "index" CACHE STRING "Name of the output HTML, JS, WASM file")
@@ -34,6 +42,54 @@ else()
 endif()
 
 add_subdirectory(program_info)
+
+# https://github.com/PrismLauncher/PrismLauncher/blob/60bcc2694d7433e2d2a657fbf62b0d022f9116e0/CMakeLists.txt#L121
+if(DEBUG_ADDRESS_SANITIZER)
+    message(STATUS "Address Sanitizer enabled for Debug builds, Turn it off with -DDEBUG_ADDRESS_SANITIZER=off")
+
+    set(USE_ASAN_COMPILE_OPTIONS $<AND:$<CONFIG:Debug,RelWithDebInfo>,$<COMPILE_LANGUAGE:C,CXX>>)
+    if(CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
+        message(STATUS "Using Address Sanitizer compile options for MSVC frontend")
+        add_compile_options(
+            $<${USE_ASAN_COMPILE_OPTIONS}:/fsanitize=address>
+            $<${USE_ASAN_COMPILE_OPTIONS}:/Oy->
+        )
+    elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+        message(STATUS "Using Address Sanitizer compile options for GCC/Clang")
+        add_compile_options(
+            $<${USE_ASAN_COMPILE_OPTIONS}:-fsanitize=address,undefined>
+            $<${USE_ASAN_COMPILE_OPTIONS}:-fno-omit-frame-pointer>
+            $<${USE_ASAN_COMPILE_OPTIONS}:-fno-sanitize-recover=null>
+        )
+        add_link_options($<${USE_ASAN_COMPILE_OPTIONS}:-fsanitize=address,undefined>)
+    else()
+        message(STATUS "Address Sanitizer not available on compiler ${CMAKE_CXX_COMPILER_ID}")
+    endif()
+endif()
+
+# https://github.com/PrismLauncher/PrismLauncher/blob/60bcc2694d7433e2d2a657fbf62b0d022f9116e0/CMakeLists.txt#L147
+if(ENABLE_LTO)
+    include(CheckIPOSupported)
+    check_ipo_supported(RESULT ipo_supported OUTPUT ipo_error)
+
+    if(ipo_supported)
+        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
+        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_MINSIZEREL TRUE)
+        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO TRUE)
+
+        if(CMAKE_BUILD_TYPE)
+            if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
+                message(STATUS "IPO / LTO enabled")
+            else()
+                message(STATUS "Not enabling IPO / LTO on debug builds")
+            endif()
+        else()
+            message(STATUS "IPO / LTO will only be enabled for release builds")
+        endif()
+    else()
+        message(STATUS "IPO / LTO not supported: <${ipo_error}>")
+    endif()
+endif()
 
 if(NOT EMSCRIPTEN)
     if(UNIX AND NOT APPLE)
@@ -70,6 +126,7 @@ if(NOT EMSCRIPTEN)
         include(KDEInstallDirs)
 
         install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${App_Desktop} DESTINATION ${KDE_INSTALL_APPDIR})
+        install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${App_MetaInfo} DESTINATION ${KDE_INSTALL_METAINFODIR})
         install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/${App_SVG} DESTINATION "${KDE_INSTALL_ICONDIR}/hicolor/scalable/apps")
         install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/${App_PNG_256} DESTINATION "${KDE_INSTALL_ICONDIR}/hicolor/256x256/apps" RENAME "${App_ID}.png")
     elseif(NOT WIN32)
@@ -104,12 +161,10 @@ if(NOT EMSCRIPTEN)
 
         FetchContent_MakeAvailable(SDL3_ttf)
     endif()
-
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address,undefined -g")
-    set(CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address,undefined -g")
 endif()
 
 # clang doesnt like the --use-port and -sUSE_SDL=3 options
+# https://github.com/PrismLauncher/PrismLauncher/blob/60bcc2694d7433e2d2a657fbf62b0d022f9116e0/CMakeLists.txt#L107
 if(USE_CLANG_TIDY AND NOT EMSCRIPTEN)
     find_program(CLANG_TIDY clang-tidy OPTIONAL)
 

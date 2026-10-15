@@ -1,0 +1,90 @@
+# all workflows and actions are heavily adapted from PrismLauncher
+
+name: Package for Linux
+description: Create Linux packages for Capture Card Relay
+
+inputs:
+  version:
+    description: Application version
+    required: true
+  build-type:
+    description: Type for the build
+    required: true
+    default: Debug
+  artifact-name:
+    description: Name of the uploaded artifact
+    required: true
+    default: Linux
+
+runs:
+  using: composite
+  steps:
+    - name: Setup build variables
+      shell: bash
+      run: |
+        # Fixup architecture naming for AppImages
+        dpkg_arch="$(dpkg-architecture -q DEB_HOST_ARCH_CPU)"
+        case "$dpkg_arch" in
+          "amd64")
+            APPIMAGE_ARCH="x86_64"
+            ;;
+          "arm64")
+            APPIMAGE_ARCH="aarch64"
+            ;;
+          *)
+            echo "# 🚨 The Debian architecture \"$deb_arch\" is not recognized!" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+            ;;
+        esac
+        echo "APPIMAGE_ARCH=$APPIMAGE_ARCH" >> "$GITHUB_ENV"
+
+        # Used for the file paths of libraries
+        echo "DEB_HOST_MULTIARCH=$(dpkg-architecture -q DEB_HOST_MULTIARCH)" >> "$GITHUB_ENV"
+
+    - name: Package AppImage
+      shell: bash
+      env:
+        VERSION: ${{ github.ref_type == 'tag' && github.ref_name || inputs.version }}
+        BUILD_DIR: build
+        INSTALL_APPIMAGE_DIR: install-appdir
+      run: |
+        cmake --install ${{ env.BUILD_DIR }} --config ${{ inputs.build-type }} --prefix ${{ env.INSTALL_APPIMAGE_DIR }}
+        # so sharun finds SDL3 libraries
+        export LD_LIBRARY_PATH="$SDL3_ROOT/lib:$SDL3_ttf_ROOT/lib:$LD_LIBRARY_PATH"
+
+        sharun lib4bin \
+          --hard-links \
+          --with-hooks \
+          --dst-dir "$INSTALL_APPIMAGE_DIR" \
+          "$INSTALL_APPIMAGE_DIR"/bin/*
+
+        cp ~/bin/AppImageUpdate.AppImage "$INSTALL_APPIMAGE_DIR"/bin/
+
+        ln -s com.coolguy1842.CaptureCardRelay.metainfo.xml "$INSTALL_APPIMAGE_DIR"/share/metainfo/com.coolguy1842.CaptureCardRelay.appdata.xml
+        ln -s share/applications/com.coolguy1842.CaptureCardRelay.desktop "$INSTALL_APPIMAGE_DIR"
+        ln -s share/icons/hicolor/256x256/apps/com.coolguy1842.CaptureCardRelay.png "$INSTALL_APPIMAGE_DIR"
+        mv "$INSTALL_APPIMAGE_DIR"/{sharun,AppRun}
+        ls -la "$INSTALL_APPIMAGE_DIR"
+
+        if [[ "${{ github.ref_type }}" == "tag" ]]; then
+          APPIMAGE_DEST="CaptureCardRelay-Linux-$APPIMAGE_ARCH.AppImage"
+        else
+          APPIMAGE_DEST="CaptureCardRelay-Linux-$VERSION-${{ inputs.build-type }}-$APPIMAGE_ARCH.AppImage"
+        fi
+
+        mkappimage \
+          --updateinformation "gh-releases-zsync|${{ github.repository_owner }}|${{ github.event.repository.name }}|latest|CaptureCardRelay-Linux-$APPIMAGE_ARCH.AppImage.zsync" \
+          "$INSTALL_APPIMAGE_DIR" \
+          "$APPIMAGE_DEST"
+
+    - name: Upload AppImage
+      uses: actions/upload-artifact@v7
+      with:
+        name: CaptureCardRelay-${{ runner.os }}-${{ inputs.version }}-${{ inputs.build-type }}-${{ env.APPIMAGE_ARCH }}.AppImage
+        path: CaptureCardRelay-${{ runner.os }}-*${{ env.APPIMAGE_ARCH }}.AppImage
+
+    - name: Upload AppImage Zsync
+      uses: actions/upload-artifact@v7
+      with:
+        name: CaptureCardRelay-${{ runner.os }}-${{ inputs.version }}-${{ inputs.build-type }}-${{ env.APPIMAGE_ARCH }}.AppImage.zsync
+        path: CaptureCardRelay-${{ runner.os }}-*${{ env.APPIMAGE_ARCH }}.AppImage.zsync

@@ -16,7 +16,7 @@ WarningsAsErrors: true
 
 # -cppcoreguidelines-pro-type-vararg is just for this project as i use SDL_Log
 # -misc-non-private-member-variables-in-classes is because cppcoreguidlines implements the same check
-# -hicpp-avoid-goto is because cppcoreguidelines implements the same check
+# -hicpp-avoid-goto and -hicpp-special-member-functions is because cppcoreguidelines implements the same check
 Checks: >
     cppcoreguidelines-*,
     bugprone-*,
@@ -43,6 +43,7 @@ Checks: >
     -misc-include-cleaner,
     -readability-function-cognitive-complexity,
     -readability-avoid-nested-conditional-operator,
+    -hicpp-special-member-functions,
     -hicpp-signed-bitwise,
     -hicpp-avoid-goto
 

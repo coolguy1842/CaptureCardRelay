@@ -17,9 +17,8 @@
         llvmPackages_latest.clang
 
         pkg-config
-        ninja
+        gnumake
         cmake
-        meson
 
         kdePackages.extra-cmake-modules
     ];

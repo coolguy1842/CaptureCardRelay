@@ -10,3 +10,6 @@ CMakeFiles
 debug*.sh
 run*.sh
 compile_commands.json
+
+# dont block build_ workflows
+!.github/**/*

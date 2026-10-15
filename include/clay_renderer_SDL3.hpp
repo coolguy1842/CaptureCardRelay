@@ -11,8 +11,8 @@ struct Clay_Color;
 struct Clay_RenderCommandArray;
 
 struct Clay_SDL3RendererData {
-    SDL_Renderer* renderer;
-    TTF_TextEngine* textEngine;
+    SDL_Renderer* renderer     = nullptr;
+    TTF_TextEngine* textEngine = nullptr;
     std::vector<TTF_Font*> fonts;
 };
 

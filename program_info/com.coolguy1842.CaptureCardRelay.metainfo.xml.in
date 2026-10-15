@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop">
+  <id>@App_ID@</id>
+  <name>@App_DisplayName@</name>
+  <summary>@App_Description@</summary>
+  <developer id="@App_Developer_ID@">
+    <name>@App_DisplayName@ Contributors</name>
+  </developer>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-only</project_license>
+  <description>
+    <p>@App_Description@</p>
+  </description>
+  <releases>
+    <release version="@App_VERSION_NAME@" date="@App_BUILD_TIMESTAMP@"></release>
+  </releases>
+  <url type="homepage">https://github.com/coolguy1842/CaptureCardRelay</url>
+  <url type="bugtracker">https://github.com/coolguy1842/CaptureCardRelay/issues</url>
+  <url type="vcs-browser">https://github.com/coolguy1842/CaptureCardRelay</url>
+  <content_rating type="oars-1.1">
+    <content_attribute id="violence-fantasy">unknown</content_attribute>
+    <content_attribute id="social-chat">unknown</content_attribute>
+  </content_rating>
+  <launchable type="desktop-id">@App_ID@.desktop</launchable>
+</component>

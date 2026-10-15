@@ -1,0 +1,96 @@
+# all workflows and actions are heavily adapted from PrismLauncher
+
+name: Build Application and Make Release
+
+on:
+  push:
+    tags:
+      - "*"
+
+permissions: {}
+
+jobs:
+  build_release:
+    name: Build Release
+    uses: ./.github/workflows/build.yml
+    permissions:
+      contents: read
+      # Required for cache
+      packages: write
+    with:
+      build-type: Release
+      environment: Release
+    secrets: inherit
+
+  create_release:
+    needs: build_release
+    permissions:
+      contents: write
+    runs-on: ubuntu-slim
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          submodules: "true"
+          path: "CaptureCardRelay-source"
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v8
+
+      - name: Grab and store version
+        run: |
+          tag_name=$(echo ${{ github.ref }} | grep -oE "[^/]+$")
+          echo "VERSION=$tag_name" >> $GITHUB_ENV
+          echo "VERSION_NUMBER=$(echo $tag_name | grep -Po 'v\K([0-9]+\.[0-9]+\.[0-9]+)')" >> $GITHUB_ENV
+          
+      - name: Create Tar Archive
+        run: |
+          mv ${{ github.workspace }}/CaptureCardRelay-source CaptureCardRelay-${{ env.VERSION }}
+          tar --exclude='.git' -czf CaptureCardRelay-${{ env.VERSION }}.tar.gz CaptureCardRelay-${{ env.VERSION }}
+
+          echo "SOURCE_SHA256=$(sha256sum CaptureCardRelay-${{ env.VERSION }}.tar.gz | awk '{print $1}')" >> $GITHUB_ENV
+
+      - name: Create PKGBUILD
+        uses: elieahd/templater@v1
+        with:
+          template: 'CaptureCardRelay-${{ env.VERSION }}/program_info/PKGBUILD.template.sh'
+          file: 'PKGBUILD'
+          variables: pkgversion="${{ env.VERSION_NUMBER }}" repo="${{ github.server_url }}/${{ github.repository }}" source="${{ github.server_url }}/${{ github.repository }}/releases/download/${{ env.VERSION }}/CaptureCardRelay-${{ env.VERSION }}.tar.gz" hash="${{ env.SOURCE_SHA256 }}"
+
+      - name: Package artifacts properly
+        run: |
+          mv CaptureCardRelay-*.AppImage/CaptureCardRelay-*-x86_64.AppImage CaptureCardRelay-Linux-x86_64.AppImage
+          mv CaptureCardRelay-*.AppImage.zsync/CaptureCardRelay-*-x86_64.AppImage.zsync CaptureCardRelay-Linux-x86_64.AppImage.zsync
+          mv CaptureCardRelay-*.AppImage/CaptureCardRelay-*-aarch64.AppImage CaptureCardRelay-Linux-aarch64.AppImage
+          mv CaptureCardRelay-*.AppImage.zsync/CaptureCardRelay-*-aarch64.AppImage.zsync CaptureCardRelay-Linux-aarch64.AppImage.zsync
+          
+          for d in CaptureCardRelay-Windows-MinGW-w64*; do
+            cd "${d}" || continue
+            INST="$(echo -n ${d} | grep -o Setup || true)"
+            NAME="CaptureCardRelay-Windows-MinGW-w64"
+            test -z "${INST}" || mv CaptureCardRelay-*.exe ../${NAME}-Setup-${{ env.VERSION }}.exe
+            test -n "${INST}" || zip -r -9 "../${NAME}-${{ env.VERSION }}.zip" *
+            cd ..
+          done
+
+      - name: Create release
+        id: create_release
+        uses: softprops/action-gh-release@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: ${{ github.ref }}
+          name: Capture Card Relay ${{ env.VERSION }}
+          draft: true
+          prerelease: false
+          fail_on_unmatched_files: true
+          files: |
+            CaptureCardRelay-${{ env.VERSION }}.tar.gz
+            CaptureCardRelay-Linux-x86_64.AppImage
+            CaptureCardRelay-Linux-x86_64.AppImage.zsync
+            CaptureCardRelay-Linux-aarch64.AppImage
+            CaptureCardRelay-Linux-aarch64.AppImage.zsync
+            CaptureCardRelay-Windows-MinGW-w64-${{ env.VERSION }}.zip
+            CaptureCardRelay-Windows-MinGW-w64-Setup-${{ env.VERSION }}.exe
+            PKGBUILD

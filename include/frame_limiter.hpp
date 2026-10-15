@@ -4,7 +4,7 @@
 // original: https://github.com/flightlessmango/MangoHud/blob/master/mangohud-next/client/fps_limiter.h
 class FrameLimiter {
 public:
-    FrameLimiter(bool useEarly);
+    explicit FrameLimiter(bool useEarly);
 
     [[nodiscard]] bool active() const;
     [[nodiscard]] bool useEarly() const;

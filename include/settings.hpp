@@ -52,7 +52,7 @@ SDL_Colorspace colorspaceFromName(const char* name);
 
 class Settings {
 public:
-    Settings(const std::optional<std::string>& manualFile = std::nullopt);
+    explicit Settings(const std::optional<std::string>& manualFile = std::nullopt);
     Settings(const Settings&)            = delete;
     Settings& operator=(const Settings&) = delete;
 

@@ -107,7 +107,9 @@ void Application::initCameras() {
     {
         int cameraCount          = 0;
         SDL_CameraID* camerasRaw = SDL_GetCameras(&cameraCount);
-        cameras.assign_range(std::span(camerasRaw, static_cast<size_t>(cameraCount)));
+
+        auto camerasSpan = std::span(camerasRaw, static_cast<size_t>(cameraCount));
+        cameras.assign(camerasSpan.begin(), camerasSpan.end());
 
         if(camerasRaw == nullptr) {
             SDL_free(camerasRaw);

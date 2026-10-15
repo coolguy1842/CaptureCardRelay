@@ -1,0 +1,68 @@
+# all workflows and actions are heavily adapted from PrismLauncher
+
+name: Setup Dependencies
+description: Install and setup dependencies for building CaptureCardRelay
+
+inputs:
+  build-type:
+    description: Type for the build
+    required: true
+    default: Debug
+  artifact-name:
+    description: Name of the uploaded artifact
+    required: true
+  msystem:
+    description: MSYS2 subsystem to use
+    required: false
+  vcvars-arch:
+    description: Visual Studio architecture to use
+    required: false
+
+outputs:
+  build-type:
+    description: Type of build used
+    value: ${{ inputs.build-type }}
+
+runs:
+  using: composite
+
+  steps:
+    - name: Setup Linux dependencies
+      if: ${{ runner.os == 'Linux' }}
+      uses: ./.github/actions/setup-dependencies/linux
+
+    - name: Setup Windows dependencies
+      if: ${{ runner.os == 'Windows' }}
+      uses: ./.github/actions/setup-dependencies/windows
+      with:
+        build-type: ${{ inputs.build-type }}
+        msystem: ${{ inputs.msystem }}
+        vcvars-arch: ${{ inputs.vcvars-arch }}
+
+    - uses: libsdl-org/setup-sdl@main
+      id: sdl
+      with:
+        install-linux-dependencies: true
+        build-type: Release
+        version: 3-latest
+        version-sdl-ttf: 3-latest
+        # doesnt find pacman on msys if shell isnt specified there
+        shell: ${{ (runner.os == 'Windows' && inputs.msystem != '') && 'msys2 {0}' || '' }} 
+
+    - name: Setup ccache
+      if: ${{ (runner.os != 'Windows' || inputs.msystem == '') && inputs.build-type == 'Debug' }}
+      uses: hendrikmuhs/ccache-action@v1.2.23
+      with:
+        variant: sccache
+        create-symlink: ${{ runner.os != 'Windows' }}
+        key: ${{ runner.os }}-${{ runner.arch }}-${{ inputs.artifact-name }}-sccache
+
+    - name: Use ccache on debug builds
+      if: ${{ inputs.build-type == 'Debug' }}
+      shell: bash
+      env:
+        # Only use ccache on MSYS2
+        CCACHE_VARIANT: ${{ (runner.os == 'Windows' && inputs.msystem != '') && 'ccache' || 'sccache' }}
+      run: |
+        echo "CMAKE_C_COMPILER_LAUNCHER=$CCACHE_VARIANT" >> "$GITHUB_ENV"
+        echo "CMAKE_CXX_COMPILER_LAUNCHER=$CCACHE_VARIANT" >> "$GITHUB_ENV"

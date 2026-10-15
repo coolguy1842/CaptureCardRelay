@@ -31,7 +31,9 @@ void Application::initAudioRecordingDevices() {
     {
         int recordingDeviceCount               = 0;
         SDL_AudioDeviceID* recordingDevicesRaw = SDL_GetAudioRecordingDevices(&recordingDeviceCount);
-        recordingDevices.assign_range(std::span(recordingDevicesRaw, static_cast<size_t>(recordingDeviceCount)));
+
+        auto recordingDevicesSpan = std::span(recordingDevicesRaw, static_cast<size_t>(recordingDeviceCount));
+        recordingDevices.assign(recordingDevicesSpan.begin(), recordingDevicesSpan.end());
 
         if(recordingDevicesRaw == nullptr) {
             SDL_free(recordingDevicesRaw);

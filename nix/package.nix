@@ -67,9 +67,8 @@ in stdenv.mkDerivation {
 
     nativeBuildInputs = with pkgs; [
         pkg-config
-        ninja
+        gnumake
         cmake
-        meson
 
         kdePackages.extra-cmake-modules
         makeWrapper

@@ -20,7 +20,7 @@ Application::Application(const std::optional<std::string>& settingsPath)
     , m_height(600)
     , m_frameLimiter(false) {
     if(!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_CAMERA)) {
-        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't initialize SDL: %s", SDL_GetError());
+        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "FATAL: Couldn't initialize SDL: %s", SDL_GetError());
         setShouldQuit();
 
         return;
@@ -28,7 +28,7 @@ Application::Application(const std::optional<std::string>& settingsPath)
 
     m_window = SDL_CreateWindow("Capture Card Relay", m_width, m_height, SDL_WINDOW_RESIZABLE);
     if(m_window == nullptr) {
-        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't create window: %s", SDL_GetError());
+        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "FATAL: Couldn't create window: %s", SDL_GetError());
         setShouldQuit();
 
         return;
@@ -40,7 +40,7 @@ Application::Application(const std::optional<std::string>& settingsPath)
     if(m_renderData.renderer != nullptr) {
         SDL_GPUDevice* gpu = SDL_GetGPURendererDevice(m_renderData.renderer);
         if(gpu == nullptr) {
-            SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Created renderer with GPU device, but GPU somehow null: %s", SDL_GetError());
+            SDL_LogError(SDL_LOG_CATEGORY_ERROR, "FATAL: Created renderer with GPU device, but GPU somehow null: %s", SDL_GetError());
             setShouldQuit();
 
             return;
@@ -61,7 +61,7 @@ Application::Application(const std::optional<std::string>& settingsPath)
 
         m_renderData.renderer = SDL_CreateRenderer(m_window, nullptr);
         if(m_renderData.renderer == nullptr) {
-            SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't create renderer: %s", SDL_GetError());
+            SDL_LogError(SDL_LOG_CATEGORY_ERROR, "FATAL: Couldn't create renderer: %s", SDL_GetError());
             setShouldQuit();
 
             return;
@@ -71,7 +71,7 @@ Application::Application(const std::optional<std::string>& settingsPath)
     }
 
     if(!TTF_Init()) {
-        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't initialise SDL_ttf: %s", SDL_GetError());
+        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "FATAL: Couldn't initialise SDL_ttf: %s", SDL_GetError());
         setShouldQuit();
 
         return;
@@ -79,7 +79,7 @@ Application::Application(const std::optional<std::string>& settingsPath)
 
     m_renderData.textEngine = TTF_CreateRendererTextEngine(m_renderData.renderer);
     if(m_renderData.textEngine == nullptr) {
-        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to create text engine from renderer: %s", SDL_GetError());
+        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "FATAL: Failed to create text engine from renderer: %s", SDL_GetError());
         setShouldQuit();
 
         return;
@@ -87,7 +87,7 @@ Application::Application(const std::optional<std::string>& settingsPath)
 
     m_renderData.fonts.push_back(TTF_OpenFontIO(SDL_IOFromConstMem(reinterpret_cast<const void*>(damase_v2), sizeof(damase_v2)), true, 40.0f));
     if(m_renderData.fonts.back() == nullptr) {
-        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Couldn't open font: %s", SDL_GetError());
+        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "FATAL: Couldn't open font: %s", SDL_GetError());
         setShouldQuit();
 
         return;
@@ -102,16 +102,13 @@ Application::Application(const std::optional<std::string>& settingsPath)
     initPipewire();
 
     if(!m_usingPipewire) {
+#endif
         SDL_InitSubSystem(SDL_INIT_AUDIO);
 
         openAudioPlaybackDevice();
         openAudioRecordingDevice();
+#ifdef ENABLE_PIPEWIRE
     }
-#else
-    SDL_InitSubSystem(SDL_INIT_AUDIO);
-
-    openAudioPlaybackDevice();
-    openAudioRecordingDevice();
 #endif
 
     if(getShouldQuit()) {
@@ -171,13 +168,18 @@ Application::~Application() {
         TTF_CloseFont(font);
     }
 
-    TTF_DestroyRendererTextEngine(m_renderData.textEngine);
+    if(m_renderData.textEngine != nullptr) {
+        TTF_DestroyRendererTextEngine(m_renderData.textEngine);
+    }
+
     TTF_Quit();
 
     SDL_DestroyRenderer(m_renderData.renderer);
     SDL_DestroyWindow(m_window);
 
+    SDL_QuitSubSystem(SDL_INIT_AUDIO);
     SDL_Quit();
+
     m_clayMemory.reset();
 }
 

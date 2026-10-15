@@ -28,7 +28,7 @@
 
 class Application {
 public:
-    Application(const std::optional<std::string>& settingsPath);
+    explicit Application(const std::optional<std::string>& settingsPath);
     Application(const Application&)            = delete;
     Application& operator=(const Application&) = delete;
 
