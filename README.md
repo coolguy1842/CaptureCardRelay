@@ -37,7 +37,11 @@ Currently, there are settings for:
 | preferredColorspace  | Valid options are found [here](https://wiki.libsdl.org/SDL3/SDL_Colorspace) | SDL_COLORSPACE_SRGB |
 | preferredPixelFormat | Which pixel format the camera outputs to the program, the other pixelFormat setting applies to the texture output. Valid options are found [here](https://wiki.libsdl.org/SDL3/SDL_PixelFormat) | SDL_PIXELFORMAT_NV12 |
 
-### Installing<br><sub>NOTE: Others may be added if requested, otherwise build manually.</sub>
+### Installing<br><sub>NOTE: Others may be added if requested, otherwise use AppImage or build manually.</sub>
+
+Windows:
+Download the setup exe [here](https://github.com/coolguy1842/CaptureCardRelay/releases/latest).
+Or extract the (semi) portable zip, the config will still be created in AppData.
 
 Arch:
 ```sh
