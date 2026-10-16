@@ -11,10 +11,13 @@ void Application::recordingCallbackHandler(SDL_AudioStream* stream, int availabl
             frame = m_freeAudioBuffers.front();
             m_freeAudioBuffers.pop();
         }
-        else {
+        else if(!m_audioBuffers.empty()) {
             // take oldest from audio buffers
             frame = m_audioBuffers.front();
             m_audioBuffers.pop();
+        }
+        else {
+            return;
         }
 
         SDL_GetAudioStreamData(stream, frame->data(), m_audioBufferSizeBytes);
