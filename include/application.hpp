@@ -48,12 +48,12 @@ protected:
 private:
     struct CameraInfo {
         SDL_CameraID id  = 0;
-        const char* name = nullptr;
+        std::string name = "(null)";
     };
 
     struct RecordingDeviceInfo {
         SDL_AudioDeviceID id = 0;
-        const char* name     = nullptr;
+        std::string name     = "(null)";
     };
 
     struct AudioData {
@@ -61,6 +61,21 @@ private:
         SDL_AudioSpec spec       = {};
 
         SDL_AudioStream* stream = nullptr;
+    };
+
+    struct CameraData {
+        SDL_CameraID id  = 0;
+        std::string name = "(null)";
+
+        SDL_Camera* device   = nullptr;
+        SDL_Texture* texture = nullptr;
+        SDL_CameraSpec spec  = {};
+
+        bool approved         = false;
+        SDL_FRect displayRect = { 0.0f, 0.0f };
+
+        std::vector<Uint8> pixels;
+        int pitch = 0;
     };
 
 #ifdef ENABLE_PIPEWIRE
@@ -155,6 +170,7 @@ private:
     void Build_ScrollBar(Clay_ElementId id, bool vertical = true);
 
     void BuildCameraLabel(const CameraInfo& info);
+    void BuildCameraLabel(const CameraData& info);
     void BuildCameraSettings();
 
     void BuildPixelFormatLabel(const PixelFormat& format);
@@ -327,19 +343,7 @@ private:
     std::vector<SDL_AudioDeviceID> m_playbackDevices;
     std::vector<RecordingDeviceInfo> m_recordingDevices;
 
-    struct {
-        SDL_Camera* device   = nullptr;
-        SDL_Texture* texture = nullptr;
-        SDL_CameraSpec spec  = {};
-
-        bool approved         = false;
-        SDL_FRect displayRect = { 0.0f, 0.0f };
-
-        std::vector<Uint8> pixels;
-        int pitch = 0;
-    } m_camera;
-
-    CameraInfo m_currentCamera                   = { .id = 0, .name = "(null)" };
+    CameraData m_camera;
     RecordingDeviceInfo m_currentRecordingDevice = { .id = 0, .name = "(null)" };
 
     // to stop memory leak from displaying

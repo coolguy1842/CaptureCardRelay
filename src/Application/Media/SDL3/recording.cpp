@@ -55,7 +55,7 @@ void Application::initAudioRecordingDevices() {
 
         if(name == nullptr) {
             SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to get name of recording device with id: %d: %s", device, SDL_GetError());
-            name = "";
+            name = "(null)";
         }
 
         m_recordingDevices.push_back({ .id = device, .name = name });
@@ -92,7 +92,7 @@ void Application::openAudioRecordingDevice() {
         return;
     }
 
-    SDL_Log("Opened recording device: %s", deviceInfo.name);
+    SDL_Log("Opened recording device: %s", deviceInfo.name.c_str());
     SDL_GetAudioDeviceFormat(m_audioRecording.device, &m_audioRecording.spec, nullptr);
 
     m_currentRecordingDevice = deviceInfo;
@@ -119,17 +119,12 @@ void Application::closeAudioRecordingDevice() {
 void Application::setRecordingDeviceSDL(Application::RecordingDeviceInfo info) {
     m_settings.setSelectedRecordingDevice(info.name);
 
-    const char* deviceName = "(null)";
     if(info.id != 0) {
-        if(info.name != nullptr) {
-            deviceName = info.name;
-        }
-
         openAudioRecordingDevice();
     }
     else {
         closeAudioRecordingDevice();
     }
 
-    changeStatus(std::format("Recording Device: {}", deviceName), std::chrono::milliseconds(1500));
+    changeStatus(std::format("Recording Device: {}", info.name), std::chrono::milliseconds(1500));
 }

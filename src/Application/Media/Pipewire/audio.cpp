@@ -77,8 +77,11 @@ void Application::onPipewireGlobal(const pipewire::global& global) {
             return;
         }
 
-        pipewire::node node    = std::move(nodeOpt.value());
-        const std::string name = getNodeName(node);
+        pipewire::node node = std::move(nodeOpt.value());
+        std::string name    = getNodeName(node);
+        if(name.empty()) {
+            name = "(null)";
+        }
 
         if(node.props()["media.class"] == "Audio/Sink") {
             m_pipewire.sinks.push_back({

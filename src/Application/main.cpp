@@ -116,8 +116,8 @@ Application::Application(const std::optional<std::string>& settingsPath)
     }
 
     SDL_PumpEvents();
-    SDL_FlushEvents(SDL_EVENT_AUDIO_DEVICE_ADDED, SDL_EVENT_AUDIO_DEVICE_ADDED);
-    SDL_FlushEvents(SDL_EVENT_CAMERA_DEVICE_ADDED, SDL_EVENT_CAMERA_DEVICE_ADDED);
+    SDL_FlushEvent(SDL_EVENT_AUDIO_DEVICE_ADDED);
+    SDL_FlushEvent(SDL_EVENT_CAMERA_DEVICE_ADDED);
 
     const uint32_t arenaSize = Clay_MinMemorySize();
     m_clayMemory             = std::make_unique<std::vector<char>>(static_cast<size_t>(arenaSize));

@@ -34,6 +34,14 @@ Clay_String toClayString(const char* str) {
     return { .isStaticallyAllocated = true, .length = static_cast<int32_t>(strlen(str)), .chars = str };
 }
 
+Clay_String toClayString(const std::string& str) {
+    if(str.empty()) {
+        return { .isStaticallyAllocated = true, .length = 7, .chars = "(null)" };
+    }
+
+    return { .isStaticallyAllocated = false, .length = static_cast<int32_t>(str.size()), .chars = str.c_str() };
+}
+
 Clay_String cameraPixelFormatStr(PixelFormat mode) {
     switch(mode) {
     case PIXEL_FORMAT_CAMERA: return toClayString("Camera");
@@ -190,12 +198,44 @@ void Application::BuildCameraLabel(const Application::CameraInfo& info) {
                 textConfig   = hoveredTextConfig;
 
                 if(Clay_MouseClicked()) {
-                    setCamera(info);
+                    if(info.id != 0 && m_camera.id != info.id) {
+                        setCamera(info);
+                    }
+
                     m_activeDropdown = m_invalidDropdown;
                 }
             }
 
-            if(m_currentCamera.id == info.id) {
+            if(m_camera.id == info.id) {
+                textConfig = selectedTextConfig;
+            }
+        }
+
+        CLAY_TEXT(toClayString(info.name), textConfig);
+    }
+}
+
+void Application::BuildCameraLabel(const Application::CameraData& info) {
+    CLAY_AUTO_ID() {
+        Clay_TextElementConfig textConfig = defaultTextConfig;
+        if(!m_settings.canSetSelectedCamera()) {
+            textConfig = lockedTextConfig;
+        }
+        else if(m_activeDropdown.id == camerasContainerID.id) {
+            if(Clay_Hovered()) {
+                m_nextCursor = m_pointerCursor;
+                textConfig   = hoveredTextConfig;
+
+                if(Clay_MouseClicked()) {
+                    if(info.id != 0 && m_camera.id != info.id) {
+                        setCamera({ .id = info.id, .name = info.name });
+                    }
+
+                    m_activeDropdown = m_invalidDropdown;
+                }
+            }
+
+            if(m_camera.id == info.id) {
                 textConfig = selectedTextConfig;
             }
         }
@@ -210,6 +250,11 @@ void Application::BuildCameraSettings() {
         SEPARATOR();
 
         if(m_activeDropdown.id == camerasContainerID.id) {
+            if(m_cameras.empty()) {
+                BuildCameraLabel(CameraInfo{ .id = 0, .name = "(null)" });
+                continue;
+            }
+
             for(auto& info : m_cameras) {
                 BuildCameraLabel(info);
             }
@@ -217,7 +262,7 @@ void Application::BuildCameraSettings() {
             continue;
         }
 
-        BuildCameraLabel(m_currentCamera);
+        BuildCameraLabel(m_camera);
         if(m_settings.canSetSelectedCamera() && Clay_Hovered()) {
             m_nextCursor = m_pointerCursor;
 
@@ -242,7 +287,7 @@ void Application::BuildSDLRecordingDeviceLabel(const RecordingDeviceInfo& info) 
                 textConfig   = hoveredTextConfig;
 
                 if(Clay_MouseClicked()) {
-                    if(m_currentRecordingDevice.id != info.id) {
+                    if(info.id != 0 && m_currentRecordingDevice.id != info.id) {
                         setRecordingDeviceSDL(info);
                     }
 
@@ -286,7 +331,7 @@ void Application::BuildPipewireRecordingDeviceLabel(const PipewireDevice& device
             }
         }
 
-        CLAY_TEXT(toClayString(device.name.c_str()), textConfig);
+        CLAY_TEXT(toClayString(device.name), textConfig);
     }
 }
 
@@ -300,6 +345,11 @@ void Application::BuildRecordingDeviceSettings() {
         if(m_activeDropdown.id == recordingDevicesContainerID.id) {
 #ifdef ENABLE_PIPEWIRE
             if(m_usingPipewire) {
+                if(m_pipewire.sources.empty()) {
+                    BuildSDLRecordingDeviceLabel({ .id = 0, .name = "(null)" });
+                    continue;
+                }
+
                 for(const PipewireDevice& device : m_pipewire.sources) {
                     BuildPipewireRecordingDeviceLabel(device);
                 }
@@ -307,6 +357,11 @@ void Application::BuildRecordingDeviceSettings() {
                 continue;
             }
 #endif
+
+            if(m_recordingDevices.empty()) {
+                BuildSDLRecordingDeviceLabel({ .id = 0, .name = "(null)" });
+                continue;
+            }
 
             for(const RecordingDeviceInfo& info : m_recordingDevices) {
                 BuildSDLRecordingDeviceLabel(info);
@@ -316,7 +371,12 @@ void Application::BuildRecordingDeviceSettings() {
         }
 #ifdef ENABLE_PIPEWIRE
         if(m_usingPipewire) {
-            BuildPipewireRecordingDeviceLabel(m_pipewire.currentSource != nullptr ? *m_pipewire.currentSource : m_pipewire.sources[0]);
+            if(m_pipewire.currentSource != nullptr) {
+                BuildPipewireRecordingDeviceLabel(*m_pipewire.currentSource);
+            }
+            else {
+                BuildSDLRecordingDeviceLabel({ .id = 0, .name = "(null)" });
+            }
         }
 #else
         // NOLINTNEXTLINE
@@ -628,7 +688,7 @@ void Application::BuildFrameLimiterSettings() {
 
             CLAY_AUTO_ID({ .layout = { .sizing = { .width = CLAY_SIZING_GROW() }, .padding = { 0, 0, 6, 0 }, .childAlignment = { .x = CLAY_ALIGN_X_CENTER } } }) {
                 CLAY_TEXT(
-                    toClayString(m_fpsText.c_str()),
+                    toClayString(m_fpsText),
                     CLAY_TEXT_CONFIG({ .textColor = canSetFPS ? defaultTextConfig.textColor : lockedTextConfig.textColor, .fontSize = defaultTextConfig.fontSize })
                 );
             }
@@ -772,7 +832,7 @@ void Application::BuildVolumeSettings() {
 
         CLAY_AUTO_ID({ .layout = { .sizing = { .width = CLAY_SIZING_GROW() }, .padding = { 0, 0, 6, 0 }, .childAlignment = { .x = CLAY_ALIGN_X_CENTER } } }) {
             CLAY_TEXT(
-                toClayString(m_volumeText.c_str()),
+                toClayString(m_volumeText),
                 CLAY_TEXT_CONFIG({ .textColor = canSetVolume ? defaultTextConfig.textColor : lockedTextConfig.textColor, .fontSize = defaultTextConfig.fontSize })
             );
         }

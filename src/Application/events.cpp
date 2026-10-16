@@ -60,7 +60,7 @@ SDL_AppResult Application::handleEvent(SDL_Event* event) {
 
         break;
     case SDL_EVENT_CAMERA_DEVICE_APPROVED:
-        SDL_Log("Opened camera: %s", m_currentCamera.name);
+        SDL_Log("Opened camera: %s", m_camera.name.c_str());
 
         SDL_CameraSpec spec;
         if(!SDL_GetCameraFormat(m_camera.device, &spec)) {
@@ -118,15 +118,20 @@ SDL_AppResult Application::handleEvent(SDL_Event* event) {
         switch(event->key.key) {
 #ifndef __EMSCRIPTEN__
         case SDLK_LEFT: {
-            if(m_cameras.empty() || !m_settings.canSetSelectedCamera()) {
+            if(!m_settings.canSetSelectedCamera()) {
+                // try reopen if none found
+                if(m_camera.device == nullptr) {
+                    openCamera();
+                }
+
                 break;
             }
 
-            if(!m_camera.approved && m_camera.device != nullptr) {
-                closeCamera();
+            initCameras();
+            if(m_cameras.empty()) {
+                break;
             }
 
-            initCameras();
             if(m_camera.device != nullptr) {
                 SDL_CameraID currentCamera = SDL_GetCameraID(m_camera.device);
 
@@ -151,6 +156,15 @@ SDL_AppResult Application::handleEvent(SDL_Event* event) {
             break;
         }
         case SDLK_RIGHT: {
+            if(!m_settings.canSetRecordingDevice()) {
+                // try reopen if none found
+                if(m_audioRecording.device == 0) {
+                    openAudioRecordingDevice();
+                }
+
+                break;
+            }
+
 #ifdef ENABLE_PIPEWIRE
             if(m_usingPipewire) {
                 if(m_pipewire.sources.empty()) {
@@ -187,7 +201,8 @@ SDL_AppResult Application::handleEvent(SDL_Event* event) {
             }
 #endif
 
-            if(m_recordingDevices.empty() || !m_settings.canSetRecordingDevice()) {
+            initAudioRecordingDevices();
+            if(m_recordingDevices.empty()) {
                 break;
             }
 
