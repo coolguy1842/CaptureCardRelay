@@ -165,6 +165,8 @@ void Application::initPipewire() {
             return;
         }
 
+        m_pipewire.core = core.value();
+
         auto registry = pw::registry::create(m_pipewire.core);
         if(!registry) {
             SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to create pipewire registry: %s", registry.error().message().c_str());
