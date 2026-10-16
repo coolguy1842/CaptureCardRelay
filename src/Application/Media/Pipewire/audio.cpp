@@ -1,5 +1,6 @@
 #ifdef ENABLE_PIPEWIRE
 #include <application.hpp>
+#include <exception>
 #include <format>
 #include <memory>
 #include <string>
@@ -138,9 +139,31 @@ void Application::onPipewireGlobalRemoved(uint32_t id) {
 void Application::initPipewire() {
     // TODO: try in different thread
     try {
-        m_pipewire.loop    = pw::main_loop::create().value();
-        m_pipewire.context = pw::context::create(m_pipewire.loop).value();
-        m_pipewire.core    = pw::core::create(m_pipewire.context).value();
+        auto loop = pw::main_loop::create();
+        if(!loop) {
+            SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to create pipewire loop: %s", loop.error().message().c_str());
+            return;
+        }
+
+        m_pipewire.loop = loop.value();
+
+        auto context = pw::context::create(m_pipewire.loop);
+        if(!context) {
+            SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to create pipewire context: %s", context.error().message().c_str());
+
+            cleanupPipewire();
+            return;
+        }
+
+        m_pipewire.context = context.value();
+
+        auto core = pw::core::create(m_pipewire.context);
+        if(!core) {
+            SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to create pipewire core: %s", core.error().message().c_str());
+
+            cleanupPipewire();
+            return;
+        }
 
         auto registry = pw::registry::create(m_pipewire.core);
         if(!registry) {
@@ -253,8 +276,8 @@ void Application::initPipewire() {
             return;
         }
     }
-    catch(...) {
-        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to initialize pipewire, using SDL3");
+    catch(const std::exception& e) {
+        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to initialize pipewire, using SDL3:\n%s", e.what());
 
         cleanupPipewire();
         return;
@@ -277,8 +300,8 @@ void Application::cleanupPipewire() {
 
         m_pipewire = {};
     }
-    catch(...) {
-        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Error happened while cleaning up pipewire");
+    catch(const std::exception& e) {
+        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Error happened while cleaning up pipewire:\n%s", e.what());
     }
 }
 

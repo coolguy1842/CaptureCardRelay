@@ -49,6 +49,7 @@ runs:
         INSTALL_APPIMAGE_DIR: install-appdir
       run: |
         cmake --install ${{ env.BUILD_DIR }} --config ${{ inputs.build-type }} --prefix ${{ env.INSTALL_APPIMAGE_DIR }}
+
         # so sharun finds SDL3 libraries
         export LD_LIBRARY_PATH="$SDL3_ROOT/lib:$SDL3_ttf_ROOT/lib:$LD_LIBRARY_PATH"
 

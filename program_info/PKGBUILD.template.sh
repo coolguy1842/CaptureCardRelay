@@ -5,7 +5,7 @@ arch=('any')
 pkgdesc="Displays a capture cards video and microphone, with extra scaling and volume features"
 provides=('capture-card-relay')
 conflicts=('capture-card-relay')
-makedepends=('cmake')
+makedepends=('cmake' 'extra-cmake-modules')
 optdepends=(
   'sdl3: to use the system SDL3 library'
   'sdl3_ttf: to use the system SDL3-TTF library'

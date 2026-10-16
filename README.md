@@ -38,6 +38,7 @@ Currently, there are settings for:
 | preferredPixelFormat | Which pixel format the camera outputs to the program, the other pixelFormat setting applies to the texture output. Valid options are found [here](https://wiki.libsdl.org/SDL3/SDL_PixelFormat) | SDL_PIXELFORMAT_NV12 |
 
 ### Installing<br><sub>NOTE: Others may be added if requested, otherwise use AppImage or build manually.</sub>
+#### NOTE: The AppImage likely has a more bugs than a native binary.
 
 Windows:
 Download the setup exe [here](https://github.com/coolguy1842/CaptureCardRelay/releases/latest).

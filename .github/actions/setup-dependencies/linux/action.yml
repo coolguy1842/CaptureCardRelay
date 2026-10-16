@@ -13,8 +13,7 @@ runs:
         sudo apt-get -y update
         sudo apt-get -y install \
           dpkg-dev \
-          cmake ninja-build extra-cmake-modules pkg-config \
-          libpipewire-0.3-dev
+          cmake ninja-build extra-cmake-modules pkg-config
 
     - name: Setup AppImage tooling
       shell: bash
