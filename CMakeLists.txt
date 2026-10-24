@@ -23,6 +23,58 @@ if(UNIX)
     set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
 endif()
 
+# https://github.com/PrismLauncher/PrismLauncher/blob/6f5723937f558b06eb6795d16e0994299ba9c040/CMakeLists.txt#L43
+if(CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
+    add_compile_options(
+        # /GS Adds buffer security checks, default on but included anyway to mirror gcc's fstack-protector flag
+        "$<$<COMPILE_LANGUAGE:C,CXX>:/GS>"
+
+        # /Gw helps reduce binary size
+        # /Gy allows the compiler to package individual functions
+        # /guard:cf enables control flow guard
+        "$<$<AND:$<CONFIG:Release,RelWithDebInfo>,$<COMPILE_LANGUAGE:C,CXX>>:/Gw;/Gy;/guard:cf>"
+    )
+
+    add_link_options(
+        # /LTCG allows for linking wholy optimizated programs
+        "$<$<COMPILE_LANGUAGE:C,CXX>:/LTCG>"
+    )
+
+    # /GL enables whole program optimizations
+    # NOTE: With Clang, this is implemented as regular LTO and only used during linking
+    if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+        add_compile_options("$<$<AND:$<CONFIG:Release,RelWithDebInfo>,$<COMPILE_LANGUAGE:C,CXX>>:/GL>")
+    endif()
+
+    # See https://github.com/ccache/ccache/issues/1040
+    # TODO(@getchoo): Is sccache affected by this? Would be nice to use `ProgramDatabase`....
+    set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<$<CONFIG:Debug,RelWithDebInfo>:Embedded>")
+
+    # Ensure our runtime library matches our vcpkg dependencies
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
+
+    # TODO(@getchoo): Do we actually need this???
+    if(CMAKE_MSVC_RUNTIME_LIBRARY STREQUAL "MultiThreadedDLL")
+        set(CMAKE_MAP_IMPORTED_CONFIG_DEBUG Release "")
+        set(CMAKE_MAP_IMPORTED_CONFIG_RELWITHDEBINFO Release "")
+    endif()
+else()
+    add_compile_options("$<$<COMPILE_LANGUAGE:C,CXX>:-fstack-protector-strong;--param=ssp-buffer-size=4>")
+
+    # Avoid re-defining _FORTIFY_SOURCE, as it can cause redefinition errors in setups that use it by default (i.e., package builds)
+    if(NOT (CMAKE_C_FLAGS MATCHES "-D_FORTIFY_SOURCE" OR CMAKE_CXX_FLAGS MATCHES "-D_FORTIFY_SOURCE"))
+        # NOTE: _FORTIFY_SOURCE requires optimizations in most newer versions of glibc
+        add_compile_options("$<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<CONFIG:Release,RelWithDebInfo>>:-D_FORTIFY_SOURCE=2>")
+    endif()
+
+    if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+        # -ffunction-sections and -fdata-sections help reduce binary size
+        # -mguard=cf enables Control Flow Guard
+        # TODO: Look into -gc-sections to further reduce binary size
+        add_compile_options("$<$<AND:$<CONFIG:Release,RelWithDebInfo>,$<COMPILE_LANGUAGE:C,CXX>>:-ffunction-sections;-fdata-sections;-mguard=cf>")
+    endif()
+endif()
+
 if(CMAKE_GENERATOR STREQUAL "Unix Makefiles" OR CMAKE_GENERATOR MATCHES "^Ninja")
     set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 endif()

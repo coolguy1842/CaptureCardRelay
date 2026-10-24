@@ -97,8 +97,15 @@ if(CMAKE_CXX_LINKER_SUPPORTS_PDB)
     install(FILES $<TARGET_PDB_FILE:${App_Name}> DESTINATION ${BINARY_DEST_DIR} OPTIONAL)
 endif()
 
+if(EMSCRIPTEN)
+    install(FILES
+        "$<TARGET_FILE_DIR:${App_Name}>/${App_BINARY_NAME}.js"
+        "$<TARGET_FILE_DIR:${App_Name}>/${App_BINARY_NAME}.wasm"
+        # ive tried to make this dynamic with variables, but it seems like index.html just goes to bin and doesnt say why so just do this
+        DESTINATION bin
+    )
 # https://gitlab.kitware.com/cmake/cmake/-/work_items/22993
-if(NOT EMSCRIPTEN AND WIN32)
+elseif(WIN32)
     add_custom_command(
         TARGET ${App_Name} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_RUNTIME_DLLS:${App_Name}> $<TARGET_FILE_DIR:${App_Name}>
