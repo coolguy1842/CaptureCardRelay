@@ -51,6 +51,16 @@
                 "lhs": "${hostSystemName}",
                 "rhs": "Windows"
             }
+        },
+        {
+            "name": "emscripten",
+            "displayName": "Emscripten",
+            "binaryDir": "build",
+            "installDir": "install",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "ENABLE_LTO": "ON"
+            }
         }
     ],
     "buildPresets": [

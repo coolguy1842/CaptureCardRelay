@@ -25,7 +25,6 @@ outputs:
 
 runs:
   using: composite
-
   steps:
     - name: Setup Linux dependencies
       if: ${{ runner.os == 'Linux' }}

@@ -1,4 +1,4 @@
-name: "publish web"
+name: Publish Web
 on:
   push:
     branches: [ master ]
@@ -6,7 +6,7 @@ on:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-  
+
 permissions:
   contents: read
   pages: write
@@ -14,6 +14,8 @@ permissions:
 
 jobs:
   build:
+    if: github.repository == 'coolguy1842/CaptureCardRelay'
+    
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -30,21 +32,19 @@ jobs:
           version: 'latest'
           actions-cache-folder: 'emsdk-cache'
 
-      - name: Configure CMake
-        run: emcmake cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+      - name: Configure project
+        run: emcmake cmake -S . -B build --preset "emscripten"
 
-      - name: Compile CMake
+      - name: Run build
         run: cmake --build build -- -j 12
 
-      - name: Copy built files
-        run: |
-          mkdir public
-          cp build/index.* public/
+      - name: Install output
+        run: cmake --install build --prefix public
 
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: public/
+          path: public/bin
 
       - name: Deploy to GitHub Pages
         id: deployment
