@@ -299,7 +299,13 @@ void Application::cleanupPipewire() {
     try {
         // issue with cleanup unless done in this order
         m_pipewire.virtualMic = {};
-        m_pipewire.registry   = std::nullopt;
+
+        m_pipewire.metadataListener.reset();
+        m_pipewire.metadata.reset();
+
+        m_pipewire.registryListener.reset();
+        m_pipewire.registry = std::nullopt;
+
         m_pipewire.core.reset();
         m_pipewire.context.reset();
 

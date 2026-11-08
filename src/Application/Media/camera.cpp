@@ -266,6 +266,10 @@ void Application::closeCamera() {
         m_camera.device = nullptr;
     }
 
+#ifndef __EMSCRIPTEN__
+    updateFrameLimiter(m_frameLimitInfo);
+#endif
+
     cleanupCameraTexture();
 }
 
@@ -339,6 +343,10 @@ void Application::cleanupCameraTexture() {
 }
 
 void Application::updateCameraTexture() {
+#ifndef __EMSCRIPTEN__
+    updateFrameLimiter(m_frameLimitInfo);
+#endif
+
     cleanupCameraTexture();
     if(m_camera.device == nullptr || !m_camera.approved) {
         return;
@@ -390,10 +398,6 @@ void Application::updateCameraTexture() {
     }
 
     updateCameraDisplayRect();
-
-#ifndef __EMSCRIPTEN__
-    updateFrameLimiter(m_frameLimitInfo);
-#endif
 }
 
 void Application::renderCameraToTexture() {
