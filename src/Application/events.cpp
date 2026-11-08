@@ -78,11 +78,7 @@ SDL_AppResult Application::handleEvent(SDL_Event* event) {
         break;
     case SDL_EVENT_CAMERA_DEVICE_DENIED:
         SDL_Log("Camera %s was rejected", SDL_GetCameraName(SDL_GetCameraID(m_camera.device)));
-
         closeCamera();
-#ifndef __EMSCRIPTEN__
-        updateFrameLimiter(m_frameLimitInfo);
-#endif
 
         break;
     case SDL_EVENT_AUDIO_DEVICE_ADDED:

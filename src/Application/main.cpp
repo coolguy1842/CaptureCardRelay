@@ -157,6 +157,10 @@ Application::~Application() {
     closeAudioRecordingDevice();
     closeAudioPlaybackDevice();
 
+#ifdef ENABLE_PIPEWIRE
+    cleanupPipewire();
+#endif
+
     SDL_DestroyCursor(m_pointerCursor);
     SDL_DestroyCursor(m_defaultCursor);
 

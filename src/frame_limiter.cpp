@@ -125,7 +125,7 @@ SDL_Time FrameLimiter::calculateSleepTime(SDL_Time start, SDL_Time end) const {
     const SDL_Time work  = SDL_max(start - end, 0);
     const SDL_Time sleep = (m_target - work) - m_overhead;
 
-    return SDL_min(sleep, 0);
+    return SDL_max(sleep, 0);
 }
 
 void FrameLimiter::doSleep(SDL_Time sleepTime) {
