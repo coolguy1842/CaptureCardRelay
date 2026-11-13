@@ -418,12 +418,17 @@ void Application::renderCameraToTexture() {
                 break;
             }
 
+            // release early as SDL_ReleaseCameraFrame documentation recommends
             SDL_ReleaseCameraFrame(m_camera.device, surface);
 
             void* pixels = nullptr;
             int pitch    = 0;
 
-            SDL_LockTexture(m_camera.texture, nullptr, &pixels, &pitch);
+            if(!SDL_LockTexture(m_camera.texture, nullptr, &pixels, &pitch)) {
+                SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to lock texture: %s", SDL_GetError());
+                return;
+            }
+
             SDL_memmove(pixels, m_camera.pixels.data(), m_camera.pixels.size());
             SDL_UnlockTexture(m_camera.texture);
 
