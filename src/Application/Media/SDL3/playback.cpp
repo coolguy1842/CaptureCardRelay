@@ -21,6 +21,12 @@ void Application::playbackCallbackHandler(SDL_AudioStream* stream, int needed, i
 }
 
 void Application::openAudioPlaybackDevice() {
+#ifdef ENABLE_PIPEWIRE
+    if(m_usingPipewire) {
+        return;
+    }
+#endif
+
     if(m_audioPlayback.device != 0) {
         closeAudioPlaybackDevice();
     }
