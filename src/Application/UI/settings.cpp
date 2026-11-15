@@ -28,15 +28,20 @@ constexpr Clay_Sizing GROWGROW() { return { .width = CLAY_SIZING_GROW(), .height
 
 Clay_String toClayString(const char* str) {
     if(str == nullptr) {
-        return { .isStaticallyAllocated = true, .length = 7, .chars = "(null)" };
+        return CLAY_STRING("(null)");
     }
 
-    return { .isStaticallyAllocated = true, .length = static_cast<int32_t>(strlen(str)), .chars = str };
+    auto len = static_cast<int32_t>(strlen(str));
+    if(len <= 0) {
+        return CLAY_STRING("(null)");
+    }
+
+    return { .isStaticallyAllocated = false, .length = len, .chars = str };
 }
 
 Clay_String toClayString(const std::string& str) {
     if(str.empty()) {
-        return { .isStaticallyAllocated = true, .length = 7, .chars = "(null)" };
+        return CLAY_STRING("(null)");
     }
 
     return { .isStaticallyAllocated = false, .length = static_cast<int32_t>(str.size()), .chars = str.c_str() };
@@ -345,6 +350,7 @@ void Application::BuildRecordingDeviceSettings() {
         if(m_activeDropdown.id == recordingDevicesContainerID.id) {
 #ifdef ENABLE_PIPEWIRE
             if(m_usingPipewire) {
+                auto lock = std::unique_lock(m_pipewireDeviceMutex);
                 if(m_pipewire.sources.empty()) {
                     BuildSDLRecordingDeviceLabel({ .id = 0, .name = "(null)" });
                     continue;
@@ -371,8 +377,11 @@ void Application::BuildRecordingDeviceSettings() {
         }
 #ifdef ENABLE_PIPEWIRE
         if(m_usingPipewire) {
-            if(m_pipewire.currentSource != nullptr) {
-                BuildPipewireRecordingDeviceLabel(*m_pipewire.currentSource);
+            auto lock              = std::unique_lock(m_pipewireDeviceMutex);
+            PipewireDevice* device = m_pipewire.currentSource;
+
+            if(device != nullptr) {
+                BuildPipewireRecordingDeviceLabel(*device);
             }
             else {
                 BuildSDLRecordingDeviceLabel({ .id = 0, .name = "(null)" });

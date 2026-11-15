@@ -118,7 +118,9 @@ private:
         std::vector<pipewire::link> links;
     } m_pipewire;
 
-    bool m_usingPipewire = false;
+    bool m_usingPipewire                         = false;
+    std::atomic<bool> m_shouldUpdatePipewireLink = false;
+    std::mutex m_pipewireDeviceMutex;
 #endif
 
 private:

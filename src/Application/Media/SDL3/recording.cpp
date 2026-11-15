@@ -63,6 +63,12 @@ void Application::initAudioRecordingDevices() {
 }
 
 void Application::openAudioRecordingDevice() {
+#ifdef ENABLE_PIPEWIRE
+    if(m_usingPipewire) {
+        return;
+    }
+#endif
+
     // cleanup old data
     closeAudioRecordingDevice();
     initAudioRecordingDevices();

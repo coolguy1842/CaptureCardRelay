@@ -100,16 +100,17 @@ Application::Application(const std::optional<std::string>& settingsPath)
 
 #ifdef ENABLE_PIPEWIRE
     initPipewire();
-
     if(!m_usingPipewire) {
+#else
+    // NOLINTNEXTLINE
+    if(true) {
 #endif
+        SDL_Log("Using SDL Audio");
         SDL_InitSubSystem(SDL_INIT_AUDIO);
 
         openAudioPlaybackDevice();
         openAudioRecordingDevice();
-#ifdef ENABLE_PIPEWIRE
     }
-#endif
 
     if(getShouldQuit()) {
         return;
@@ -270,6 +271,11 @@ void Application::update() {
 #ifdef ENABLE_PIPEWIRE
     if(m_usingPipewire) {
         m_pipewire.core->run_once();
+
+        if(m_shouldUpdatePipewireLink) {
+            m_shouldUpdatePipewireLink = false;
+            updatePipewireLink();
+        }
     }
 #endif
 

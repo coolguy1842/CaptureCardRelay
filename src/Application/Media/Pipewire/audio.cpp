@@ -42,7 +42,7 @@ int Application::onPipewireMetadataProperty(const char* key, const pipewire::met
 
     if(strcmp(key, "default.audio.sink") == 0) {
         m_pipewire.defaultSinkName = extractName(property.value);
-        updatePipewireLink();
+        m_shouldUpdatePipewireLink = true;
     }
 
     return 0;
@@ -83,6 +83,7 @@ void Application::onPipewireGlobal(const pipewire::global& global) {
             name = "(null)";
         }
 
+        auto lock = std::unique_lock(m_pipewireDeviceMutex);
         if(node.props()["media.class"] == "Audio/Sink") {
             m_pipewire.sinks.push_back({
                 .name = name,
@@ -98,7 +99,7 @@ void Application::onPipewireGlobal(const pipewire::global& global) {
             });
 
             if(m_settings.getSelectedRecordingDevice() == name && m_pipewire.currentSource != nullptr && m_pipewire.currentSource->name != name) {
-                updatePipewireLink();
+                m_shouldUpdatePipewireLink = true;
             }
         }
     }
@@ -109,6 +110,7 @@ void Application::onPipewireGlobal(const pipewire::global& global) {
             return;
         }
 
+        auto lock = std::unique_lock(m_pipewireDeviceMutex);
         m_pipewire.ports.push_back(std::move(port.value()));
     }
 }
@@ -116,6 +118,7 @@ void Application::onPipewireGlobal(const pipewire::global& global) {
 void Application::onPipewireGlobalRemoved(uint32_t id) {
     bool removed = false;
 
+    auto lock = std::unique_lock(m_pipewireDeviceMutex);
     for(auto it = m_pipewire.sinks.begin(); it != m_pipewire.sinks.end(); it++) {
         if(it->node.id() == id) {
             m_pipewire.sinks.erase(it);
@@ -129,18 +132,34 @@ void Application::onPipewireGlobalRemoved(uint32_t id) {
         for(auto it = m_pipewire.sources.begin(); it != m_pipewire.sources.end(); it++) {
             if(it->node.id() == id) {
                 m_pipewire.sources.erase(it);
+                removed = true;
+
                 break;
             }
         }
     }
 
-    if((m_pipewire.currentSource != nullptr && m_pipewire.currentSource->id == id) || m_pipewire.lastSinkID == id) {
-        updatePipewireLink();
+    if(!removed) {
+        for(auto it = m_pipewire.ports.begin(); it != m_pipewire.ports.end(); it++) {
+            if(it->id() == id) {
+                m_pipewire.ports.erase(it);
+                removed = true;
+
+                break;
+            }
+        }
+    }
+
+    if(m_pipewire.currentSource != nullptr && m_pipewire.currentSource->id == id) {
+        m_pipewire.currentSource   = nullptr;
+        m_shouldUpdatePipewireLink = true;
+    }
+    else if(m_pipewire.lastSinkID == id) {
+        m_shouldUpdatePipewireLink = true;
     }
 }
 
 void Application::initPipewire() {
-    // TODO: try in different thread
     try {
         auto loop = pw::main_loop::create();
         if(!loop) {
@@ -214,8 +233,8 @@ void Application::initPipewire() {
 
         if(!virtualMic) {
             SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Failed to create null sink");
-
             cleanupPipewire();
+
             return;
         }
 
@@ -288,13 +307,12 @@ void Application::initPipewire() {
         return;
     }
 
-    m_usingPipewire = true;
-
-    updatePipewireLink();
+    m_usingPipewire            = true;
+    m_shouldUpdatePipewireLink = true;
 }
 
 void Application::cleanupPipewire() {
-    m_usingPipewire = false;
+    auto lock = std::unique_lock(m_pipewireDeviceMutex);
 
     try {
         // issue with cleanup unless done in this order
@@ -314,6 +332,8 @@ void Application::cleanupPipewire() {
     catch(const std::exception& e) {
         SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Error happened while cleaning up pipewire:\n%s", e.what());
     }
+
+    m_usingPipewire = false;
 }
 
 void Application::updatePipewireLink() {
@@ -321,8 +341,13 @@ void Application::updatePipewireLink() {
         return;
     }
 
+    auto lock = std::unique_lock(m_pipewireDeviceMutex);
+
     m_pipewire.links.clear();
+    // unlock around core runs as global, or global remove might get called
+    lock.unlock();
     m_pipewire.core->run_once();
+    lock.lock();
 
     std::string sinkName = m_pipewire.sinks[0].name;
     uint32_t sinkNode    = m_pipewire.sinks[0].node.id();
@@ -338,7 +363,7 @@ void Application::updatePipewireLink() {
 
     m_pipewire.currentSource = m_pipewire.sources.data();
     for(auto& source : m_pipewire.sources) {
-        if(getNodeName(source.node) == sourceName) {
+        if(source.name == sourceName) {
             m_pipewire.currentSource = &source;
             break;
         }
@@ -348,6 +373,7 @@ void Application::updatePipewireLink() {
         return;
     }
 
+    SDL_Log("Using Pipewire Audio");
     SDL_Log("Using sink: %s", sinkName.c_str());
     SDL_Log("Using source: %s", m_pipewire.currentSource->name.c_str());
 
@@ -407,18 +433,22 @@ void Application::updatePipewireLink() {
         m_pipewire.links.push_back(std::move(link.value()));
     }
 
+    // same reasons as above
+    lock.unlock();
     m_pipewire.core->wait(m_pipewire.core->sync());
+
     _updateVolumePipewire();
 }
 
 void Application::setRecordingDevicePipewire(const Application::PipewireDevice& device) {
     m_settings.setSelectedRecordingDevice(device.name);
-    updatePipewireLink();
+    m_shouldUpdatePipewireLink = true;
 
     changeStatus(std::format("Recording Device: {}", device.name), std::chrono::milliseconds(1500));
 }
 
 void Application::_updateVolumePipewire() {
+    auto lock = std::unique_lock(m_pipewireDeviceMutex);
     if(!m_usingPipewire || !m_pipewire.virtualMic.node.has_value()) {
         return;
     }
@@ -438,7 +468,10 @@ void Application::_updateVolumePipewire() {
         prop->value().write<std::vector<float>>({ cubic_volumes.begin(), cubic_volumes.end() });
 
         m_pipewire.virtualMic.node->set_param(pod_id, 0, pod);
+
+        lock.unlock();
         m_pipewire.core->wait(m_pipewire.core->sync());
+        lock.lock();
     }
 }
 

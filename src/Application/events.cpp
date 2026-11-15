@@ -83,23 +83,11 @@ SDL_AppResult Application::handleEvent(SDL_Event* event) {
         break;
     case SDL_EVENT_AUDIO_DEVICE_ADDED:
     case SDL_EVENT_AUDIO_DEVICE_REMOVED:
-#ifdef ENABLE_PIPEWIRE
-        if(m_usingPipewire) {
-            break;
-        }
-#endif
-
         openAudioPlaybackDevice();
         openAudioRecordingDevice();
 
         // fall through
     case SDL_EVENT_AUDIO_DEVICE_FORMAT_CHANGED: {
-#ifdef ENABLE_PIPEWIRE
-        if(m_usingPipewire) {
-            break;
-        }
-#endif
-
         if(m_audioRecording.stream != nullptr) {
             SDL_SetAudioStreamFormat(m_audioRecording.stream, &m_audioRecording.spec, &m_audioSpec);
         }
@@ -170,7 +158,6 @@ SDL_AppResult Application::handleEvent(SDL_Event* event) {
                 const PipewireDevice* currentDevice = m_pipewire.currentSource;
                 if(currentDevice == nullptr) {
                     setRecordingDevicePipewire(m_pipewire.sources[0]);
-                    updatePipewireLink();
 
                     break;
                 }
@@ -190,7 +177,7 @@ SDL_AppResult Application::handleEvent(SDL_Event* event) {
                 }
                 else {
                     m_settings.setSelectedRecordingDevice("");
-                    updatePipewireLink();
+                    m_shouldUpdatePipewireLink = true;
                 }
 
                 break;

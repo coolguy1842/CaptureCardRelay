@@ -45,7 +45,8 @@ Checks: >
     -readability-avoid-nested-conditional-operator,
     -hicpp-special-member-functions,
     -hicpp-signed-bitwise,
-    -hicpp-avoid-goto
+    -hicpp-avoid-goto,
+    -bugprone-easily-swappable-parameters
 
 CheckOptions:
   cppcoreguidelines-avoid-non-const-global-variables.AllowInternalLinkage: true
