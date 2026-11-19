@@ -1,24 +1,7 @@
 #include <application.hpp>
 
 void Application::onPlaybackCallback(void* userdata, SDL_AudioStream* stream, int needed, int totalAmount) { reinterpret_cast<Application*>(userdata)->playbackCallbackHandler(stream, needed, totalAmount); }
-void Application::playbackCallbackHandler(SDL_AudioStream* stream, int needed, int /*totalAmount*/) {
-    while(needed >= m_audioBufferSizeBytes) {
-        needed -= m_audioBufferSizeBytes;
-
-        if(m_audioBuffers.empty()) {
-            // can cause a crash if using NoCopy if the buffer gets changed
-            SDL_PutAudioStreamData(stream, m_emptyAudioBuffer->data(), m_audioBufferSizeBytes);
-            continue;
-        }
-
-        const AudioFrame buffer = m_audioBuffers.front();
-        m_audioBuffers.pop();
-
-        SDL_PutAudioStreamData(stream, buffer->data(), m_audioBufferSizeBytes);
-
-        m_freeAudioBuffers.push(buffer);
-    }
-}
+void Application::playbackCallbackHandler(SDL_AudioStream* stream, int needed, int /*totalAmount*/) { m_audioRingBuffer.pop(stream, needed); }
 
 void Application::openAudioPlaybackDevice() {
 #ifdef ENABLE_PIPEWIRE
@@ -44,17 +27,9 @@ void Application::openAudioPlaybackDevice() {
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-conversion"
-    const int frameSize    = static_cast<int>(SDL_AUDIO_FRAMESIZE(m_audioSpec));
-    m_audioBufferSizeBytes = frameSize * (playbackBufferSize / 8);
+    const int frameSize = static_cast<int>(SDL_AUDIO_FRAMESIZE(m_audioSpec));
+    m_audioRingBuffer.setSize(static_cast<size_t>(frameSize) * (playbackBufferSize / 8), maxAudioBuffers);
 #pragma GCC diagnostic pop
-
-    m_audioBuffers     = {};
-    m_freeAudioBuffers = {};
-
-    m_emptyAudioBuffer = std::make_shared<std::vector<AudioType>>(static_cast<size_t>(m_audioBufferSizeBytes));
-    for(size_t i = 0; i < maxAudioBuffers; i++) {
-        m_freeAudioBuffers.push(std::make_shared<std::vector<AudioType>>(static_cast<size_t>(m_audioBufferSizeBytes)));
-    }
 
     m_audioPlayback.stream = SDL_CreateAudioStream(&m_audioSpec, &m_audioPlayback.spec);
     SDL_BindAudioStream(m_audioPlayback.device, m_audioPlayback.stream);
@@ -74,9 +49,7 @@ void Application::closeAudioPlaybackDevice() {
         m_audioPlayback.device = 0;
     }
 
-    m_emptyAudioBuffer.reset();
-    m_audioBuffers     = {};
-    m_freeAudioBuffers = {};
+    m_audioRingBuffer.setSize(0, 0);
 }
 
 void Application::_updateVolumeSDL() {

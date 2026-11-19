@@ -9,6 +9,7 @@
 #include <memory>
 #include <optional>
 #include <queue>
+#include <ring_buffer.hpp>
 #include <settings.hpp>
 #include <string>
 #include <vector>
@@ -210,6 +211,9 @@ private:
     void openCamera();
     void closeCamera();
 
+    void lazyChangeCamera(const CameraInfo& info);
+    void lazyChangeRecordingDevice(const RecordingDeviceInfo& info);
+
     void setCamera(CameraInfo info);
     void setRecordingDeviceSDL(RecordingDeviceInfo info);
 
@@ -316,6 +320,8 @@ private:
     std::queue<AudioFrame> m_audioBuffers;
     std::queue<AudioFrame> m_freeAudioBuffers;
 
+    RingBuffer m_audioRingBuffer;
+
     AudioFrame m_emptyAudioBuffer;
     int m_audioBufferSizeBytes;
 
@@ -344,6 +350,9 @@ private:
     std::vector<CameraInfo> m_cameras;
     std::vector<SDL_AudioDeviceID> m_playbackDevices;
     std::vector<RecordingDeviceInfo> m_recordingDevices;
+
+    std::optional<CameraInfo> m_nextCamera;
+    std::optional<RecordingDeviceInfo> m_nextRecordingDevice;
 
     CameraData m_camera;
     RecordingDeviceInfo m_currentRecordingDevice = { .id = 0, .name = "(null)" };
