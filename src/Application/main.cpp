@@ -19,7 +19,7 @@ Application::Application(const std::optional<std::string>& settingsPath)
     , m_width(800)
     , m_height(600)
     , m_frameLimiter(false) {
-    if(!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_CAMERA)) {
+    if(!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_CAMERA | SDL_INIT_AUDIO)) {
         SDL_LogError(SDL_LOG_CATEGORY_ERROR, "FATAL: Couldn't initialize SDL: %s", SDL_GetError());
         setShouldQuit();
 
@@ -106,7 +106,6 @@ Application::Application(const std::optional<std::string>& settingsPath)
     if(true) {
 #endif
         SDL_Log("Using SDL Audio");
-        SDL_InitSubSystem(SDL_INIT_AUDIO);
 
         openAudioPlaybackDevice();
         openAudioRecordingDevice();
@@ -182,7 +181,6 @@ Application::~Application() {
     SDL_DestroyRenderer(m_renderData.renderer);
     SDL_DestroyWindow(m_window);
 
-    SDL_QuitSubSystem(SDL_INIT_AUDIO);
     SDL_Quit();
 
     m_clayMemory.reset();
@@ -277,7 +275,20 @@ void Application::update() {
             updatePipewireLink();
         }
     }
+    else {
+#else
+    if(true) {
 #endif
+        if(m_nextRecordingDevice.has_value()) {
+            setRecordingDeviceSDL(m_nextRecordingDevice.value());
+            m_nextRecordingDevice = std::nullopt;
+        }
+
+        if(m_nextCamera.has_value()) {
+            setCamera(m_nextCamera.value());
+            m_nextCamera = std::nullopt;
+        }
+    }
 
     if(!m_settingsActive && m_shouldHideCursor && SDL_CursorVisible() && std::chrono::system_clock::now() >= m_showCursorExpire) {
         SDL_HideCursor();

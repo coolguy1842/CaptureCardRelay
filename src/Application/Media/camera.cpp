@@ -273,6 +273,7 @@ void Application::closeCamera() {
     cleanupCameraTexture();
 }
 
+void Application::lazyChangeCamera(const CameraInfo& info) { m_nextCamera = info; }
 void Application::setCamera(Application::CameraInfo info) {
     m_settings.setSelectedCamera(info.id);
 

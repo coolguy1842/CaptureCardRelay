@@ -204,7 +204,7 @@ void Application::BuildCameraLabel(const Application::CameraInfo& info) {
 
                 if(Clay_MouseClicked()) {
                     if(info.id != 0 && m_camera.id != info.id) {
-                        setCamera(info);
+                        lazyChangeCamera(info);
                     }
 
                     m_activeDropdown = m_invalidDropdown;
@@ -293,7 +293,7 @@ void Application::BuildSDLRecordingDeviceLabel(const RecordingDeviceInfo& info) 
 
                 if(Clay_MouseClicked()) {
                     if(info.id != 0 && m_currentRecordingDevice.id != info.id) {
-                        setRecordingDeviceSDL(info);
+                        lazyChangeRecordingDevice(info);
                     }
 
                     m_activeDropdown = m_invalidDropdown;
@@ -377,8 +377,8 @@ void Application::BuildRecordingDeviceSettings() {
         }
 #ifdef ENABLE_PIPEWIRE
         if(m_usingPipewire) {
-            auto lock              = std::unique_lock(m_pipewireDeviceMutex);
-            PipewireDevice* device = m_pipewire.currentSource;
+            auto lock                    = std::unique_lock(m_pipewireDeviceMutex);
+            const PipewireDevice* device = m_pipewire.currentSource;
 
             if(device != nullptr) {
                 BuildPipewireRecordingDeviceLabel(*device);

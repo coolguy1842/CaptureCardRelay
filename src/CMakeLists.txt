@@ -3,9 +3,10 @@ if(WIN32 AND NOT EMSCRIPTEN)
 endif()
 
 add_executable(${App_Name} WIN32
-    clay_renderer_SDL3.cpp    
+    clay_renderer_SDL3.cpp
     
     frame_limiter.cpp
+    ring_buffer.cpp
     settings.cpp
     
     Application/main.cpp

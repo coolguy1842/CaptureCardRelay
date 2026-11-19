@@ -3,29 +3,7 @@
 #include <span>
 
 void Application::onRecordingCallback(void* userdata, SDL_AudioStream* stream, int available, int totalAmount) { reinterpret_cast<Application*>(userdata)->recordingCallbackHandler(stream, available, totalAmount); }
-void Application::recordingCallbackHandler(SDL_AudioStream* stream, int available, int /*totalAmount*/) {
-    while(available >= m_audioBufferSizeBytes) {
-        AudioFrame frame;
-
-        if(!m_freeAudioBuffers.empty()) {
-            frame = m_freeAudioBuffers.front();
-            m_freeAudioBuffers.pop();
-        }
-        else if(!m_audioBuffers.empty()) {
-            // take oldest from audio buffers
-            frame = m_audioBuffers.front();
-            m_audioBuffers.pop();
-        }
-        else {
-            return;
-        }
-
-        SDL_GetAudioStreamData(stream, frame->data(), m_audioBufferSizeBytes);
-
-        m_audioBuffers.push(frame);
-        available -= m_audioBufferSizeBytes;
-    }
-}
+void Application::recordingCallbackHandler(SDL_AudioStream* stream, int available, int /*totalAmount*/) { m_audioRingBuffer.push(stream, available); }
 
 void Application::initAudioRecordingDevices() {
     std::vector<SDL_AudioDeviceID> recordingDevices;
@@ -122,7 +100,8 @@ void Application::closeAudioRecordingDevice() {
     }
 }
 
-void Application::setRecordingDeviceSDL(Application::RecordingDeviceInfo info) {
+void Application::lazyChangeRecordingDevice(const RecordingDeviceInfo& info) { m_nextRecordingDevice = info; }
+void Application::setRecordingDeviceSDL(RecordingDeviceInfo info) {
     m_settings.setSelectedRecordingDevice(info.name);
 
     if(info.id != 0) {
